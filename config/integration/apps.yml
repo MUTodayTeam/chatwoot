@@ -94,7 +94,7 @@ lark:
           'webhook_url':
             {
               'type': 'string',
-              'pattern': '\Ahttps://open\.(larksuite\.com|feishu\.cn)/open-apis/bot/v2/hook/\S+\z',
+              'pattern': '^https://open\.(larksuite\.com|feishu\.cn)/open-apis/bot/v2/hook/\S+$',
             },
           'secret': { 'type': 'string' },
         },
