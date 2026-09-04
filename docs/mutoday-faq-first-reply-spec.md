@@ -1213,6 +1213,14 @@ GROUP BY 1 ORDER BY 2 DESC;
 27. Never edit `config/locales/th.yml` or any non-English locale.
 28. Never edit `app/models/message.rb`, `app/models/conversation.rb`, `app/services/base/send_on_channel_service.rb`, `app/services/line/*`, `app/presenters/message_content_presenter.rb`, `lib/redis/redis_keys.rb`, `spec/jobs/hook_job_spec.rb`, or `spec/listeners/hook_listener_spec.rb`.
 
+    > On the two spec files, the filed reason is merge surface, but there is a stronger one,
+    > since it is tempting to add a wiring guard there. A guard living in the same upstream
+    > file as the line it guards can be deleted by the very merge resolution it exists to
+    > catch, and is then silent exactly when it is needed. The guards for the two one-line
+    > entries therefore live in fork-owned specs upstream never touches:
+    > `spec/jobs/mutoday_faq_reply_job_spec.rb` and
+    > `spec/lib/integrations/lark/send_on_lark_service_spec.rb`. Both are mutation-tested.
+
 **Honesty**
 29. Never claim to be a human, never claim the team "will call back in X minutes", never invent a technical reason for a failure, never state a fact that is not in an approved FAQ answer.
 
