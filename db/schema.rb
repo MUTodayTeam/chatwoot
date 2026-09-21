@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_21_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_21_000001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -882,6 +882,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_21_000000) do
     t.bigint "assignee_agent_bot_id"
     t.string "ai_assignee_type"
     t.datetime "status_changed_at"
+    t.datetime "reply_due_at"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
@@ -896,6 +897,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_21_000000) do
     t.index ["identifier", "account_id"], name: "index_conversations_on_identifier_and_account_id"
     t.index ["inbox_id"], name: "index_conversations_on_inbox_id"
     t.index ["priority"], name: "index_conversations_on_priority"
+    t.index ["reply_due_at"], name: "index_conversations_on_reply_due_at"
     t.index ["status", "account_id"], name: "index_conversations_on_status_and_account_id"
     t.index ["status", "priority"], name: "index_conversations_on_status_and_priority"
     t.index ["team_id"], name: "index_conversations_on_team_id"
@@ -1208,6 +1210,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_21_000000) do
     t.index ["account_id"], name: "index_leaves_on_account_id"
     t.index ["approved_by_id"], name: "index_leaves_on_approved_by_id"
     t.index ["user_id"], name: "index_leaves_on_user_id"
+  end
+
+  create_table "live_chat_rules", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "project_id"
+    t.integer "reply_timeout_minutes", default: 60, null: false
+    t.integer "extension_minutes", default: 60, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "project_id"], name: "index_live_chat_rules_on_account_id_and_project_id", unique: true
+    t.index ["account_id"], name: "index_live_chat_rules_on_account_id"
+    t.index ["project_id"], name: "index_live_chat_rules_on_project_id"
   end
 
   create_table "macros", force: :cascade do |t|

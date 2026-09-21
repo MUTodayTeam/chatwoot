@@ -16,7 +16,6 @@ class Conversations::EventDataPresenter < SimpleDelegator
       unread_count: unread_incoming_messages.count,
       first_reply_created_at: first_reply_created_at,
       priority: priority,
-      waiting_since: waiting_since.to_i,
       **push_timestamps
     }
   end
@@ -51,6 +50,10 @@ class Conversations::EventDataPresenter < SimpleDelegator
 
   def push_timestamps
     {
+      waiting_since: waiting_since.to_i,
+      # Moves in lockstep with waiting_since, so the countdown clears the moment an
+      # agent replies instead of lingering until the next page load.
+      reply_due_at: reply_due_at.to_i,
       agent_last_seen_at: agent_last_seen_at.to_i,
       contact_last_seen_at: contact_last_seen_at.to_i,
       last_activity_at: last_activity_at.to_i,

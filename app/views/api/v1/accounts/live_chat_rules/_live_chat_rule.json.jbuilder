@@ -1,0 +1,4 @@
+json.id live_chat_rule.id
+json.project_id live_chat_rule.project_id
+json.reply_timeout_minutes live_chat_rule.reply_timeout_minutes
+json.extension_minutes live_chat_rule.extension_minutes

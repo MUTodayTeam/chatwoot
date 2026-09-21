@@ -64,6 +64,10 @@ class ConversationApi extends ApiClient {
     });
   }
 
+  extendReplyDeadline({ conversationId }) {
+    return axios.post(`${this.url}/${conversationId}/extend_reply_deadline`);
+  }
+
   assignAgent({ conversationId, agentId, assigneeType }) {
     return axios.post(`${this.url}/${conversationId}/assignments`, {
       assignee_id: agentId,

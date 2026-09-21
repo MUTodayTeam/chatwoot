@@ -5,6 +5,7 @@
 #  id                     :integer          not null, primary key
 #  additional_attributes  :jsonb
 #  agent_last_seen_at     :datetime
+#  ai_assignee_type       :string
 #  assignee_last_seen_at  :datetime
 #  cached_label_list      :text
 #  contact_last_seen_at   :datetime
@@ -13,6 +14,7 @@
 #  identifier             :string
 #  last_activity_at       :datetime         not null
 #  priority               :integer
+#  reply_due_at           :datetime
 #  snoozed_until          :datetime
 #  status                 :integer          default("open"), not null
 #  status_changed_at      :datetime
@@ -33,24 +35,26 @@
 #
 # Indexes
 #
-#  conv_acid_inbid_stat_asgnid_idx                    (account_id,inbox_id,status,assignee_id)
-#  index_conversations_on_account_id                  (account_id)
-#  index_conversations_on_account_id_and_display_id   (account_id,display_id) UNIQUE
-#  index_conversations_on_assignee_id_and_account_id  (assignee_id,account_id)
-#  index_conversations_on_campaign_id                 (campaign_id)
-#  index_conversations_on_contact_id                  (contact_id)
-#  index_conversations_on_contact_inbox_id            (contact_inbox_id)
-#  index_conversations_on_created_at                  (created_at)
-#  index_conversations_on_first_reply_created_at      (first_reply_created_at)
-#  index_conversations_on_id_and_account_id           (account_id,id)
-#  index_conversations_on_identifier_and_account_id   (identifier,account_id)
-#  index_conversations_on_inbox_id                    (inbox_id)
-#  index_conversations_on_priority                    (priority)
-#  index_conversations_on_status_and_account_id       (status,account_id)
-#  index_conversations_on_status_and_priority         (status,priority)
-#  index_conversations_on_team_id                     (team_id)
-#  index_conversations_on_uuid                        (uuid) UNIQUE
-#  index_conversations_on_waiting_since               (waiting_since)
+#  conv_acid_inbid_stat_asgnid_idx                      (account_id,inbox_id,status,assignee_id)
+#  index_conversations_on_account_id                    (account_id)
+#  index_conversations_on_account_id_and_display_id     (account_id,display_id) UNIQUE
+#  index_conversations_on_account_id_status_created_at  (account_id,status,created_at)
+#  index_conversations_on_assignee_id_and_account_id    (assignee_id,account_id)
+#  index_conversations_on_campaign_id                   (campaign_id)
+#  index_conversations_on_contact_id                    (contact_id)
+#  index_conversations_on_contact_inbox_id              (contact_inbox_id)
+#  index_conversations_on_created_at                    (created_at)
+#  index_conversations_on_first_reply_created_at        (first_reply_created_at)
+#  index_conversations_on_id_and_account_id             (account_id,id)
+#  index_conversations_on_identifier_and_account_id     (identifier,account_id)
+#  index_conversations_on_inbox_id                      (inbox_id)
+#  index_conversations_on_priority                      (priority)
+#  index_conversations_on_reply_due_at                  (reply_due_at)
+#  index_conversations_on_status_and_account_id         (status,account_id)
+#  index_conversations_on_status_and_priority           (status,priority)
+#  index_conversations_on_team_id                       (team_id)
+#  index_conversations_on_uuid                          (uuid) UNIQUE
+#  index_conversations_on_waiting_since                 (waiting_since)
 #
 
 class Conversation < ApplicationRecord
@@ -137,6 +141,9 @@ class Conversation < ApplicationRecord
   before_save :set_status_changed_at
   before_create :determine_conversation_status
   before_create :ensure_waiting_since
+  # Runs after ensure_waiting_since so the deadline is derived from the value it sets.
+  before_create :sync_reply_due_at
+  before_update :sync_reply_due_at, if: :will_save_change_to_waiting_since?
 
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
@@ -145,6 +152,18 @@ class Conversation < ApplicationRecord
   after_destroy_commit :notify_conversation_deletion
 
   delegate :auto_resolve_after, to: :account
+
+  def live_chat_rule
+    @live_chat_rule ||= LiveChatRule.for_project(account, inbox.project)
+  end
+
+  # Grants the conversation more time before it counts as overdue. Extending a
+  # conversation nobody is waiting on would create a deadline out of nothing.
+  def extend_reply_deadline!
+    return false if reply_due_at.blank?
+
+    update!(reply_due_at: reply_due_at + live_chat_rule.extension_minutes.minutes)
+  end
 
   def can_reply?
     Conversations::MessageWindowService.new(self).can_reply?
@@ -280,11 +299,13 @@ class Conversation < ApplicationRecord
   end
 
   def handle_resolved_status_change
-    # When conversation is resolved, clear waiting_since using update_column to avoid callbacks
+    # When conversation is resolved, clear waiting_since using update_columns to avoid callbacks.
+    # reply_due_at goes with it: nothing is waiting on a reply any more, and skipping
+    # callbacks here means sync_reply_due_at never sees this change.
     return unless saved_change_to_status? && status == 'resolved'
 
     # rubocop:disable Rails/SkipsModelValidations
-    update_column(:waiting_since, nil)
+    update_columns(waiting_since: nil, reply_due_at: nil)
     # rubocop:enable Rails/SkipsModelValidations
   end
 
@@ -298,6 +319,13 @@ class Conversation < ApplicationRecord
 
   def ensure_waiting_since
     self.waiting_since = created_at
+  end
+
+  # The customer is owed a reply until an agent sends one, so the deadline hangs off
+  # waiting_since and is cleared with it. Any time granted by "add time" is dropped on
+  # purpose: a fresh inbound message starts a fresh clock.
+  def sync_reply_due_at
+    self.reply_due_at = waiting_since.present? ? waiting_since + live_chat_rule.reply_timeout_minutes.minutes : nil
   end
 
   def validate_additional_attributes

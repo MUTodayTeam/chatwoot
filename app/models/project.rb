@@ -18,6 +18,7 @@
 class Project < ApplicationRecord
   belongs_to :account
   has_many :inboxes, dependent: :nullify
+  has_many :live_chat_rules, dependent: :destroy
 
   validates :name, presence: true, uniqueness: { scope: :account_id }
 end

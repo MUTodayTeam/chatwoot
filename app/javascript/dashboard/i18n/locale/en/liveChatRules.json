@@ -1,0 +1,57 @@
+{
+  "LIVE_CHAT_RULES": {
+    "HEADER": "Live chat rules",
+    "HEADER_BTN_TXT": "Add project override",
+    "LOADING": "Fetching live chat rules",
+    "DESCRIPTION": "How long an agent has to reply before a waiting customer counts as overdue, and how much time the extend action buys. Set a default for the account and override it for any project.",
+    "SCOPE": {
+      "ACCOUNT": "All projects (default)",
+      "UNKNOWN_PROJECT": "Deleted project"
+    },
+    "LIST": {
+      "NOT_SAVED": "Not saved yet",
+      "MINUTES": "{n} minute | {n} minutes",
+      "TABLE_HEADER": {
+        "SCOPE": "Applies to",
+        "REPLY_TIMEOUT": "Reply within",
+        "EXTENSION": "Extend adds",
+        "ACTION": "Actions"
+      }
+    },
+    "FORM": {
+      "TITLE": "Live chat rule",
+      "DESC": "These values drive the countdown shown on every waiting conversation.",
+      "SCOPE": {
+        "LABEL": "Applies to"
+      },
+      "REPLY_TIMEOUT": {
+        "LABEL": "Reply within (minutes)",
+        "HELP": "Time an agent has to reply before the conversation counts as overdue. The countdown restarts whenever the customer writes again."
+      },
+      "EXTENSION": {
+        "LABEL": "Extend adds (minutes)",
+        "HELP": "How much time the extend action adds to a single conversation."
+      },
+      "EDIT": "Edit",
+      "DELETE": "Delete",
+      "CANCEL": "Cancel",
+      "SAVE": "Save",
+      "API": {
+        "SUCCESS_MESSAGE": "Live chat rule saved successfully",
+        "ERROR_MESSAGE": "Could not save the rule, please try again"
+      }
+    },
+    "DELETE": {
+      "CONFIRM": {
+        "TITLE": "Confirm deletion",
+        "MESSAGE": "Are you sure you want to remove the override for",
+        "YES": "Yes, remove it",
+        "NO": "No, keep it"
+      },
+      "API": {
+        "SUCCESS_MESSAGE": "Override removed successfully",
+        "ERROR_MESSAGE": "Could not remove the override, please try again"
+      }
+    }
+  }
+}

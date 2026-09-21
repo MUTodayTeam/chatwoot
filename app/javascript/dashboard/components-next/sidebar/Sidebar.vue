@@ -931,6 +931,12 @@ const menuItems = computed(() => {
           to: accountScopedRoute('projects_list'),
         },
         {
+          name: 'Settings Live Chat Rules',
+          label: t('SIDEBAR.LIVE_CHAT_RULES'),
+          icon: 'i-lucide-timer',
+          to: accountScopedRoute('live_chat_rules_index'),
+        },
+        {
           name: 'Settings Labels',
           label: t('SIDEBAR.LABELS'),
           icon: 'i-lucide-tags',

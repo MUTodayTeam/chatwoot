@@ -291,6 +291,16 @@ const actions = {
     }
   },
 
+  extendReplyDeadline: async ({ commit }, { conversationId }) => {
+    const {
+      data: { reply_due_at: replyDueAt },
+    } = await ConversationApi.extendReplyDeadline({ conversationId });
+    commit(types.CHANGE_CONVERSATION_REPLY_DUE_AT, {
+      conversationId,
+      replyDueAt,
+    });
+  },
+
   createPendingMessageAndSend: async ({ dispatch }, data) => {
     const pendingMessage = createPendingMessage(data);
     dispatch('sendMessageWithData', pendingMessage);
