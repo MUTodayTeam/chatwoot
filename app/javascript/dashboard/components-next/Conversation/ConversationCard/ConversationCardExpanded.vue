@@ -9,6 +9,7 @@ import InboxName from 'dashboard/components-next/Conversation/InboxName.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import SLACardLabel from 'dashboard/components-next/Conversation/Sla/SLACardLabel.vue';
+import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
 import CardStatusIcon from './CardStatusIcon.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -176,6 +177,8 @@ const selectedModel = computed({
           class="my-0 [&>div]:justify-end justify-end"
         />
       </div>
+
+      <ReplyCountdown :reply-due-at="chat.reply_due_at" class="flex-shrink-0" />
 
       <div v-if="hasSlaPolicyId" class="flex-shrink-0">
         <SLACardLabel ref="slaCardLabel" :chat="chat" />

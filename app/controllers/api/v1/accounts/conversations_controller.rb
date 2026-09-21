@@ -103,6 +103,12 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     head :ok
   end
 
+  def extend_reply_deadline
+    return head :unprocessable_entity unless @conversation.extend_reply_deadline!
+
+    render json: { reply_due_at: @conversation.reply_due_at.to_i }
+  end
+
   def toggle_typing_status
     typing_status_manager = ::Conversations::TypingStatusManager.new(@conversation, Current.user, params)
     typing_status_manager.toggle_typing_status

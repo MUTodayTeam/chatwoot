@@ -9,6 +9,7 @@ import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
 import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
 import UnreadBadge from 'dashboard/components-next/Conversation/ConversationCard/UnreadBadge.vue';
+import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
@@ -226,6 +227,10 @@ watch(
             :conversation-id="chat.id"
           />
         </span>
+        <ReplyCountdown
+          :reply-due-at="chat.reply_due_at"
+          class="ltr:ml-auto rtl:mr-auto mt-1"
+        />
         <UnreadBadge
           v-if="hasUnread"
           :count="unreadCount"

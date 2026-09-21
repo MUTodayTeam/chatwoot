@@ -405,6 +405,11 @@
       "UNMUTE": "Unmute mic",
       "VIEW_CHAT_HISTORY": "View chat history",
       "GO_TO_CONVERSATION": "Go to conversation thread"
+    },
+    "REPLY_COUNTDOWN": {
+      "WITHIN": "Reply due in",
+      "NEARLY_DUE": "Reply almost overdue",
+      "OVERDUE": "Reply overdue"
     }
   },
   "EMAIL_TRANSCRIPT": {

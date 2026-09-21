@@ -22,6 +22,12 @@ module SortHandler
       order(generate_sql_query("(waiting_since IS NULL), waiting_since #{sort_direction.to_s.upcase}, created_at ASC"))
     end
 
+    # Ascending puts the most overdue first, which is the order an agent chasing
+    # late replies wants. Conversations nobody is waiting on sort last either way.
+    def sort_on_reply_due_at(sort_direction = :asc)
+      order(generate_sql_query("(reply_due_at IS NULL), reply_due_at #{sort_direction.to_s.upcase}, created_at ASC"))
+    end
+
     def last_messaged_conversations
       Message.except(:order).select(
         'DISTINCT ON (conversation_id) conversation_id, id, created_at, message_type'
