@@ -669,6 +669,7 @@ function redirectToConversationList() {
       inboxId,
       label,
       teamId,
+      projectId: props.projectId,
     })
   );
 }
@@ -963,6 +964,7 @@ watch(conversationFilters, (newVal, oldVal) => {
       :show-end-of-list-message="showEndOfListMessage"
       :label="label"
       :team-id="teamId"
+      :project-id="projectId"
       :folders-id="foldersId"
       :conversation-type="conversationType"
       :show-assignee="showAssigneeInConversationCard"
