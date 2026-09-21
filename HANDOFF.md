@@ -11,6 +11,64 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-21 — DEPLOYED to production (support.mutoday.com) · Fable 5.1
+
+**Merged:** PR #14 → `f0667a9ab` · PR #15 → `c61d45f03` (= `develop` head = image `.git_sha`).
+
+**CI gate before merge.** rspec (16 shards), rubocop, frontend lint/test and the docker test-build were
+green on both PRs. The one red check, `security-scan`, is `bundle-audit`: `ruby_llm 1.15.0` has
+CVE-2026-67991 (ReDoS, High; advisory published 2026-09-16). The gem was pinned by upstream on
+2026-05-08 (`aa10d4223`), `Gemfile.lock` is untouched by this work, the team's last green run was
+2026-09-04, and the failure reproduces locally on a clean checkout. Brakeman (same job) passed.
+`develop` has no branch protection, so nothing was overridden. **Team follow-up:** bump `ruby_llm`
+(fix is `>= 2.0.0.rc1`, a major that touches Captain) or add an audit ignore with a written reason —
+until then every PR in this fork will show this check red.
+
+Post-merge CI on `develop`: "Run Chatwoot CE spec" red only on `security-scan`; "Publish Chatwoot
+CE/EE docker images" is red on **every** develop push since at least 2026-09-04 (the fork has no
+registry secrets) — pre-existing, not from this work.
+
+**Deploy:** `./upgrade.sh v4.17.0-mutoday` (same tag; needed because there are migrations), detached,
+12:54 → 13:09 UTC. ~15 min, a full-source build (layer cache missed at `bundle install`).
+Backups: upgrade.sh's own `backups/chatwoot-20260921-125425.sql.gz` plus an explicit
+`/opt/mu-support-db-pre-cdp-2026-09-21-1234.sql` (583K, 100 tables) taken beforehand.
+
+**Rollback assets:** `chatwoot/chatwoot:v4.17.0-mutoday-pre-cdp` (image ID `841d5638c23b`, the
+previous prod image, `.git_sha c1cace51`). To roll back:
+`docker tag chatwoot/chatwoot:v4.17.0-mutoday-pre-cdp chatwoot/chatwoot:v4.17.0-mutoday && docker compose up -d rails sidekiq`.
+The two migrations are additive (two new tables, one nullable indexed column), so the old image runs
+fine against the migrated database — no down-migration is needed to roll back.
+
+**Verified on prod after restart**
+- rails + sidekiq Up on the new image; `docker run … cat /app/.git_sha` = `c61d45f03dda344103925cac2a28dfd61d220186`
+- `GET /api` → `4.17.0`, `queue_services: ok`, `data_services: ok`
+- `schema_migrations` max = `20260921000001`; tables `projects`, `live_chat_rules` present;
+  `conversations.reply_due_at` present; `pg_index WHERE NOT indisvalid` = 0
+- backfill: **4 of 4** open-and-waiting conversations got `reply_due_at`
+- no error lines in `rails`/`sidekiq` logs after the restart
+- the live site serves the new image's assets (`dashboard-Bo-ajksI.js`, `DashboardIcon-CuUd4dBl.js`
+  → HTTP 200) and the served chunk contains `PROJECT_ALL_CHANNELS`, `OTHER_CHANNELS`,
+  `LIVE_CHAT_RULES`; the login page renders
+
+**Phase 1 applied on prod** (account 1, idempotent script from the "Phase 1 scope" section):
+projects **Checkin+** (no inboxes yet) and **MUToday** ← inbox #1 "MUToday" (LINE, 44 conversations).
+`live_chat_rules` has 0 rows, so the built-in 60 min / +60 default applies until someone sets rules.
+Checkin+ will appear in the sidebar once an inbox is attached to it (Settings → Projects).
+
+**Gotchas met during the deploy**
+- `docker compose exec -T …` inside an `ssh … 'bash -s' <<EOF` script swallows the rest of the
+  script from stdin — the run silently stops after the first exec. Add `< /dev/null` to each exec.
+- The login page loads the `v3app-*` entry, not `dashboard-*`, so grepping the login HTML for the
+  dashboard bundle is empty. Prove the served build with a file name taken from the image's
+  `/app/public/vite/assets` instead.
+- The build logs `ERROR -- : Failed to configure AI Agents SDK: connection … 5432 … refused` during
+  `assets:precompile`. Non-fatal and expected — there is no database at build time.
+
+**Still open:** collapsed-sidebar popover not visually checked · project badge in the conversation
+header · "Chats expired (Assign)" reclaim job · the multi-inbound anchor question (finding 3).
+
+---
+
 ## Decisions already taken (confirmed by the requester)
 
 | Question | Answer |
