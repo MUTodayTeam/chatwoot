@@ -2,7 +2,10 @@
 
 FactoryBot.define do
   factory :notification do
-    primary_actor { create(:conversation, account: account) }
+    # Assigned to the same user the notification belongs to: every notification
+    # type points at a conversation, and My Inbox only lists the ones assigned to
+    # the reader, so an unassigned conversation here would make fixtures invisible.
+    primary_actor { create(:conversation, account: account, assignee: user) }
     notification_type { 'conversation_assignment' }
     user
     account
