@@ -32,12 +32,24 @@ class NotificationFinder
 
   def set_up
     find_all_notifications
+    filter_by_assigned_conversations
     filter_snoozed_notifications
     filter_read_notifications
   end
 
   def find_all_notifications
     @notifications = current_user.notifications.where(account_id: @current_account.id)
+  end
+
+  # My Inbox is the agent's own worklist, so it carries only the conversations
+  # currently assigned to them. Applying it here rather than in the controller
+  # keeps the list, the unread badge and the total counting the same rows.
+  # Every notification type points at a conversation, so nothing else is dropped.
+  def filter_by_assigned_conversations
+    @notifications = @notifications.where(
+      primary_actor_type: 'Conversation',
+      primary_actor_id: current_account.conversations.where(assignee_id: current_user.id).select(:id)
+    )
   end
 
   def filter_snoozed_notifications

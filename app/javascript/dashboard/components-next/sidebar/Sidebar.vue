@@ -442,8 +442,34 @@ const newReportRoutes = () => [
 
 const reportRoutes = computed(() => newReportRoutes());
 
+// Areas this install does not use. Kept as one list because an account feature
+// flag cannot switch all of them off: usePolicy keeps showing a PREMIUM_FEATURES
+// flag (Captain) as an upsell on a community plan, and Calls is gated only on
+// isEnterprise, which is true wherever the enterprise/ folder ships. Matched on
+// the entry's `name`, at the top level and one level of children.
+const HIDDEN_SIDEBAR_ITEMS = new Set([
+  'Captain',
+  'Calls',
+  'Mentions',
+  'Participating',
+  'Unattended',
+]);
+
+const withoutHiddenItems = items =>
+  items
+    .filter(item => !HIDDEN_SIDEBAR_ITEMS.has(item.name))
+    .map(item => {
+      if (!item.children) return item;
+      return {
+        ...item,
+        children: item.children.filter(
+          child => !HIDDEN_SIDEBAR_ITEMS.has(child.name)
+        ),
+      };
+    });
+
 const menuItems = computed(() => {
-  return [
+  return withoutHiddenItems([
     {
       name: 'Inbox',
       label: t('SIDEBAR.INBOX'),
@@ -1026,7 +1052,7 @@ const menuItems = computed(() => {
         },
       ],
     },
-  ];
+  ]);
 });
 </script>
 

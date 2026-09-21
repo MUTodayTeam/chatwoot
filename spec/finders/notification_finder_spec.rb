@@ -56,6 +56,26 @@ RSpec.describe NotificationFinder do
     end
   end
 
+  describe 'scoping to assigned conversations' do
+    let(:params) { {} }
+    let!(:other_user) { create(:user, account: account) }
+
+    it 'leaves out notifications for a conversation assigned to someone else' do
+      create(:notification, account: account, user: user,
+                            primary_actor: create(:conversation, account: account, assignee: other_user))
+
+      expect(notification_finder.notifications.size).to eq(3)
+      expect(notification_finder.unread_count).to eq(3)
+    end
+
+    it 'leaves out notifications for an unassigned conversation' do
+      create(:notification, account: account, user: user,
+                            primary_actor: create(:conversation, account: account, assignee: nil))
+
+      expect(notification_finder.notifications.size).to eq(3)
+    end
+  end
+
   describe 'counts' do
     subject { notification_finder }
 
