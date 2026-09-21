@@ -21,6 +21,79 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## Phase 1 scope (set by the requester)
+
+Phase 1 ships with **Checkin+** and **MUToday** only. นกพลัส (Lottery Plus) is deferred to a
+later phase — it stays in the spec, it is just not configured yet.
+
+Applying it is idempotent and destroys nothing; a deferred project is deleted, which only
+releases its inboxes (`has_many :inboxes, dependent: :nullify`) — conversations, contacts and
+messages are untouched. Run with `bundle exec rails runner`:
+
+```ruby
+account = Account.first   # pick the right account on a multi-account install
+PHASE_1 = [
+  { name: 'Checkin+', description: 'Partner โรงแรม',   color: '#201E1D' },
+  { name: 'MUToday',  description: 'แฟนคลับ · กิจกรรม', color: '#605D5D' }
+]
+PHASE_1.each do |attrs|
+  project = account.projects.find_or_initialize_by(name: attrs[:name])
+  project.assign_attributes(description: attrs[:description], color: attrs[:color])
+  project.save!
+end
+account.projects.where.not(name: PHASE_1.pluck(:name)).destroy_all
+```
+
+Colours are the mockup's project dots (`PROJECTS` in `CDP Share Project.html`):
+Checkin+ neutral-900, MUToday neutral-600, นกพลัส neutral-400 when it arrives.
+
+Inboxes are attached to a project from **Settings → Projects**, so each project fills up as its
+channels are connected. In the local database Checkin+ holds its two inboxes and MUToday has
+none yet, which mirrors the real position: its Facebook page is not connected.
+
+---
+
+## Connecting MUToday's Facebook page
+
+**Check this first.** If Checkin+'s Facebook inbox already works on `support.mutoday.com`, the
+Meta app and all three credentials are already in place and the only remaining step is the
+dashboard one — adding MUToday's page to the same app. Look at
+`https://support.mutoday.com/super_admin/app_config?config=facebook`; if `FB_APP_ID`,
+`FB_APP_SECRET` and `FB_VERIFY_TOKEN` are filled in, skip to step 3.
+
+**1. Meta app** (developers.facebook.com, under MUToday's Business account)
+- Add the **Messenger** product.
+- Webhook URL `https://support.mutoday.com/bot` — that is where `config/routes.rb:666` mounts
+  `Facebook::Messenger::Server`. Verify token = whatever you put in `FB_VERIFY_TOKEN`.
+- Subscribe the page to the fields the app actually listens for
+  (`config/initializers/facebook_messenger.rb`): `messages`, `messaging_postbacks`,
+  `message_deliveries`, `message_reads`, `message_echoes`.
+- Add `support.mutoday.com` to the app domains / allowed JS SDK domains. The connect flow is a
+  client-side `FB.login` popup (`useFacebookPageConnect.js`), not a server redirect, so there is
+  no OAuth redirect URI to register — but the domain has to be allowed.
+
+**2. Chatwoot** — Super Admin → `/super_admin/app_config?config=facebook`: `FB_APP_ID`,
+`FB_APP_SECRET`, `FB_VERIFY_TOKEN`, and `FACEBOOK_API_VERSION`.
+
+**3. Dashboard** — Settings → Inboxes → Add Inbox → Facebook. Sign in as a Meta user who
+administers the MUToday page, pick the page, then assign the new inbox to the **MUToday**
+project in Settings → Projects.
+
+Permissions requested at login (`app/javascript/dashboard/helper/facebookScopes.js`):
+`pages_manage_metadata`, `business_management`, `pages_messaging`, `pages_show_list`,
+`pages_read_engagement` — plus `instagram_basic` and `instagram_manage_messages` when the same
+flow is used for Instagram.
+
+Two things to plan for:
+- **`FACEBOOK_API_VERSION` defaults to `v18.0`** (`config/installation_config.yml:143`). Meta
+  retires a Graph API version about two years after release and v18.0 dates from late 2023, so
+  check it against Meta's current list and bump it before connecting anything.
+- **`pages_messaging` needs App Review and Business Verification** before the app can message
+  the public. While the app is in development mode it only works for people with a role on it,
+  which is fine for testing but not for go-live. Worth starting early — review is not instant.
+
+---
+
 ## Findings that shape the work (all verified against this checkout)
 
 ### 0. Proof of the two findings below, run against this checkout
