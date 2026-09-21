@@ -18,6 +18,7 @@ import templates from './templates/templates.routes';
 import integrations from './integrations/integrations.routes';
 import labels from './labels/labels.routes';
 import macros from './macros/macros.routes';
+import projects from './projects/projects.routes';
 import reports from './reports/reports.routes';
 import store from '../../../store';
 import sla from './sla/sla.routes';
@@ -63,6 +64,7 @@ export default {
     ...data.routes,
     ...labels.routes,
     ...macros.routes,
+    ...projects.routes,
     ...reports.routes,
     ...sla.routes,
     ...teams.routes,

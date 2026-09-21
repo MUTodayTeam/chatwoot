@@ -237,6 +237,7 @@ const getFolderUnreadCount = useMapGetter(
   'conversationUnreadCounts/getFolderUnreadCount'
 );
 const teams = useMapGetter('teams/getMyTeams');
+const projects = useMapGetter('projects/getProjects');
 const contactCustomViews = useMapGetter('customViews/getContactCustomViews');
 const conversationCustomViews = useMapGetter(
   'customViews/getConversationCustomViews'
@@ -250,6 +251,7 @@ onMounted(() => {
   store.dispatch('inboxes/get');
   store.dispatch('notifications/unReadCount');
   store.dispatch('teams/get');
+  store.dispatch('projects/get');
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
@@ -302,6 +304,16 @@ const sortedFolders = computed(() =>
   })
 );
 
+// A project groups several inboxes, so its badge is the sum of its inboxes'
+// unread counts. Only inboxes the user can see are present in that map, which
+// keeps the badge consistent with what the conversation list will actually show.
+const getProjectUnreadCount = computed(() => project => {
+  return (project.inboxIds || []).reduce(
+    (total, inboxId) => total + (getInboxUnreadCount.value(inboxId) || 0),
+    0
+  );
+});
+
 const sortedTeams = computed(() =>
   sortSidebarItems(teams.value, {
     sortBy: getSortForSection(SIDEBAR_SORT_SECTIONS.TEAMS),
@@ -316,6 +328,77 @@ const sortedInboxes = computed(() =>
     labelKey: inbox => inbox.name,
     unreadCountKey: inbox => getInboxUnreadCount.value(inbox.id),
   })
+);
+
+// One shape for a channel entry wherever it sits, so a channel under its
+// project and one outside any project look and behave the same.
+const inboxLeaf = inbox => ({
+  name: `${inbox.name}-${inbox.id}`,
+  label: inbox.name,
+  badgeCount: getInboxUnreadCount.value(inbox.id),
+  icon: h(ChannelIcon, { inbox, class: 'size-[16px]' }),
+  activeOn: ['conversation_through_inbox'],
+  to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
+  component: leafProps =>
+    h(ChannelLeaf, {
+      label: leafProps.label,
+      active: leafProps.active,
+      inbox,
+      badgeCount: leafProps.badgeCount,
+    }),
+});
+
+// Membership comes from the projects list, not the inbox payload: inboxes are
+// served from an IndexedDB cache that can lag behind a newly added field.
+const projectIdByInbox = computed(() =>
+  projects.value.reduce((map, project) => {
+    (project.inboxIds || []).forEach(inboxId => {
+      map[inboxId] = project.id;
+    });
+    return map;
+  }, {})
+);
+
+// Each project is its own section: a link to everything in it, then its
+// channels. A project with no channels this user can see is not a live-chat
+// destination yet, so it is left out until one is attached.
+const projectSections = computed(() =>
+  projects.value.flatMap(project => {
+    const projectInboxes = sortedInboxes.value.filter(
+      inbox => projectIdByInbox.value[inbox.id] === project.id
+    );
+    if (!projectInboxes.length) return [];
+
+    return [
+      {
+        name: `project-${project.id}`,
+        label: project.name,
+        icon: h('span', {
+          class: `size-[8px] rounded-sm`,
+          style: { backgroundColor: project.color },
+        }),
+        collapsible: true,
+        showTreeLine: true,
+        children: [
+          {
+            name: `project-${project.id}-all`,
+            label: t('SIDEBAR.PROJECT_ALL_CHANNELS'),
+            icon: 'i-lucide-inbox',
+            badgeCount: getProjectUnreadCount.value(project),
+            activeOn: ['conversations_through_project'],
+            to: accountScopedRoute('project_conversations', {
+              projectId: project.id,
+            }),
+          },
+          ...projectInboxes.map(inboxLeaf),
+        ],
+      },
+    ];
+  })
+);
+
+const unassignedInboxes = computed(() =>
+  sortedInboxes.value.filter(inbox => !projectIdByInbox.value[inbox.id])
 );
 
 const sortedLabels = computed(() =>
@@ -384,6 +467,7 @@ const menuItems = computed(() => {
           activeOn: ['inbox_conversation'],
           to: accountScopedRoute('home'),
         },
+        ...projectSections.value,
         {
           name: 'Mentions',
           label: t('SIDEBAR.MENTIONED_CONVERSATIONS'),
@@ -447,27 +531,18 @@ const menuItems = computed(() => {
           })),
         },
         {
+          // Channels that belong to a project are listed under it, so this group
+          // only holds the rest. With no projects at all it is the full list, as before.
           name: 'Channels',
-          label: t('SIDEBAR.CHANNELS'),
+          label: projectSections.value.length
+            ? t('SIDEBAR.OTHER_CHANNELS')
+            : t('SIDEBAR.CHANNELS'),
           icon: 'i-lucide-mailbox',
           activeOn: ['conversation_through_inbox'],
           ...buildSortConfig(SIDEBAR_SORT_SECTIONS.CHANNELS),
           collapsible: true,
           showTreeLine: true,
-          children: sortedInboxes.value.map(inbox => ({
-            name: `${inbox.name}-${inbox.id}`,
-            label: inbox.name,
-            badgeCount: getInboxUnreadCount.value(inbox.id),
-            icon: h(ChannelIcon, { inbox, class: 'size-[16px]' }),
-            to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
-            component: leafProps =>
-              h(ChannelLeaf, {
-                label: leafProps.label,
-                active: leafProps.active,
-                inbox,
-                badgeCount: leafProps.badgeCount,
-              }),
-          })),
+          children: unassignedInboxes.value.map(inboxLeaf),
         },
         {
           name: 'Labels',
@@ -848,6 +923,12 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.WHATSAPP_TEMPLATES'),
           icon: 'i-lucide-layout-template',
           to: accountScopedRoute('settings_templates'),
+        },
+        {
+          name: 'Settings Projects',
+          label: t('SIDEBAR.PROJECTS'),
+          icon: 'i-lucide-layers',
+          to: accountScopedRoute('projects_list'),
         },
         {
           name: 'Settings Labels',

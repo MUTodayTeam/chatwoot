@@ -56,6 +56,7 @@ import { ASSIGNEE_TYPE_TAB_PERMISSIONS } from 'dashboard/constants/permissions.j
 const props = defineProps({
   conversationInbox: { type: [String, Number], default: 0 },
   teamId: { type: [String, Number], default: 0 },
+  projectId: { type: [String, Number], default: 0 },
   label: { type: String, default: '' },
   conversationType: { type: String, default: '' },
   foldersId: { type: [String, Number], default: 0 },
@@ -255,6 +256,7 @@ const conversationFilters = computed(() => {
     page: conversationListPagination.value,
     labels: props.label ? [props.label] : undefined,
     teamId: props.teamId || undefined,
+    projectId: props.projectId || undefined,
     conversationType: props.conversationType || undefined,
   };
 });
@@ -667,6 +669,7 @@ function redirectToConversationList() {
       inboxId,
       label,
       teamId,
+      projectId: props.projectId,
     })
   );
 }
@@ -961,6 +964,7 @@ watch(conversationFilters, (newVal, oldVal) => {
       :show-end-of-list-message="showEndOfListMessage"
       :label="label"
       :team-id="teamId"
+      :project-id="projectId"
       :folders-id="foldersId"
       :conversation-type="conversationType"
       :show-assignee="showAssigneeInConversationCard"

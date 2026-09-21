@@ -91,6 +91,8 @@ class ConversationFinder
   def set_inboxes
     @inbox_ids = if params[:inbox_id]
                    @current_user.assigned_inboxes.where(id: params[:inbox_id])
+                 elsif params[:project_id]
+                   @current_user.assigned_inboxes.where(project_id: params[:project_id]).pluck(:id)
                  else
                    @current_user.assigned_inboxes.pluck(:id)
                  end
@@ -107,7 +109,7 @@ class ConversationFinder
   def find_conversation_by_inbox
     @conversations = current_account.conversations
 
-    return unless params[:inbox_id]
+    return unless params[:inbox_id] || params[:project_id]
 
     @conversations = @conversations.where(inbox_id: @inbox_ids)
   end

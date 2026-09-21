@@ -27,12 +27,14 @@
 #  account_id                    :integer          not null
 #  channel_id                    :integer          not null
 #  portal_id                     :bigint
+#  project_id                    :bigint
 #
 # Indexes
 #
 #  index_inboxes_on_account_id                   (account_id)
 #  index_inboxes_on_channel_id_and_channel_type  (channel_id,channel_type)
 #  index_inboxes_on_portal_id                    (portal_id)
+#  index_inboxes_on_project_id                   (project_id)
 #
 # Foreign Keys
 #
@@ -58,6 +60,7 @@ class Inbox < ApplicationRecord
 
   belongs_to :account
   belongs_to :portal, optional: true
+  belongs_to :project, optional: true
 
   belongs_to :channel, polymorphic: true, dependent: :destroy
 
