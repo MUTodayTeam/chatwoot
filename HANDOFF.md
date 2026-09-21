@@ -113,6 +113,30 @@ none yet, which mirrors the real position: its Facebook page is not connected.
 
 ## Connecting MUToday's Facebook page
 
+**State on production, checked 2026-09-21 after the deploy.** Nothing is configured yet:
+`FB_APP_ID`, `FB_APP_SECRET`, `FB_VERIFY_TOKEN` and `IG_VERIFY_TOKEN` are all **empty**,
+`Channel::FacebookPage.count` is 0, and the only inbox is #1 "MUToday" (LINE). So the whole
+procedure below applies — there is no existing Meta app to reuse.
+
+**The server side is ready — verified, not assumed:**
+- `GET https://support.mutoday.com/bot?hub.mode=subscribe&hub.verify_token=…&hub.challenge=…`
+  answers `Error; wrong verify token` (HTTP 200). That is the facebook-messenger endpoint replying,
+  so the webhook URL is live and publicly reachable; it will complete the handshake once
+  `FB_VERIFY_TOKEN` is set and matches. A nonsense path returns 404, so this is real routing.
+- Caddy proxies every path to `rails:3000` with no path allow-list, so `/bot` needs no proxy change.
+- TLS is a valid Let's Encrypt cert (expires 2026-11-12), which Meta requires.
+- `FRONTEND_URL=https://support.mutoday.com`.
+
+**`FACEBOOK_API_VERSION` is `v18.0`, and upstream Chatwoot still ships the same value**
+(set by upstream `8d12cf0c6b`, 2025-09-09) — so this is not a stale value in our fork. Meta released
+v18.0 in late 2023 and retires versions roughly two years on, so check it against Meta's current
+version list when creating the app. It is one field in Super Admin
+(`/super_admin/app_config?config=facebook`), changeable without a deploy.
+
+**What cannot be automated from here:** every remaining step authenticates as MUToday on Meta —
+creating the app, configuring its webhook, and the `FB.login` popup that picks the page. Those need
+whoever holds the MUToday Meta Business account.
+
 **Check this first.** If Checkin+'s Facebook inbox already works on `support.mutoday.com`, the
 Meta app and all three credentials are already in place and the only remaining step is the
 dashboard one — adding MUToday's page to the same app. Look at
