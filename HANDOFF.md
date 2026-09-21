@@ -79,6 +79,55 @@ header · "Chats expired (Assign)" reclaim job · the multi-inbound anchor quest
 
 ---
 
+## 2026-09-21 — production incident: reopened chats notified nobody
+
+**Reported:** a chat that had been resolved did not alert anyone when the customer wrote again.
+
+**Not a code bug, and not from the deploy.** `app/models/message.rb` and
+`app/services/messages/new_message_notification_service.rb` are untouched by PR #14/#15, and the
+reopen path itself works: the inbox has no bot (`active_bot? == false`), so
+`Message#reopen_resolved_conversation` takes `conversation.open!`, not `pending!`. Conversations were
+reopening correctly the whole time — only the notification never fired. Two independent
+configuration causes, both on account 1:
+
+**1. Nobody was subscribed to the alert.** `NewMessageNotificationService` has three paths:
+assignee, participants, then `notify_users_watching_all_conversations`. For a reopened chat that is
+unassigned with no participants, only the third can fire, and
+`all_conversations_new_message` is in `NotificationBuilder::OPT_IN_NOTIFICATION_TYPES` — so the row
+is only created for users who switched it on. 13 of 14 users had it off. Two `agent`-role users were
+blocked even earlier, by `NotificationBuilder#user_can_access_conversation?` → `ConversationPolicy#show?`,
+because they were not members of the only inbox. Evidence: conv#44 took 12 inbound messages and
+produced exactly 1 notification.
+
+**2. Auto-assignment had an empty pool, so chats stayed unassigned.**
+`enable_auto_assignment` and `assignment_v2` were both on, but
+`Enterprise::Inbox#member_ids_with_assignment_capacity` routes to
+`filter_by_capacity(available_agents)`, and `InboxAgentAvailability#available_agents` intersects
+**inbox members with users who are currently online**. The inbox had 2 members and neither was
+online, so the pool was `[]` and nothing was ever assigned — which fed straight back into cause 1.
+
+**Applied (config only, no deploy, reversible):**
+- every account user added as an inbox member — 2 → 14. Gives the two agents conversation access and
+  puts real people in the auto-assign pool.
+- `push_all_conversations_new_message` turned on for all 14 users. **Email flags deliberately left
+  off** (`email_all_conversations_new_message` = 0 across all users) — an email per inbound message
+  would be unusable.
+
+**Rollback:** inbox members before were user_ids `[1, 2]`; the only user opted in before was `[3]`.
+
+**Verified** by simulating a real still-failing case (conv#3, resolved + unassigned): reopen resolves
+to `open!`; **14 of 14** users would now be notified, none blocked; manual assign list is 14;
+auto-assign pool is whoever is online; email flag count stays 0.
+
+**Judgement call left open.** Every user is now in the auto-assign rotation, including the
+7solutions / 7ideasgroup / seedwebs / 7dayssuccess accounts that look like developers and vendors
+rather than CS staff. If one of them is online when a chat arrives, the chat can be auto-assigned to
+someone who will not answer it — worse than staying unassigned. Narrowing the rotation is a matter
+of removing those users from the inbox members list; the notification setting is independent and can
+stay on for everyone.
+
+---
+
 ## Phase 1 scope (set by the requester)
 
 Phase 1 ships with **Checkin+** and **MUToday** only. นกพลัส (Lottery Plus) is deferred to a
