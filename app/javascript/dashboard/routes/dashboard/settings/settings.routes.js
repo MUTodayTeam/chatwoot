@@ -17,6 +17,7 @@ import inbox from './inbox/inbox.routes';
 import templates from './templates/templates.routes';
 import integrations from './integrations/integrations.routes';
 import labels from './labels/labels.routes';
+import liveChatRules from './liveChatRules/liveChatRules.routes';
 import macros from './macros/macros.routes';
 import projects from './projects/projects.routes';
 import reports from './reports/reports.routes';
@@ -63,6 +64,7 @@ export default {
     ...integrations.routes,
     ...data.routes,
     ...labels.routes,
+    ...liveChatRules.routes,
     ...macros.routes,
     ...projects.routes,
     ...reports.routes,
