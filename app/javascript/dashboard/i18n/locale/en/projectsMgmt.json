@@ -1,0 +1,71 @@
+{
+  "PROJECT_MGMT": {
+    "HEADER": "Projects",
+    "HEADER_BTN_TXT": "Add project",
+    "LOADING": "Fetching projects",
+    "DESCRIPTION": "A project groups the inboxes that belong to one product or brand, so agents can narrow Live chats to just that project instead of every inbox at once.",
+    "COUNT": "{n} project | {n} projects",
+    "LIST": {
+      "404": "There are no projects yet. Add one to group your inboxes.",
+      "NO_INBOXES": "No inboxes yet",
+      "TABLE_HEADER": {
+        "NAME": "Name",
+        "DESCRIPTION": "Description",
+        "INBOXES": "Inboxes",
+        "ACTION": "Actions"
+      }
+    },
+    "ADD": {
+      "TITLE": "Add project",
+      "API": {
+        "SUCCESS_MESSAGE": "Project added successfully"
+      }
+    },
+    "EDIT": {
+      "TITLE": "Edit project",
+      "API": {
+        "SUCCESS_MESSAGE": "Project updated successfully"
+      }
+    },
+    "FORM": {
+      "DESC": "Name the project and pick the inboxes that belong to it.",
+      "NAME": {
+        "LABEL": "Project name",
+        "PLACEHOLDER": "Enter a project name",
+        "ERROR": "Please enter a project name"
+      },
+      "DESCRIPTION": {
+        "LABEL": "Description",
+        "PLACEHOLDER": "What this project covers"
+      },
+      "COLOR": {
+        "LABEL": "Colour"
+      },
+      "INBOXES": {
+        "LABEL": "Inboxes",
+        "HELP": "An inbox can belong to one project. Unticking an inbox leaves it without a project.",
+        "EMPTY": "There are no inboxes in this account yet."
+      },
+      "EDIT": "Edit",
+      "DELETE": "Delete",
+      "CANCEL": "Cancel",
+      "CREATE": "Create project",
+      "SAVE": "Save changes",
+      "API": {
+        "ERROR_MESSAGE": "Could not save the project, please try again"
+      }
+    },
+    "DELETE": {
+      "CONFIRM": {
+        "TITLE": "Confirm deletion",
+        "MESSAGE": "Are you sure you want to delete",
+        "YES": "Yes, delete it",
+        "NO": "No, keep it"
+      },
+      "API": {
+        "SUCCESS_MESSAGE": "Project deleted successfully",
+        "ERROR_MESSAGE": "Could not delete the project, please try again"
+      }
+    }
+  }
+}

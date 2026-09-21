@@ -882,6 +882,12 @@ const menuItems = computed(() => {
           to: accountScopedRoute('settings_templates'),
         },
         {
+          name: 'Settings Projects',
+          label: t('SIDEBAR.PROJECTS'),
+          icon: 'i-lucide-layers',
+          to: accountScopedRoute('projects_list'),
+        },
+        {
           name: 'Settings Labels',
           label: t('SIDEBAR.LABELS'),
           icon: 'i-lucide-tags',
