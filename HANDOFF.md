@@ -229,6 +229,43 @@ Verified in the browser: the list renders inbox names, editing prefills the righ
 unticking one and saving updates the row immediately, and the API agrees. Flat (browser), nested and
 `inbox_ids`-omitted payloads were each checked.
 
+### Sidebar: each project is the parent, its channels sit under it
+
+The first cut listed Projects and Channels as two flat groups, so every inbox showed up twice and
+nothing said which channel belonged to which project. Now each project is its own collapsible
+section directly under Conversations: an **All channels** link (the project-wide view, carrying
+the project's unread total) followed by that project's inboxes, drawn with the same `ChannelLeaf`
+as before. Channels outside any project sit in a group labelled **No project**; on an account
+with no projects that group is the plain **Channels** list, so nothing changes there.
+
+Decisions worth keeping:
+- **A project with no channels this user can see is not shown.** It is not a live-chat
+  destination until an inbox is attached (an agent who is a member of none of its inboxes has
+  nothing to open there). On production MUToday appears once its Facebook inbox is attached.
+- `SidebarSubGroup` only nests one level, so projects are sibling sections rather than children
+  of a "Projects" heading. The coloured dot marks them.
+- The leftover group is labelled "No project", not "Other channels": at the default sidebar
+  width the longer label overflowed (`scrollWidth 102 > clientWidth 75`); "No project" fits (70/70)
+  and is the more precise description anyway.
+- Project membership is resolved from the projects list (`inboxIds`), not the inbox payload —
+  same IndexedDB-cache reason as the header countdown.
+
+**Bug found and fixed in the process.** Opening a conversation from a project view produced
+`/conversations/:id` instead of `/project/:projectId/conversations/:id`: `conversationUrl` and
+`conversationListPageURL` in `URLHelper.js` carried `teamId`/`foldersId` but not `projectId`, so
+the list refetched unfiltered and the sidebar jumped to All Conversations. `projectId` is now
+threaded ChatList → ConversationList → ConversationItem → the URL builders, mirroring `teamId`.
+Verified: from Checkin+, opening a chat gives `/project/1/conversations/19`, the list stays at
+`All 2`, and Checkin+ stays highlighted.
+
+**Not verified:** the collapsed-sidebar popover for project sections. It is the same
+`SidebarCollapsedPopover` branch the Teams and Channels subgroups already go through, but no
+collapse control was found by name to click, so it was not looked at.
+
+`pnpm vitest run app/javascript/dashboard/helper` reports **15 failures in `helper/specs`**
+(`CacheHelper/DataManger`, `downloadHelper`, `snoozeHelpers`). They fail identically on a clean
+`origin/develop` — environment-related (IndexedDB absent under jsdom, date formatting), not this work.
+
 ### Still to do on PR 1
 - The spec's project badge in the conversation header ("จุดสี + ชื่อ + n เปิดอยู่")
 
