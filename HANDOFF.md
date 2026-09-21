@@ -23,6 +23,17 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ## Findings that shape the work (all verified against this checkout)
 
+### 0. Proof of the two findings below, run against this checkout
+
+```
+pricing_plan = "community"
+
+BEFORE nightly reconcile:        AFTER Internal::ReconcilePlanConfigService:
+  sla                  true       sla                  false   <- stripped
+  advanced_assignment  true       advanced_assignment  true    <- survives
+  assignment_v2        true       assignment_v2        true    <- survives
+```
+
 ### 1. Chatwoot's SLA feature disables itself nightly on this install — do not build on it
 
 `sla` is listed in `enterprise/config/premium_features.yml:3`. The chain that strips it:
@@ -134,17 +145,98 @@ No leak: project scoping composes with `Conversations::PermissionFilterService`.
 
 ---
 
-## PR 2 — reply countdown (not started)
+## PR 2 — reply countdown (branch `feat/reply-countdown`, stacked on PR 1)
 
-Planned shape: per-account (and per-project override) rules record; `reply_due_at` derived from
-`waiting_since + chats_expired`; `+60` extension stored per conversation; a per-minute job to mark
-expired; a ticking chip in the list row and conversation header following the mockup's colour ramp.
+Stacked on PR 1 because the per-project rule override needs `Project`.
 
-## PR 3 — auto-assign (not started)
+### Status: verified end to end, backend and frontend
 
-Mostly configuration of what already exists (`assignment_v2` + `advanced_assignment` + `AssignmentPolicy`).
-The genuine gap is **"Chats expired (Assign)"** — reclaiming a chat whose assigned agent never picked it up.
-Chatwoot has no equivalent today; it needs a new job plus a rule value.
+- `db/migrate/20260921000001_create_live_chat_rules.rb` — `live_chat_rules`
+  (account + optional project, `reply_timeout_minutes`, `extension_minutes`) and
+  `conversations.reply_due_at`, indexed. **Backfills open conversations in batches of 10k**,
+  otherwise chats already open when this ships would show no countdown until the customer wrote again.
+- `app/models/live_chat_rule.rb` — `for_project` resolves project rule → account default → column defaults
+- `Conversation` — `sync_reply_due_at` on create and whenever `waiting_since` changes;
+  `extend_reply_deadline!`; `handle_resolved_status_change` now clears `reply_due_at` alongside
+  `waiting_since` (that path uses `update_columns`, so callbacks never see it)
+- `sort_on_reply_due_at` + `reply_due_at_asc`/`_desc` so an agent can work most-overdue first
+- `POST /conversations/:id/extend_reply_deadline`, `reply_due_at` on the conversation payload,
+  `/live_chat_rules` CRUD (read open to members, writes admin-only)
+- `useReplyCountdown.js` + `ReplyCountdown.vue` — ticks **every second**, three states from the mockup:
+  grey "ตอบภายใน", amber under 5 min "ใกล้หมด", red counting up once past "เกิน SLA".
+  Rendered in both conversation cards the live list actually uses — the condensed
+  `widgets/conversation/ConversationCard.vue` and `ConversationCardExpanded.vue`.
+
+  Worth knowing: `components-next/.../CardMessagePreviewWithMeta.vue` looks like the list card but is
+  only used by the contact and company history sidebars. Putting the chip there renders nothing in
+  the live list.
+
+### Evidence
+
+Lifecycle, with Checkin+ overridden to 15 min / +5 min and the account default at 60/60:
+
+```
+new Checkin+ conversation      waiting_since=10:41:49  reply_due_at=10:56:49  (+15 min)
+after agent reply              waiting_since=nil       reply_due_at=nil
+after customer message         waiting_since=10:41:49  reply_due_at=10:56:49  (+15 min)
+private note                   reply_due_at unchanged: true
+extend                         10:56:49 -> 11:01:49 (+5 min)
+after resolve                  waiting_since=nil       reply_due_at=nil
+```
+
+API: per-project extension applied (`Checkin+ +5 min`, `นกพลัส +60 min`), duplicate rule for a
+project rejected `422`, agent `GET /live_chat_rules` OK but `POST` `401`.
+
+Browser: all eight chips ticked exactly 3 seconds over a 3-second window
+(`29:23→29:20`, `-12:37→-12:40` counting up while overdue), in all three colour states.
+
+- `rspec spec/finders/conversation_finder_spec.rb spec/models/conversation_spec.rb` → 143 examples, 0 failures
+- `pnpm vitest run` (conversations + sidebar) → 237 passed · `pnpm eslint` → 0 errors
+- `rubocop` on the 11 changed Ruby files → no offenses
+
+### Still to do on PR 2
+- Settings screen for the rules (API exists, no UI) — the requirement says "set ได้"
+- Countdown + "add time" button in the conversation header (spec §5); only the list chip is built
+- Decide the multi-inbound anchor question in finding 3 above
+
+---
+
+## Feature: auto-assign — already in Chatwoot, verified working here
+
+No new code was needed. Verified on this checkout:
+
+```
+assignment_v2 enabled?        true     (default on, not premium)
+advanced_assignment enabled?  false    (must be switched on; survives the nightly reconcile)
+inbox 2 enable_auto_assignment=true v2=true
+online now: {"1"=>"online", "2"=>"online"}
+bulk assignment assigned 3 conversation(s)
+conversation 10 assignee now = "john@acme.inc"
+```
+
+Agent capacity ("Chats limit"), after enabling `advanced_assignment` and setting a limit of 1 on inbox 2:
+
+```
+john@acme.inc    open-in-inbox=2  has_capacity=false
+agent@acme.inc   open-in-inbox=1  has_capacity=false
+```
+
+To switch on in production: enable `advanced_assignment` for the account, create an
+`AgentCapacityPolicy` with an `InboxCapacityLimit` per inbox, and assign agents to it.
+Keep `assignment_v2` on — `Enterprise::Account#sync_assignment_features` turns
+`advanced_assignment` off whenever `assignment_v2` is off.
+
+Two things to know:
+- Only agents marked **online** are ever candidates. Away/offline agents are skipped entirely.
+- The capacity limit is **per inbox**, not global. An agent covering three inboxes needs a limit on
+  each. The requester chose this over building a global limiter.
+
+### The one real gap: "Chats expired (Assign)"
+
+The spec wants a chat reclaimed when the assigned agent never picks it up (60 min default).
+Chatwoot has nothing equivalent — assignment is never revisited once made. It needs a rule value plus
+a per-minute job that unassigns an open conversation whose `reply_due_at` passed while the assignee
+never replied, letting the round robin hand it to someone else. **Not built.**
 
 ---
 
@@ -164,3 +256,13 @@ hand-edited to carry only the real change, and re-verified by loading it into a 
 
 **Pre-existing work parked:** an uncommitted lark webhook URL pattern edit was stashed
 (`stash@{0}`). That same change is already on `origin/develop`, so nothing is lost.
+
+**The rubocop pre-commit hook does not run.** Husky starts with the system Ruby 2.6, which cannot
+find bundler 2.5.16, so every commit prints a wall of `Gem::GemNotFoundException` and the Ruby lint
+is silently skipped — `eslint --fix` via lint-staged does run. Rubocop was run by hand on every
+changed file instead. Worth fixing separately by having the hook init rbenv.
+
+**Dev database state:** the seeded account has projects Checkin+ / นกพลัส, live chat rules, an
+`AgentCapacityPolicy` with a limit of 1 on inbox 2, and `advanced_assignment` enabled — all created
+while verifying. `reply_due_at` values on seeded conversations were hand-set to exercise the chip's
+colour states, so they are not meaningful data.
