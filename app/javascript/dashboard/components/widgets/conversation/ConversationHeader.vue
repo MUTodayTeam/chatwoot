@@ -8,6 +8,7 @@ import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
+import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDeadlineControl.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
@@ -165,6 +166,7 @@ const copyConversationId = async () => {
     <div
       class="flex flex-row items-center justify-start xl:justify-end flex-shrink-0 gap-2 w-full xl:w-auto header-actions-wrap"
     >
+      <ReplyDeadlineControl :chat="chat" class="hidden md:flex" />
       <SLACardLabel
         v-if="hasSlaPolicyId"
         :chat="chat"

@@ -162,6 +162,15 @@ export const mutations = {
     conversation.status = status;
   },
 
+  [types.CHANGE_CONVERSATION_REPLY_DUE_AT](
+    _state,
+    { conversationId, replyDueAt }
+  ) {
+    const conversation =
+      getters.getConversationById(_state)(conversationId) || {};
+    conversation.reply_due_at = replyDueAt;
+  },
+
   [types.MUTE_CONVERSATION](_state) {
     const [chat] = getSelectedChatConversation(_state);
     chat.muted = true;

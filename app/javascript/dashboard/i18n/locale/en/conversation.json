@@ -409,7 +409,10 @@
     "REPLY_COUNTDOWN": {
       "WITHIN": "Reply due in",
       "NEARLY_DUE": "Reply almost overdue",
-      "OVERDUE": "Reply overdue"
+      "OVERDUE": "Reply overdue",
+      "EXTEND_TOOLTIP": "Give this conversation {n} more minute | Give this conversation {n} more minutes",
+      "EXTENDED": "Added {n} minute to the reply deadline | Added {n} minutes to the reply deadline",
+      "EXTEND_ERROR": "Could not extend the reply deadline, please try again"
     }
   },
   "EMAIL_TRANSCRIPT": {

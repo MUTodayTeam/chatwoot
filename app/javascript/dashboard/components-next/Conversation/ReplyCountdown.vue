@@ -8,6 +8,12 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  // The conversation header has room to say what the clock means; the list row
+  // keeps it to the time and carries the wording in the tooltip.
+  showLabel: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const { t } = useI18n();
@@ -39,6 +45,12 @@ defineExpose({ isActive });
     :title="label"
   >
     <span class="i-lucide-timer size-3" />
+    <span
+      v-if="showLabel"
+      class="hidden text-xs uppercase tracking-wide lg:inline"
+    >
+      {{ label }}
+    </span>
     <span class="text-xs font-semibold tabular-nums">{{ formattedTime }}</span>
   </div>
 </template>
