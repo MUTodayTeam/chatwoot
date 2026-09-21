@@ -229,8 +229,36 @@ creating a new conversation in one of its inboxes gave `waiting_since + 25 min`,
 the account default of 60. Creating a นกพลัส override of 45 produced +45; deleting it put นกพลัส
 back to +60. "Add project override" greys out once every project has one.
 
+### Conversation header countdown + extend button
+
+The header shows the same countdown as the list row, with the state spelled out
+("Reply due in" / "Reply almost overdue" / "Reply overdue", hidden under `lg`), next to a
+`+N` button that grants that project's configured extension.
+
+How much the button grants is resolved on the client from the projects list and the live chat
+rules, not sent per conversation — putting it on the conversation payload would have cost a
+rule lookup per row in the list. The project comes from `projects/getProjects` (which carries
+`inboxIds`) rather than from the inbox payload, because **inboxes are served from an IndexedDB
+cache** that only refreshes when the server's inbox cache key changes, so a newly added field
+can be missing there for a while. That bit the first version: the button showed the account
+default `+60` instead of Checkin+'s `+5`.
+
+**The websocket payload needed `reply_due_at`.** `Conversations::EventDataPresenter#push_data`
+carried `waiting_since` but not the deadline, and `UPDATE_CONVERSATION` merges the pushed keys
+over the cached conversation (`{ ...selected, ...updates }`) — so a key the payload omits keeps
+its stale value. The countdown kept ticking after an agent had replied until the page reloaded.
+Both fields now sit together in `push_timestamps`. `spec/models/conversation_spec.rb` asserts
+that payload exactly and was updated.
+
+Verified in the browser: `+5` on a Checkin+ conversation moved the clock 07:31 → 12:29 and the
+server agreed; the overdue state renders red (`bg-n-ruby-9`) and counts up; sending a reply
+cleared the header to just "Resolve" with no reload.
+
+**Worth knowing for anyone testing this locally:** the event dispatcher is async
+(`EventDispatcherJob.perform_later`), so **Sidekiq must be running** or no websocket update is
+broadcast at all. Two apparent "live update is broken" results turned out to be a stopped Sidekiq.
+
 ### Still to do on PR 2
-- Countdown + "add time" button in the conversation header (spec §5); only the list chip is built
 - Decide the multi-inbound anchor question in finding 3 above
 
 ---
