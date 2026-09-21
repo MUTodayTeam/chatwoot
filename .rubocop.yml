@@ -22,6 +22,9 @@ Metrics/ClassLength:
     # One action-plus-params pair per report; it sat two lines under the cap before
     # agent_daily_matrix, so any further endpoint here trips the cop.
     - 'app/controllers/api/v2/accounts/reports_controller.rb'
+    # One branch per way of scoping the list; it sat two lines under the cap before
+    # project scoping, so any further scope here trips the cop.
+    - 'app/finders/conversation_finder.rb'
 
 Metrics/MethodLength:
   Max: 19

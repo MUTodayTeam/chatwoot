@@ -140,6 +140,29 @@ export default {
       }),
     },
     {
+      path: frontendURL('accounts/:accountId/project/:projectId'),
+      name: 'project_conversations',
+      meta: {
+        permissions: CONVERSATION_PERMISSIONS,
+      },
+      component: ConversationView,
+      props: route => ({ projectId: route.params.projectId }),
+    },
+    {
+      path: frontendURL(
+        'accounts/:accountId/project/:projectId/conversations/:conversationId'
+      ),
+      name: 'conversations_through_project',
+      meta: {
+        permissions: CONVERSATION_PERMISSIONS,
+      },
+      component: ConversationView,
+      props: route => ({
+        conversationId: route.params.conversationId,
+        projectId: route.params.projectId,
+      }),
+    },
+    {
       path: frontendURL('accounts/:accountId/custom_view/:id'),
       name: 'folder_conversations',
       meta: {

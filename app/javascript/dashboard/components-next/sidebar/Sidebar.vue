@@ -237,6 +237,7 @@ const getFolderUnreadCount = useMapGetter(
   'conversationUnreadCounts/getFolderUnreadCount'
 );
 const teams = useMapGetter('teams/getMyTeams');
+const projects = useMapGetter('projects/getProjects');
 const contactCustomViews = useMapGetter('customViews/getContactCustomViews');
 const conversationCustomViews = useMapGetter(
   'customViews/getConversationCustomViews'
@@ -250,6 +251,7 @@ onMounted(() => {
   store.dispatch('inboxes/get');
   store.dispatch('notifications/unReadCount');
   store.dispatch('teams/get');
+  store.dispatch('projects/get');
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
@@ -301,6 +303,16 @@ const sortedFolders = computed(() =>
     unreadCountKey: view => getFolderUnreadCount.value(view.id),
   })
 );
+
+// A project groups several inboxes, so its badge is the sum of its inboxes'
+// unread counts. Only inboxes the user can see are present in that map, which
+// keeps the badge consistent with what the conversation list will actually show.
+const getProjectUnreadCount = computed(() => project => {
+  return (project.inboxIds || []).reduce(
+    (total, inboxId) => total + (getInboxUnreadCount.value(inboxId) || 0),
+    0
+  );
+});
 
 const sortedTeams = computed(() =>
   sortSidebarItems(teams.value, {
@@ -383,6 +395,26 @@ const menuItems = computed(() => {
           badgeCount: allUnreadCount.value,
           activeOn: ['inbox_conversation'],
           to: accountScopedRoute('home'),
+        },
+        {
+          name: 'Projects',
+          label: t('SIDEBAR.PROJECTS'),
+          icon: 'i-lucide-layers',
+          activeOn: ['conversations_through_project'],
+          collapsible: true,
+          showTreeLine: true,
+          children: projects.value.map(project => ({
+            name: `${project.name}-${project.id}`,
+            label: project.name,
+            badgeCount: getProjectUnreadCount.value(project),
+            icon: h('span', {
+              class: `size-[8px] rounded-sm`,
+              style: { backgroundColor: project.color },
+            }),
+            to: accountScopedRoute('project_conversations', {
+              projectId: project.id,
+            }),
+          })),
         },
         {
           name: 'Mentions',

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_14_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_21_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1150,9 +1150,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_14_000000) do
     t.integer "sender_name_type", default: 0, null: false
     t.string "business_name"
     t.jsonb "csat_config", default: {}, null: false
+    t.bigint "project_id"
     t.index ["account_id"], name: "index_inboxes_on_account_id"
     t.index ["channel_id", "channel_type"], name: "index_inboxes_on_channel_id_and_channel_type"
     t.index ["portal_id"], name: "index_inboxes_on_portal_id"
+    t.index ["project_id"], name: "index_inboxes_on_project_id"
   end
 
   create_table "installation_configs", force: :cascade do |t|
@@ -1373,6 +1375,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_14_000000) do
     t.index ["portal_id", "user_id"], name: "index_portals_members_on_portal_id_and_user_id", unique: true
     t.index ["portal_id"], name: "index_portals_members_on_portal_id"
     t.index ["user_id"], name: "index_portals_members_on_user_id"
+  end
+
+  create_table "projects", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", limit: 255, null: false
+    t.string "description"
+    t.string "color"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name"], name: "index_projects_on_account_id_and_name", unique: true
+    t.index ["account_id"], name: "index_projects_on_account_id"
   end
 
   create_table "related_categories", force: :cascade do |t|
