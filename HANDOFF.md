@@ -11,6 +11,52 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-21 — DEPLOYED: sidebar trim + assigned-only My Inbox (PR #19) · Opus 5
+
+**Merged:** PR #19 → `develop` head `cdf87a5e17d40e60746e4aa347ebda271488c4d5`.
+
+**What shipped.**
+- `Sidebar.vue`: `HIDDEN_SIDEBAR_ITEMS = {Captain, Calls, Mentions, Participating, Unattended}`,
+  filtered out of both top-level items and their children by `withoutHiddenItems`. Contacts and
+  Campaigns were already gone in the earlier sidebar restructure.
+- `NotificationFinder#filter_by_assigned_conversations`: My Inbox is now a hard filter — it lists
+  only notifications whose `primary_actor` is a conversation assigned to the reader. Applied in the
+  finder rather than the controller so the list, the unread badge and the count agree.
+- `spec/factories/notifications.rb` now assigns the fixture conversation to the notification's own
+  user; without that every existing notification spec would build invisible rows.
+
+**CI gate.** rspec (16 shards), rubocop, frontend tests and the docker test-build green. Only
+`security-scan` red — the same pre-existing `ruby_llm 1.15.0` CVE-2026-67991 described in the entry
+below, untouched by this work. The two new specs were proven to actually run: they landed in
+**shard 11** (not shard 1 as the round-robin calculation predicted — the prediction was wrong and
+was checked by downloading all 16 shard artifacts). 6488 examples, 0 failures across the suite.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` then `docker compose up -d` at 14:36 UTC. **No migrations
+this round**, so `build.sh` + `compose up`, not `upgrade.sh` — no backup/migrate step was needed.
+
+**Rollback asset:** `chatwoot/chatwoot:v4.17.0-mutoday-pre-sidebar` (image ID `e9501c96e588`,
+`.git_sha c61d45f03`). Roll back with
+`docker tag chatwoot/chatwoot:v4.17.0-mutoday-pre-sidebar chatwoot/chatwoot:v4.17.0-mutoday && docker compose up -d rails sidekiq`.
+Frontend-and-finder only, no schema change, so the rollback is clean in both directions.
+
+**Verified on production after the flip:**
+- `docker compose ps` — rails and sidekiq both Up on the new image
+- `cat /app/.git_sha` inside the running container = `cdf87a5e17d40e60746e4aa347ebda271488c4d5`
+- `curl https://support.mutoday.com/api` → `queue_services: ok`, `data_services: ok`
+- `NotificationFinder.private_instance_methods` in the **running** app includes
+  `filter_by_assigned_conversations` (`.source` returns nil here — `method_source` isn't in the
+  production bundle — so the method list is the check that works in prod)
+- the live asset `https://support.mutoday.com/vite/assets/dashboard-Cxa3Nv5j.js` contains
+  `new Set(["Captain","Calls","Mentions","Participating","Unattended"])`; the pre-deploy bundle
+  `dashboard-BYLqcPWp.js` now 404s
+- `docker compose logs --since 2m rails sidekiq` — no errors
+
+**Gotcha for the next person:** `/app/login` only references `v3app-*.js`. `dashboard-*.js` is a lazy
+chunk pulled in after login, so grepping the login HTML for the dashboard bundle finds nothing. Get
+the filename from `ls /app/public/vite/assets` inside the container, then fetch that path over HTTPS.
+
+---
+
 ## 2026-09-21 — DEPLOYED to production (support.mutoday.com) · Fable 5.1
 
 **Merged:** PR #14 → `f0667a9ab` · PR #15 → `c61d45f03` (= `develop` head = image `.git_sha`).
