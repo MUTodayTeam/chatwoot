@@ -138,9 +138,25 @@ No leak: project scoping composes with `Conversations::PermissionFilterService`.
 - `pnpm eslint` → 0 errors (424 warnings are pre-existing repo-wide)
 - `pnpm vitest run <sidebar + conversation store>` → 237 tests passed
 
+### Settings → Projects
+
+`settings/projects/list`, admin only. Lists each project with the inboxes it covers; the form
+creates or edits a project and picks its inboxes in one place, so an admin never has to open each
+inbox's own settings. Saving sends `inbox_ids`, and the controller moves inboxes in and out of the
+project — an inbox belongs to one project, so adding it to another removes it from the first.
+Omitting `inbox_ids` (a partial update) leaves the assignment alone.
+
+**Gotcha worth remembering.** `inbox_ids` is not a `Project` column, and Rails' `ParamsWrapper` only
+wraps real model attributes, so it arrived at the top level but never inside `params[:project]` —
+the selection was accepted by the UI and silently dropped. The controller now declares
+`wrap_parameters :project, include: Project.attribute_names + ['inbox_ids']`. Any future non-column
+param on this controller needs adding there too.
+
+Verified in the browser: the list renders inbox names, editing prefills the right inboxes,
+unticking one and saving updates the row immediately, and the API agrees. Flat (browser), nested and
+`inbox_ids`-omitted payloads were each checked.
+
 ### Still to do on PR 1
-- Settings UI to create/edit projects and attach inboxes (API exists; no admin screen yet)
-- Visual check of the sidebar group in a browser
 - The spec's project badge in the conversation header ("จุดสี + ชื่อ + n เปิดอยู่")
 
 ---
@@ -194,8 +210,26 @@ Browser: all eight chips ticked exactly 3 seconds over a 3-second window
 - `pnpm vitest run` (conversations + sidebar) → 237 passed · `pnpm eslint` → 0 errors
 - `rubocop` on the 11 changed Ruby files → no offenses
 
+### Settings → Live chat rules
+
+`settings/live-chat-rules/index`, admin only. One row for the account default plus one per project
+override, each showing "reply within" and "extend adds".
+
+Three decisions worth keeping:
+- An account that has saved nothing still sees a row, carrying the column defaults and marked
+  "not saved yet", so the page never implies the countdown is unconfigured. Editing it creates the row.
+- The account default row has no delete action — it is the fallback every project lands on.
+- A saved rule's scope is read-only. Moving it would silently retarget which conversations it
+  governs. A new rule only offers scopes that are still free (each scope holds one rule, enforced by
+  a unique index), and the first free one is preselected — otherwise Save would submit a duplicate
+  and get a 422.
+
+Verified in the browser, end to end rather than just visually: editing Checkin+ to 25 minutes then
+creating a new conversation in one of its inboxes gave `waiting_since + 25 min`, while นกพลัส gave
+the account default of 60. Creating a นกพลัส override of 45 produced +45; deleting it put นกพลัส
+back to +60. "Add project override" greys out once every project has one.
+
 ### Still to do on PR 2
-- Settings screen for the rules (API exists, no UI) — the requirement says "set ได้"
 - Countdown + "add time" button in the conversation header (spec §5); only the list chip is built
 - Decide the multi-inbound anchor question in finding 3 above
 
