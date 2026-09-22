@@ -11,6 +11,159 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-22 — SECURITY AUDIT of production: keep running, 3 urgent items · Fable 5.1
+
+**Verdict.** `support.mutoday.com` (4.17.0, `develop` head `c01c61da1`) is safe to keep using. The
+public surface is properly guarded and the fork's own code has no exploitable defect. The weak spots
+are an out-of-date Chatwoot and user/permission hygiene — none need new code, all need a decision.
+Report for non-technical readers (Thai, with a flow diagram): https://claude.ai/artifact/2NPwCXF4cPua1uqm41Csow
+(private link — share from the page's Share menu).
+
+**How it was checked.** Read-only: the 143-file fork diff vs `upstream/develop`; `bundle-audit`
+(db 2026-09-16), Brakeman (35 warnings, all upstream code, all FP/mitigated on inspection),
+`pnpm audit --prod`; every commit between `v4.17.0` and `v4.18.0` that touches auth/sanitising/
+webhooks; public probes of the live site (headers, `/api`, `/super_admin`, `/sidekiq`, `/.env`,
+login-page `signupEnabled`). Then a 9-dimension Workflow — one sonnet finder + one fresh-context
+opus verifier per dimension, 18 agents, 0 errors — and the high/medium items re-verified by hand
+with `git merge-base --is-ancestor`. **No server access from the Mac used** (no SSH key; the
+`mu-support` folder is not on that machine or in the GitHub org), so everything server-side is
+listed under "not verifiable" below rather than guessed. The procedure is saved as the local skill
+`security-audit-fork` for the next round.
+
+### Urgent (within two weeks)
+
+1. **Upgrade to v4.18.0 (released 2026-09-18).** Three upstream security fixes are confirmed
+   absent from `develop` (`git merge-base --is-ancestor <sha> develop` → no; all three are in
+   v4.18.0 only, not v4.17.1):
+   - `7d581dc8c` — sign-in with `email`/`password` sent as **HTTP headers** skips
+     `find_user_for_authentication` in `app/controllers/devise_overrides/sessions_controller.rb`,
+     so MFA and the MAX_USER_SESSIONS check are bypassed; devise_token_auth then authenticates from
+     the headers. Anyone holding a valid password logs in without the second factor. **High.**
+   - `aad2791b4` — `MacrosExecutionJob` runs a macro against any `display_id` in the account with no
+     `ConversationPolicy#show?` check; macro actions include `send_message` and `send_webhook_event`
+     to an author-supplied URL. Medium today (one inbox, everyone is a member), high the moment a
+     second inbox or narrower membership exists.
+   - `4218dc679` — markdown renderer emitted `javascript:`/`data:`/`vbscript:` hrefs and img srcs
+     unfiltered; reachable via the conversation-reply/transcript mailer templates. Medium.
+   Upgrade preconditions checked: 4 additive migrations (`20260811000000`, `20260811000001`,
+   `20260813000000`, `20260831000000`), upstream `NOTIFICATION_TYPES` still stops at 8 so the
+   fork's `all_conversations_new_message: 9` does not collide, `.ruby-version`/`.nvmrc` unchanged,
+   only new env is `SLACK_SIGNING_SECRET` (unused here). Path: `git merge v4.18.0` into `develop`
+   (real merge, fork carries 77 commits) → `./upgrade.sh v4.18.0-mutoday` (migrations → needs the
+   backup step).
+2. **Account hygiene.** All 14 users are LINE inbox members and in the auto-assign pool, including
+   the vendor/developer accounts (7solutions, 7ideasgroup, seedwebs, 7dayssuccess). Remove non-CS
+   accounts from the inbox or deactivate them; rotate passwords on any vendor account that stays;
+   confirm none holds `administrator`.
+3. **Turn on 2FA for every administrator and the super admin — after item 1.** There is no
+   account-wide enforcement in the codebase (`otp_required_for_login` is only set by the user's own
+   opt-in in `app/services/mfa/management_service.rb`), so it is per-person plus periodic drift
+   checks. Before item 1 lands, 2FA is bypassable per `7d581dc8c`.
+
+### Should do (this month)
+
+- Restrict `/super_admin` at Caddy to office/VPN IPs. It is reachable from anywhere; the only gates
+  are the password and Rack::Attack (5/5 min per IP, 5/15 min per email).
+- Off-site, encrypted backups. `upgrade.sh` dumps to `backups/` on the same VPS as Postgres, Redis
+  and the attachment volume.
+- Confirm `ACTIVE_RECORD_ENCRYPTION_*` is set in prod `.env`. If not, `Channel::Line`
+  `line_channel_secret`/`line_channel_token` and every `integrations_hooks.settings` secret (Lark
+  `secret`, faq `api_token`) are plaintext in Postgres. Enabling only encrypts on next save — re-save
+  existing rows afterwards.
+- If a Lark hook is enabled, add Lark as a sub-processor in the PDPA notice: the service sends
+  `contact.name` and up to 1,000 chars of message text to the Lark webhook.
+- `.bundler-audit.yml`: nine ignores are for CVEs already patched at the pinned `rails 7.2.3.1`
+  (their own comments say "remove once on 7.2.3.1+"), and `CVE-2026-66066` (Active Storage/libvips,
+  CVSS 9.5, patched in 7.2.3.2) is ignored under the same stale condition, so CI cannot surface it.
+  Currently mitigated by `VIPS_BLOCK_UNTRUSTED` in `docker/Dockerfile:134`; drop the nine, bump to
+  7.2.3.2, and re-word the remaining ignore with the real compensating control.
+- `Webhooks::LineController` enqueues a Sidekiq job for every request and only verifies the HMAC
+  inside the job (upstream behaviour). Add a dedicated Rack::Attack throttle for `/webhooks/line`.
+- Long term: Rails 7.2 left security support on 2026-08-09 and upstream 4.18.0 is still on 7.2.3.1,
+  so track upstream releases closely and watch for the move to Rails 8.
+
+### Verified clean (no action)
+
+HTTPS everywhere with 2-year HSTS · LINE webhook HMAC check is fail-closed
+(`Webhooks::LineEventsJob#valid_post_body?`) · Rack::Attack on by default in production · password
+policy 6–128 + upper/lower/digit/special · signup disabled · `/sidekiq`, `/rails/info/*`, `/.env`,
+`/.git/HEAD` all 404 · the fork's Projects / LiveChatRules / extend_reply_deadline /
+agent_daily_matrix endpoints are correctly scoped (admin-only writes, `assigned_inboxes` filter,
+`ReportPolicy#view?`); the only gap is that `project_id` on Inbox/LiveChatRule is not validated
+against `Current.account` — a cross-tenant FK nuisance that cannot leak data and is unreachable on a
+single-account install · no XSS sinks in the 66 changed frontend files; the attachment preview
+modal renders only the agent's own outgoing upload · `MutodayFaqReplyJob` is still the T3 stub
+(logs a line, calls no LLM, sends nothing) · the `ruby_llm` ReDoS advisory (CVE-2026-67991) does
+not apply: the vulnerable `Utils.underscore` does not exist in the installed 1.15.0.
+
+### Not verifiable from here — run on the server, read-only, values masked
+
+```sh
+cd /opt/mu-support
+awk -F= '/^(FORCE_SSL|ENABLE_RACK_ATTACK|ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY)=/{print $1 "=" ($2=="" ? "<empty>" : "set")}' .env
+docker compose config | grep -A2 'ports:'      # postgres/redis should bind 127.0.0.1 only
+ufw status                                     # expect 22, 80, 443 only
+ls -la backups/ | tail -5
+docker compose exec -T postgres psql -U postgres -d chatwoot_production \
+  -c "SELECT count(*) FILTER (WHERE otp_required_for_login) AS mfa_on, count(*) AS users FROM users;" < /dev/null
+docker compose exec -T postgres psql -U postgres -d chatwoot_production \
+  -c "SELECT app_id, status, created_at FROM integrations_hooks;" < /dev/null
+```
+The live `Set-Cookie` already carries `secure; httponly; samesite=lax`, so `FORCE_SSL` is very
+likely `true` — confirm rather than assume.
+
+**Next:** merge v4.18.0 (new session, Opus) → `upgrade.sh` → re-check the three fixes are in the
+running image (`git merge-base --is-ancestor 7d581dc8c HEAD` in `/opt/mu-support/src`) → then the
+account clean-up and 2FA roll-out. Re-audit when the Facebook inbox goes live and when the faq
+ReplyService (T9) ships.
+
+---
+
+---
+
+## 2026-09-22 — Facebook (Messenger) connected to production · Fable 5.1
+
+**Result.** Inbox #2 "MUToday" (`Channel::FacebookPage`, page_id `1155390994323924`, page "MUToday - มูทูเดย์")
+created 08:47 UTC through the normal Add-inbox → Facebook flow. Page is subscribed to the app with all six
+fields Chatwoot asks for (`messages message_deliveries message_echoes message_reads standby messaging_handovers`
+— verified read-only via Graph `/<page>/subscribed_apps` with the stored page token). Placed under project
+**MUToday**, membership mirrored from the LINE inbox (14 agents), auto-assign on. Both inboxes are now named
+"MUToday" (Line / Messenger) — consider renaming the Messenger one.
+
+**Meta app.** "MUToday Support", App ID `1100184342479006`, use case Messenger, business portfolio
+**Motoday ACC** (chosen because it carries the MU logo — unverified assumption; switchable in App settings →
+Basic). Mode: Development → only people with a role on the app (admin/developer/tester) can message the page
+until `pages_messaging` gets Advanced Access (Business Verification + App Review). Webhook:
+`https://support.mutoday.com/bot`, verified by Meta from `173.252.78.23` at 08:21 UTC.
+
+**Server config.** `FB_APP_ID`, `FB_APP_SECRET` (32 chars), `FB_VERIFY_TOKEN` (48 hex, generated on the
+server), `FACEBOOK_API_VERSION=v21.0` (was `v18.0`, expired 2026-01-26 per Meta's changelog). Values live in
+`/opt/mu-support/.env` **and** `installation_configs`. Two gotchas found on the way:
+- `GlobalConfigService.load` only falls back to ENV when no `installation_configs` row exists — but
+  `ConfigLoader` seeds an **empty row for every key**, and `first_or_create` then returns that empty value. So
+  `.env` alone does nothing for these keys on this install. Write the row (what Super Admin does), e.g. from
+  inside the container: `InstallationConfig.find_or_initialize_by(name: k).tap { |c| c.value = ENV[k]; c.save! }`
+  then `GlobalConfig.clear_cache`. `/opt/mu-support/set-fb-secret.sh` does exactly this for the secret (prompts
+  with `read -s`; nothing passes through chat or argv).
+- The Facebook card in Add-inbox is enabled by `channel_facebook` **and** a non-empty `FB_APP_ID`
+  (`ChannelItem.vue:39`); the login page's `fbAppId: '…'` is the quick check.
+
+**Login error 1349048 ("domain not in App Domains") even with App Domains set.** An app created through the
+Messenger use case has no **Facebook Login** product, so the JS-SDK login is refused regardless of App Domains.
+Fix: add the Facebook Login product (dashboard "ตั้งค่า" link, `product_route=fb-login`; the async URL typed
+directly returns a blank page and adds nothing — click the real link), then in its Settings: **Login with the
+JavaScript SDK = Yes** (click the visible switch, not the hidden checkbox), **Allowed Domains for the JavaScript
+SDK** `https://support.mutoday.com`, **Valid OAuth Redirect URIs** `https://support.mutoday.com/`. Verified by
+loading the same `dialog/oauth` URL the button uses: consent screen instead of the error. Also: a popup opened
+by a scripted click is blocked by Chrome — the requester has to click "Continue with Facebook" themselves.
+
+**Not done / next.** (1) Live test: a message from an app-role account to the page → conversation in inbox #2
+(watcher was armed; result below when known). (2) `public_profile` and `pages_messaging` Advanced Access:
+Business Verification for Motoday ACC + App Review with a screencast — the requester's task; until then real
+customers cannot reach the page through Chatwoot. (3) Optional: rename inbox #2.
+
+---
+
 ## 2026-09-22 — DEPLOYED: PRs #22 #23 #24 #25 in one build · Fable 5.1
 
 **Merged, in order:** #22 (unread badge on the contact's picture) → #23 (contact panel opens from the
