@@ -147,6 +147,35 @@ RSpec.describe 'DeviseOverrides::OmniauthCallbacksController', type: :request do
     # from a line coverage point of view this may seem redundant
     # but to ensure that the logic allows for existing users even if they have a gmail account
     # we need to test this explicitly
+    it 'fetches the provider picture for an existing user who has none' do
+      with_modified_env FRONTEND_URL: 'http://www.example.com' do
+        user = create(:user, email: 'no-picture@example.com')
+        set_omniauth_config('no-picture@example.com')
+        allow(Avatar::AvatarFromUrlJob).to receive(:perform_later).and_return(true)
+
+        get '/omniauth/google_oauth2/callback'
+        follow_redirect!
+
+        expect(Avatar::AvatarFromUrlJob).to have_received(:perform_later).with(user, 'https://example.com/image.jpg')
+      end
+    end
+
+    it 'keeps the picture an existing user uploaded' do
+      with_modified_env FRONTEND_URL: 'http://www.example.com' do
+        # Given at create time: attaching to a persisted record does not write the
+        # attachment row until the record is saved again, so the guard would not see it.
+        create(:user, email: 'has-picture@example.com',
+                      avatar: Rack::Test::UploadedFile.new(Rails.root.join('spec/assets/avatar.png'), 'image/png'))
+        set_omniauth_config('has-picture@example.com')
+        allow(Avatar::AvatarFromUrlJob).to receive(:perform_later).and_return(true)
+
+        get '/omniauth/google_oauth2/callback'
+        follow_redirect!
+
+        expect(Avatar::AvatarFromUrlJob).not_to have_received(:perform_later)
+      end
+    end
+
     it 'allows personal account login' do
       with_modified_env FRONTEND_URL: 'http://www.example.com' do
         create(:user, email: 'personal-existing@gmail.com')
