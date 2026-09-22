@@ -15,6 +15,7 @@ const props = defineProps({
   isExpanded: { type: Boolean, default: false },
   label: { type: String, required: true },
   icon: { type: [Object, String], required: true },
+  badgeCount: { type: [Number, String], default: 0 },
   children: { type: Array, default: undefined },
   activeChild: { type: Object, default: undefined },
   sortOptions: { type: Array, default: () => [] },
@@ -50,6 +51,12 @@ const isSubGroupExpanded = computed(
 );
 const hasActiveChild = computed(() =>
   props.children.some(child => child.name === props.activeChild?.name)
+);
+
+// The children carry their own badges, so the header only needs one while they
+// are folded away — otherwise the same number would be on screen twice.
+const collapsedBadgeCount = computed(() =>
+  isSubGroupExpanded.value ? 0 : props.badgeCount
 );
 
 const accessibleItems = computed(() =>
@@ -131,6 +138,7 @@ watch([hasActiveChild, storageKey], expandSubGroupOnActiveChild, {
         v-show="isExpanded"
         :label
         :icon
+        :badge-count="collapsedBadgeCount"
         :collapsible
         :is-expanded="isSubGroupExpanded"
         :show-tree-line="showTreeLine"

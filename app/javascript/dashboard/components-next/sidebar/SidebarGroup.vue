@@ -312,6 +312,7 @@ watch(
             :label="child.label"
             :icon="child.icon"
             :children="child.children"
+            :badge-count="child.badgeCount"
             :collapsible="child.collapsible"
             :show-tree-line="child.showTreeLine"
             :end-tree-line="child.showTreeLine && isLastVisibleChild(child)"

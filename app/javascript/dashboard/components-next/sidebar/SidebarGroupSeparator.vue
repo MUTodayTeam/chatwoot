@@ -1,6 +1,7 @@
 <script setup>
 import Icon from 'next/icon/Icon.vue';
 import SidebarSortMenu from './SidebarSortMenu.vue';
+import SidebarUnreadBadge from './SidebarUnreadBadge.vue';
 
 defineProps({
   collapsible: {
@@ -14,6 +15,10 @@ defineProps({
   label: {
     type: String,
     default: '',
+  },
+  badgeCount: {
+    type: [Number, String],
+    default: 0,
   },
   icon: {
     type: [Object, String],
@@ -74,6 +79,7 @@ const TREE_ELBOW =
         >
           {{ label }}
         </span>
+        <SidebarUnreadBadge :count="badgeCount" />
       </div>
     </component>
     <div
