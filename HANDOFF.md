@@ -11,6 +11,74 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-22 — DEPLOYED: project unread badge (PR #21) · unread counts switched on · LINE/push findings · Opus 5 → Fable 5.1
+
+**Merged:** PR #21 → `develop` head `c01c61da19f675d5dac5d81f29a19d8efd814373`.
+
+**What shipped.** A project's rolled-up unread count now sits on the project row itself while its
+channels are folded (`SidebarGroupSeparator` renders `SidebarUnreadBadge`; `SidebarSubGroup` only hands
+it over while folded so a number is never on screen twice), and on the project row in the icon-rail
+popover, where groups start folded and previously showed no counts at all. All-conversations, per-project
+"All channels" and per-channel badges were already wired — they just needed the feature flag.
+
+**Account feature enabled on production:** `conversation_unread_counts` (account 1). It is **not** in
+`enterprise/config/premium_features.yml`, so the nightly `ReconcilePlanConfigService` leaves it alone, and
+`enable_default_features` is a `before_create` that only ever enables. `unread_count_for_filters` left off —
+it only feeds folders/mentions/participating/unattended, which this sidebar hides.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` then `docker compose up -d` at 05:52 UTC. No migrations.
+Rollback image `chatwoot/chatwoot:v4.17.0-mutoday-pre-project-badge` (`.git_sha cdf87a5e1`).
+Verified: rails/sidekiq Up · container `.git_sha` = develop head · `/api` ok/ok · served bundle
+`dashboard-CvVLNlmy.js` (old `dashboard-Cxa3Nv5j.js` 404s) · no errors in logs.
+
+**Build-watch gotcha:** the build log always contains
+`ERROR -- : Failed to configure AI Agents SDK: connection to server ... port 5432 failed` during
+`assets:precompile` (no DB at build time). Grepping the log for `ERROR` exits early. Watch the process
+instead: `until ! pgrep -f "docker build -f src/docker"; do sleep 30; done`.
+
+### Why LINE messages "don't notify" — two independent causes, neither a code bug
+
+1. **LINE webhooks reach the server only ~70% of the time.** No incoming message in the DB after
+   2026-09-21 08:12 UTC although the requester sent four tests. Zero `POST /webhooks/line` in 24h of
+   Rails logs, while a probe from Thailand is logged and rejected by the signature check (so logging
+   works). LINE's own `POST /v2/bot/channel/webhook/test`: 8 of 27 attempts `COULD_NOT_CONNECT` /
+   `REQUEST_TIMEOUT`, in bursts. LINE-side config is correct (`endpoint` right, `active: true`,
+   `chatMode: bot`; `markAsReadMode: auto` is why the customer sees "อ่านแล้ว" — nobody read it).
+   Server is idle (load 0.19, 4.5 GB free), ufw opens 80/443 to all, no fail2ban, no AAAA record,
+   30/30 probes from Thailand succeed. tcpdump shows LINE's SYNs (147.92.149.0/24 and others — the
+   source IPs rotate) sometimes arrive and still fail, sometimes never arrive. Hetzner `ap-southeast`.
+   **Fix the requester must do:** LINE Developers Console → Messaging API → enable **Webhook redelivery**
+   (docs: disabled by default; redelivers when no 2xx was received). Lost messages cannot be recovered —
+   LINE has no fetch API. Robust fix if it persists: Cloudflare in front, or a Hetzner ticket.
+2. **Almost nobody can receive a push.** All 14 users have `push_all_conversations_new_message` on (set
+   2026-09-21 13:57 UTC for 13 of them — which is why message #376, earlier that day, only notified
+   Chon). But only 2 users have any `NotificationSubscription`: Chon (`browser_push`, test push
+   `SENT OK`) and Menn (`fcm` — undeliverable, `FCM_SERVER_KEY`/`FCM_PROJECT_ID` unset). VAPID keys are
+   set. `push_assigned_conversation_new_message` is off for 13 of 14. Each agent has to grant browser
+   notification permission themselves; nothing server-side can do it for them.
+
+The reopen path is fine: `Message#reopen_conversation` flips a resolved conversation back to `open` on
+any incoming message, so "closed cases don't re-notify" reduces to the two causes above.
+
+### Profile pictures "from email" — already on, nothing to pull
+
+`DISABLE_GRAVATAR` is unset, `Avatarable#fetch_avatar_from_gravatar` runs after save. Checking
+`gravatar.com/avatar/<md5>?d=404` for all 14 users: **1 has a picture (Menn — that is his avatar), 13
+return 404.** Corporate addresses with no gravatar.com account yield nothing. Options: register at
+gravatar.com per person (picked up automatically), upload in profile settings, or a Google Workspace /
+M365 directory-photo integration (admin credentials + real work).
+
+### In flight: `feat/unread-badge-on-avatar` (not yet a PR)
+
+Unread badge moved from the right-hand column to the avatar's top-left corner in **both** live cards
+(`widgets/conversation/ConversationCard.vue` condensed; `CardAvatar.vue` for the expanded card,
+`CardContent.vue` no longer renders it; dead `alignBottom` prop removed; badge gets `ring-2
+ring-n-background`). The count already accumulates live: verified on dev with no reload —
+read → 0, incoming message → 1, another → 2 (`ADD_MESSAGE` takes `conversation.unread_count` from
+`Message#conversation_push_event_data`; cap is 10, display `9+`). Card specs 103/103, eslint clean.
+
+---
+
 ## 2026-09-21 — DEPLOYED: sidebar trim + assigned-only My Inbox (PR #19) · Opus 5
 
 **Merged:** PR #19 → `develop` head `cdf87a5e17d40e60746e4aa347ebda271488c4d5`.
