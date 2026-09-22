@@ -16,6 +16,7 @@ class DeviseOverrides::OmniauthCallbacksController < DeviseTokenAuth::OmniauthCa
     needs_password_reset = oauth_user_needs_password_reset?
     @resource.skip_confirmation! if confirmable_enabled?
     set_random_password_if_oauth_user if needs_password_reset
+    fetch_avatar_from_provider
 
     # once the resource is found and verified
     # we can just send them to the login page again with the SSO params
@@ -29,6 +30,7 @@ class DeviseOverrides::OmniauthCallbacksController < DeviseTokenAuth::OmniauthCa
     needs_password_reset = oauth_user_needs_password_reset?
     @resource.skip_confirmation! if confirmable_enabled?
     set_random_password_if_oauth_user if needs_password_reset
+    fetch_avatar_from_provider
 
     # once the resource is found and verified
     # we can just send them to the login page again with the SSO params
@@ -88,6 +90,18 @@ class DeviseOverrides::OmniauthCallbacksController < DeviseTokenAuth::OmniauthCa
       confirmed: auth_hash['info']['email_verified']
     ).perform
     Avatar::AvatarFromUrlJob.perform_later(@resource, auth_hash['info']['image'])
+  end
+
+  # A picture uploaded in Chatwoot stays; only a user without one gets the
+  # provider's. Sign-up already does this for a brand-new user, but an existing
+  # user signing in with the provider never got their picture.
+  def fetch_avatar_from_provider
+    return if @resource.avatar.attached?
+
+    image = auth_hash.dig('info', 'image')
+    return if image.blank?
+
+    Avatar::AvatarFromUrlJob.perform_later(@resource, image)
   end
 
   def oauth_user_needs_password_reset?
