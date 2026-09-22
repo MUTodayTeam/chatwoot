@@ -405,8 +405,8 @@ en:
       description: "Integrate Chatwoot with Slack to keep your team in sync. This integration allows you to receive notifications for new conversations and respond to them directly within Slack's interface."
     lark:
       name: 'Lark'
-      short_description: 'Get notified in Lark when a customer starts a new conversation.'
-      description: 'Integrate Chatwoot with Lark to keep your team in the loop. This integration posts a message to a Lark group whenever a customer starts a new conversation, with a link back to the conversation in Chatwoot.'
+      short_description: 'Get notified in Lark when a customer has been waiting past the reply deadline.'
+      description: 'Integrate Chatwoot with Lark to keep your team in the loop. This integration posts a message to a Lark group when a conversation passes its reply deadline — the point where the countdown in the dashboard turns red — with a link back to the conversation in Chatwoot.'
       conversation_link: 'Open conversation'
     webhooks:
       name: 'Webhooks'

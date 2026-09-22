@@ -23,13 +23,52 @@ describe Integrations::Lark::SendOnLarkService do
   # file as the line it guards can be dropped by the very merge resolution it exists to
   # catch, and would then be silent exactly when it is needed.
   describe 'the wiring that carries an event to this service' do
-    it 'is dispatched by HookJob on message.created' do
+    it 'is not dispatched on message.created — a conversation is announced only once it is overdue' do
       allow(described_class).to receive(:new).and_return(service)
 
       HookJob.perform_now(hook, 'message.created', message: message)
 
+      expect(described_class).not_to have_received(:new)
+    end
+
+    it 'is dispatched by the scheduled job once the reply deadline has passed' do
+      hook # the job reads hooks from the database, so this lazy record has to exist first
+      allow(described_class).to receive(:new).and_return(service)
+      conversation.update!(status: :open, waiting_since: 2.hours.ago, reply_due_at: 1.hour.ago)
+
+      Integrations::Lark::AnnounceOverdueConversationsJob.perform_now
+
       expect(described_class).to have_received(:new).with(message: message, hook: hook)
       expect(service).to have_received(:perform)
+    end
+
+    it 'leaves a conversation alone while its deadline is still ahead' do
+      hook
+      allow(described_class).to receive(:new).and_return(service)
+      conversation.update!(status: :open, waiting_since: Time.current, reply_due_at: 1.hour.from_now)
+
+      Integrations::Lark::AnnounceOverdueConversationsJob.perform_now
+
+      expect(described_class).not_to have_received(:new)
+    end
+
+    it 'skips a conversation that was already announced' do
+      hook
+      allow(described_class).to receive(:new).and_return(service)
+      conversation.update!(status: :open, waiting_since: 2.hours.ago, reply_due_at: 1.hour.ago,
+                           additional_attributes: { 'lark_announced_at' => 1.minute.ago.iso8601 })
+
+      Integrations::Lark::AnnounceOverdueConversationsJob.perform_now
+
+      expect(described_class).not_to have_received(:new)
+    end
+
+    it 'is scheduled by TriggerScheduledItemsJob' do
+      allow(Integrations::Lark::AnnounceOverdueConversationsJob).to receive(:perform_later)
+
+      TriggerScheduledItemsJob.perform_now
+
+      expect(Integrations::Lark::AnnounceOverdueConversationsJob).to have_received(:perform_later)
     end
 
     it 'is dispatched by HookJob on conversation.resolved, to clear the announcement' do
@@ -40,11 +79,11 @@ describe Integrations::Lark::SendOnLarkService do
       expect(described_class).to have_received(:clear_announcement).with(conversation)
     end
 
-    it 'is subscribed by HookListener to both events it handles' do
+    it 'is subscribed by HookListener to the event it still handles' do
       listener = HookListener.instance
 
-      expect(listener.send(:supported_hook_event?, hook, 'message.created')).to be(true)
       expect(listener.send(:supported_hook_event?, hook, 'conversation.resolved')).to be(true)
+      expect(listener.send(:supported_hook_event?, hook, 'message.created')).to be(false)
     end
   end
 end

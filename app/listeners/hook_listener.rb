@@ -64,7 +64,7 @@ class HookListener < BaseListener
       'google_translate' => ['message.created'],
       'leadsquared' => ['contact.updated', 'conversation.created', 'conversation.resolved'],
       'linear' => ['message.created'],
-      'lark' => ['message.created', 'conversation.resolved'],
+      'lark' => ['conversation.resolved'],
       'mutoday_faq_reply' => ['message.created']
     }
 

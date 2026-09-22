@@ -66,13 +66,13 @@ class HookJob < MutexApplicationJob
     Integrations::Linear::AutoLinkService.new(account: hook.account, message: message).perform
   end
 
-  def process_lark_integration(hook, event_name, event_data)
-    case event_name
-    when 'message.created'
-      Integrations::Lark::SendOnLarkService.new(message: event_data[:message], hook: hook).perform
-    when 'conversation.resolved'
-      Integrations::Lark::SendOnLarkService.clear_announcement(event_data[:conversation])
-    end
+  # A conversation is announced once its reply deadline has passed, which no event
+  # marks — Integrations::Lark::AnnounceOverdueConversationsJob polls for that.
+  # Resolving clears the marker so the next enquiry can be announced again.
+  def process_lark_integration(_hook, event_name, event_data)
+    return unless event_name == 'conversation.resolved'
+
+    Integrations::Lark::SendOnLarkService.clear_announcement(event_data[:conversation])
   end
 
   # Deliberately dumb. HookJob rescues StandardError and only logs (see #perform), so all
