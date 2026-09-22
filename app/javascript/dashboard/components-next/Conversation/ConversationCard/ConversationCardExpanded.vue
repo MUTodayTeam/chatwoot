@@ -151,6 +151,7 @@ const selectedModel = computed({
         :selected="false"
         :enable-selection="false"
         :hide-thumbnail="false"
+        :unread-count="unreadCount"
       />
 
       <h4

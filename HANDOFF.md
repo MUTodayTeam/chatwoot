@@ -11,6 +11,119 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-22 — DEPLOYED: project unread badge (PR #21) · unread counts switched on · LINE/push findings · Opus 5 → Fable 5.1
+
+**Merged:** PR #21 → `develop` head `c01c61da19f675d5dac5d81f29a19d8efd814373`.
+
+**What shipped.** A project's rolled-up unread count now sits on the project row itself while its
+channels are folded (`SidebarGroupSeparator` renders `SidebarUnreadBadge`; `SidebarSubGroup` only hands
+it over while folded so a number is never on screen twice), and on the project row in the icon-rail
+popover, where groups start folded and previously showed no counts at all. All-conversations, per-project
+"All channels" and per-channel badges were already wired — they just needed the feature flag.
+
+**Account feature enabled on production:** `conversation_unread_counts` (account 1). It is **not** in
+`enterprise/config/premium_features.yml`, so the nightly `ReconcilePlanConfigService` leaves it alone, and
+`enable_default_features` is a `before_create` that only ever enables. `unread_count_for_filters` left off —
+it only feeds folders/mentions/participating/unattended, which this sidebar hides.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` then `docker compose up -d` at 05:52 UTC. No migrations.
+Rollback image `chatwoot/chatwoot:v4.17.0-mutoday-pre-project-badge` (`.git_sha cdf87a5e1`).
+Verified: rails/sidekiq Up · container `.git_sha` = develop head · `/api` ok/ok · served bundle
+`dashboard-CvVLNlmy.js` (old `dashboard-Cxa3Nv5j.js` 404s) · no errors in logs.
+
+**Build-watch gotcha:** the build log always contains
+`ERROR -- : Failed to configure AI Agents SDK: connection to server ... port 5432 failed` during
+`assets:precompile` (no DB at build time). Grepping the log for `ERROR` exits early. Watch the process
+instead: `until ! pgrep -f "docker build -f src/docker"; do sleep 30; done`.
+
+### Why LINE messages "don't notify" — two independent causes, neither a code bug
+
+1. **LINE webhooks reach the server only ~70% of the time.** No incoming message in the DB after
+   2026-09-21 08:12 UTC although the requester sent four tests. Zero `POST /webhooks/line` in 24h of
+   Rails logs, while a probe from Thailand is logged and rejected by the signature check (so logging
+   works). LINE's own `POST /v2/bot/channel/webhook/test`: 8 of 27 attempts `COULD_NOT_CONNECT` /
+   `REQUEST_TIMEOUT`, in bursts. LINE-side config is correct (`endpoint` right, `active: true`,
+   `chatMode: bot`; `markAsReadMode: auto` is why the customer sees "อ่านแล้ว" — nobody read it).
+   Server is idle (load 0.19, 4.5 GB free), ufw opens 80/443 to all, no fail2ban, no AAAA record,
+   30/30 probes from Thailand succeed. tcpdump shows LINE's SYNs (147.92.149.0/24 and others — the
+   source IPs rotate) sometimes arrive and still fail, sometimes never arrive. Hetzner `ap-southeast`.
+   **Fix the requester must do:** LINE Developers Console → Messaging API → enable **Webhook redelivery**
+   (docs: disabled by default; redelivers when no 2xx was received). Lost messages cannot be recovered —
+   LINE has no fetch API. Robust fix if it persists: Cloudflare in front, or a Hetzner ticket.
+2. **Almost nobody can receive a push.** All 14 users have `push_all_conversations_new_message` on (set
+   2026-09-21 13:57 UTC for 13 of them — which is why message #376, earlier that day, only notified
+   Chon). But only 2 users have any `NotificationSubscription`: Chon (`browser_push`, test push
+   `SENT OK`) and Menn (`fcm` — undeliverable, `FCM_SERVER_KEY`/`FCM_PROJECT_ID` unset). VAPID keys are
+   set. `push_assigned_conversation_new_message` is off for 13 of 14. Each agent has to grant browser
+   notification permission themselves; nothing server-side can do it for them.
+
+The reopen path is fine: `Message#reopen_conversation` flips a resolved conversation back to `open` on
+any incoming message, so "closed cases don't re-notify" reduces to the two causes above.
+
+### Profile pictures "from email" — already on, nothing to pull
+
+`DISABLE_GRAVATAR` is unset, `Avatarable#fetch_avatar_from_gravatar` runs after save. Checking
+`gravatar.com/avatar/<md5>?d=404` for all 14 users: **1 has a picture (Menn — that is his avatar), 13
+return 404.** Corporate addresses with no gravatar.com account yield nothing. Options: register at
+gravatar.com per person (picked up automatically), upload in profile settings, or a Google Workspace /
+M365 directory-photo integration (admin credentials + real work).
+
+### In flight: `feat/unread-badge-on-avatar` → PR #22
+
+### In flight: `feat/google-avatar-for-existing-users` → PR #25
+
+`DeviseOverrides::OmniauthCallbacksController#sign_in_user` (and the SAML `sign_in_user_on_mobile`, which
+the enterprise override calls) now enqueue `Avatar::AvatarFromUrlJob` with `auth_hash.info.image` when
+`@resource.avatar` is not attached — sign-up already did this for new users only. Uploaded picture always
+wins (the requester's rule). Two request specs added; 11/11 green locally, rubocop clean.
+Spec gotcha found on the way: on Rails 7.2, `user.avatar.attach(io:)` on a persisted record does **not**
+write the attachment row until the record is saved again (same instance says `attached? == true`, a fresh
+`find_by` says false, 0 rows). Give the avatar at `create(:user, avatar: Rack::Test::UploadedFile…)` instead,
+or `save!` after `attach`. Both verified with a rolled-back probe in the test DB.
+Recommended order for the requester: deploy → each agent clicks "Sign in with Google" once → picture appears
+within a minute (`AvatarFromUrlJob` on the `purgable` queue). 7ideasgroup.com is on Lark, not Google: those
+two agents upload a picture or register at gravatar.com.
+
+### In flight: `fix/line-dedupe-redelivered-events` → PR #24 (prerequisite for LINE Webhook redelivery)
+
+`Line::IncomingMessageService` built a message for every event; `message.id` went into `source_id` but was
+never checked, and `index_messages_on_source_id` is not unique. LINE's docs: with redelivery on "the same
+webhook event may be sent to your bot server more than once" and order is not guaranteed. The service now
+skips an event whose id is already a `source_id` in the inbox (same pattern as the IMAP fetcher). Spec added,
+11/11 green locally (rspec now runs on this Mac: Ruby 3.4.4 via rbenv, `RAILS_ENV=test rails db:prepare`).
+Prod baseline: 0 duplicate `source_id`s across 205 incoming LINE messages. **Merge and deploy this before
+the requester flips Webhook redelivery on**, otherwise every resent event becomes a second message.
+
+Also verified: Google OAuth is already configured on prod (3 env vars set, login page shows the button) and
+6 of the 7 team mail domains are Google Workspace (MX aspmx.l.google.com; 7ideasgroup.com is Lark). But
+`omniauth_callbacks_controller` only fetches the Google picture in `create_account_for_user` — an existing
+user signing in with Google gets nothing. Candidate fork change: enqueue `Avatar::AvatarFromUrlJob` with
+`auth_hash['info']['image']` for an existing resource whose avatar is not attached (uploaded picture wins,
+which is the priority the requester asked for).
+
+### In flight: `feat/avatar-opens-contact-panel` → PR #23
+
+The floating round `SidepanelSwitch` (person icon over the messages, top-right) is gone from both the
+conversations screen and My Inbox; the component file is deleted, and `ConversationBox`'s default slot —
+which only ever held it — with it. The contact's picture in `ConversationHeader` is now a `<button>`
+(tooltip/aria-label `CONVERSATION.SIDEBAR.CONTACT`, `aria-pressed` mirrors the panel) that toggles
+`is_contact_sidebar_open` and closes the copilot panel, exactly what the switch did. **`Alt+O` moved
+with it** (it is listed in the shortcuts help modal, `widgets/modal/constants.js`). Side effect, on
+purpose: the Copilot button lived in that switch behind the CAPTAIN flag, which this install hides, so
+nothing user-visible changed there. Both screens share `ConversationBox → ConversationHeader`, so one
+edit covers both. Verified on dev in the browser: 0 floating icons, click opens the panel, Alt+O closes
+it. Branch cut from `develop`, so it carries no HANDOFF change; this note lives here to avoid a conflict.
+
+
+Unread badge moved from the right-hand column to the avatar's top-left corner in **both** live cards
+(`widgets/conversation/ConversationCard.vue` condensed; `CardAvatar.vue` for the expanded card,
+`CardContent.vue` no longer renders it; dead `alignBottom` prop removed; badge gets `ring-2
+ring-n-background`). The count already accumulates live: verified on dev with no reload —
+read → 0, incoming message → 1, another → 2 (`ADD_MESSAGE` takes `conversation.unread_count` from
+`Message#conversation_push_event_data`; cap is 10, display `9+`). Card specs 103/103, eslint clean.
+
+---
+
 ## 2026-09-21 — DEPLOYED: sidebar trim + assigned-only My Inbox (PR #19) · Opus 5
 
 **Merged:** PR #19 → `develop` head `cdf87a5e17d40e60746e4aa347ebda271488c4d5`.

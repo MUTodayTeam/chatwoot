@@ -72,11 +72,7 @@ const showLabelsSection = computed(() => {
 });
 
 const messagePreviewClass = computed(() => {
-  return [
-    hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11',
-    !props.compact && hasUnread.value ? 'ltr:pr-4 rtl:pl-4' : '',
-    props.compact && hasUnread.value ? 'ltr:pr-6 rtl:pl-6' : '',
-  ];
+  return [hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11'];
 });
 
 const onThumbnailHover = () => {
@@ -126,26 +122,35 @@ watch(
       @mouseenter="onThumbnailHover"
       @mouseleave="onThumbnailLeave"
     >
-      <Avatar
+      <div
         v-if="!hideThumbnail"
-        :name="currentContact.name"
-        :src="currentContact.thumbnail"
-        :size="32"
-        :status="currentContact.availability_status"
+        class="relative w-fit"
         :class="!showInboxName ? 'mt-4' : 'mt-8'"
-        hide-offline-status
       >
-        <template #overlay="{ size }">
-          <label
-            v-if="hovered || selected"
-            class="flex items-center justify-center rounded-full cursor-pointer absolute inset-0 z-10 backdrop-blur-[2px]"
-            :style="{ width: `${size}px`, height: `${size}px` }"
-            @click.stop
-          >
-            <Checkbox v-model="selectedModel" />
-          </label>
-        </template>
-      </Avatar>
+        <Avatar
+          :name="currentContact.name"
+          :src="currentContact.thumbnail"
+          :size="32"
+          :status="currentContact.availability_status"
+          hide-offline-status
+        >
+          <template #overlay="{ size }">
+            <label
+              v-if="hovered || selected"
+              class="flex items-center justify-center rounded-full cursor-pointer absolute inset-0 z-10 backdrop-blur-[2px]"
+              :style="{ width: `${size}px`, height: `${size}px` }"
+              @click.stop
+            >
+              <Checkbox v-model="selectedModel" />
+            </label>
+          </template>
+        </Avatar>
+        <UnreadBadge
+          v-if="hasUnread"
+          :count="unreadCount"
+          class="absolute -top-1.5 -start-1.5 z-20"
+        />
+      </div>
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
       <div
@@ -229,11 +234,6 @@ watch(
         </span>
         <ReplyCountdown
           :reply-due-at="chat.reply_due_at"
-          class="ltr:ml-auto rtl:mr-auto mt-1"
-        />
-        <UnreadBadge
-          v-if="hasUnread"
-          :count="unreadCount"
           class="ltr:ml-auto rtl:mr-auto mt-1"
         />
       </div>
