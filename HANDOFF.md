@@ -11,6 +11,41 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-22 — DEPLOYED: PRs #22 #23 #24 #25 in one build · Fable 5.1
+
+**Merged, in order:** #22 (unread badge on the contact's picture) → #23 (contact panel opens from the
+picture; floating `SidepanelSwitch` removed) → #24 (LINE: skip an event whose `message.id` is already a
+`source_id`) → #25 (existing user gets their Google picture on sign-in). `develop` head
+`545731177e52e2a90aafa1b4d6dad575bb77e8d5`. 15 files, 0 migrations, no dependency change.
+
+**CI gate:** all four green except the known `security-scan` (`ruby_llm` advisory, see 09-21 entry);
+none of the four touches `Gemfile.lock`. Merged only after every check on all four had finished — one build
+for four PRs means one rollback point for four changes.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` → `docker compose up -d` at 07:00 UTC. Image checked before the
+flip and the flip gated on it: `.git_sha` = develop head · `already_received?` present in the LINE
+service · `fetch_avatar_from_provider` present in the omniauth controller · new bundle
+`dashboard-Dbws_ZuN.js` carrying the badge's `ring-n-background`. After: rails/sidekiq Up · `/api`
+ok/ok · new bundle 200, old `dashboard-CvVLNlmy.js` 404 · both private methods present in the **running**
+app · the single "error" in the logs was my own 404 probe of the old bundle.
+
+**Rollback:** `chatwoot/chatwoot:v4.17.0-mutoday-pre-4prs` (`.git_sha c01c61da1`).
+
+**What the requester does next, in this order:** (1) LINE Developers Console → channel 2008480970 →
+Messaging API → **Webhook redelivery** ON — safe now that #24 is live; (2) each agent clicks **Sign in with
+Google** once → picture within ~1 min (`AvatarFromUrlJob`, `purgable` queue); 7ideasgroup.com (Lark) agents
+upload or use gravatar.com; (3) each agent grants browser notification permission (12/14 still have none).
+
+**Gotchas (new).** `pgrep -f "docker build …"` wrapped in `bash -c "…"` matches the wrapping shell and never
+exits — run pgrep directly under `sudo -n`, or check `build เสร็จ` as the log's last line. A
+`git checkout develop && git pull` chain stops silently on a dirty tree and anything chained after with `;`
+runs on the wrong branch. **Two sessions were sharing this checkout:** a security-audit session had an
+uncommitted HANDOFF entry here; it is preserved on local branch `keep/security-audit-handoff` and left in the
+working tree uncommitted for that session to commit itself — do not `reset --hard` this tree without checking
+`git status` first.
+
+---
+
 ## 2026-09-22 — DEPLOYED: project unread badge (PR #21) · unread counts switched on · LINE/push findings · Opus 5 → Fable 5.1
 
 **Merged:** PR #21 → `develop` head `c01c61da19f675d5dac5d81f29a19d8efd814373`.
