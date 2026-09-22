@@ -8,6 +8,7 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { getRandomColor } from 'dashboard/helper/labelColor';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 
 const props = defineProps({
   project: {
@@ -27,6 +28,8 @@ const name = ref('');
 const description = ref('');
 const color = ref('#000000');
 const selectedInboxIds = ref([]);
+const logo = ref(null);
+const logoUrl = ref('');
 
 const inboxes = useMapGetter('inboxes/getInboxes');
 const uiFlags = useMapGetter('projects/getUIFlags');
@@ -38,6 +41,26 @@ const nameErrorMessage = computed(() => {
   if (!v$.value.name.$error) return '';
   return t('PROJECT_MGMT.FORM.NAME.ERROR');
 });
+
+const onLogoUpload = ({ file, url }) => {
+  logo.value = file;
+  logoUrl.value = url;
+};
+
+// On a saved project the logo lives on the server, so removing it is a request
+// of its own; on an unsaved one there is nothing to purge yet.
+const onLogoDelete = async () => {
+  if (isEditing.value && props.project.avatarUrl) {
+    try {
+      await store.dispatch('projects/deleteLogo', props.project.id);
+    } catch (error) {
+      useAlert(error?.message || t('PROJECT_MGMT.FORM.API.ERROR_MESSAGE'));
+      return;
+    }
+  }
+  logo.value = null;
+  logoUrl.value = '';
+};
 
 const toggleInbox = inboxId => {
   const index = selectedInboxIds.value.indexOf(inboxId);
@@ -56,6 +79,7 @@ onMounted(() => {
     description.value = props.project.description ?? '';
     color.value = props.project.color || getRandomColor();
     selectedInboxIds.value = [...(props.project.inboxIds ?? [])];
+    logoUrl.value = props.project.avatarUrl ?? '';
   } else {
     color.value = getRandomColor();
   }
@@ -67,6 +91,7 @@ const onSubmit = async () => {
     description: description.value,
     color: color.value,
     inboxIds: selectedInboxIds.value,
+    logo: logo.value,
   };
 
   try {
@@ -117,6 +142,23 @@ const isSaving = computed(
         :label="$t('PROJECT_MGMT.FORM.DESCRIPTION.LABEL')"
         :placeholder="$t('PROJECT_MGMT.FORM.DESCRIPTION.PLACEHOLDER')"
       />
+
+      <div class="w-full mb-2">
+        <label class="block mb-1">
+          {{ $t('PROJECT_MGMT.FORM.LOGO.LABEL') }}
+        </label>
+        <p class="mt-0 mb-2 text-sm text-n-slate-11">
+          {{ $t('PROJECT_MGMT.FORM.LOGO.HELP') }}
+        </p>
+        <Avatar
+          :src="logoUrl"
+          :name="name || $t('PROJECT_MGMT.FORM.LOGO.LABEL')"
+          :size="56"
+          allow-upload
+          @upload="onLogoUpload"
+          @delete="onLogoDelete"
+        />
+      </div>
 
       <div class="w-full">
         <label>

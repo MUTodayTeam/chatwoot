@@ -16,6 +16,8 @@
 #  index_projects_on_account_id_and_name  (account_id,name) UNIQUE
 #
 class Project < ApplicationRecord
+  include Avatarable
+
   belongs_to :account
   has_many :inboxes, dependent: :nullify
   has_many :live_chat_rules, dependent: :destroy

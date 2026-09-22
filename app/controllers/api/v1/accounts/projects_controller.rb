@@ -3,7 +3,7 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
   # and the client's inbox selection would be silently ignored.
   wrap_parameters :project, include: Project.attribute_names + ['inbox_ids']
 
-  before_action :fetch_project, only: [:show, :update, :destroy]
+  before_action :fetch_project, only: [:show, :update, :destroy, :avatar]
   before_action :check_authorization
 
   def index
@@ -27,6 +27,11 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
     head :ok
   end
 
+  def avatar
+    @project.avatar.purge if @project.avatar.attached?
+    render 'api/v1/accounts/projects/show'
+  end
+
   private
 
   def fetch_project
@@ -39,6 +44,9 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
     inbox_ids = params[:project][:inbox_ids]
     return if inbox_ids.nil?
 
+    # A multipart form cannot send an empty array, so it sends one blank entry to
+    # say "no inboxes". Dropping blanks turns that back into an empty selection.
+    inbox_ids = Array(inbox_ids).compact_blank
     inboxes = Current.account.inboxes
     inboxes.where(project_id: @project.id).where.not(id: inbox_ids).find_each { |inbox| inbox.update!(project: nil) }
     inboxes.where(id: inbox_ids).find_each { |inbox| inbox.update!(project: @project) }
@@ -46,6 +54,6 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
   end
 
   def project_params
-    params.require(:project).permit(:name, :description, :color)
+    params.require(:project).permit(:name, :description, :color, :avatar)
   end
 end

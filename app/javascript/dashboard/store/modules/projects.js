@@ -27,6 +27,26 @@ export const getters = {
   },
 };
 
+// Rails does not run the params wrapper on multipart requests, so every key is
+// namespaced by hand. An empty inbox selection still has to reach the server,
+// and a form cannot carry an empty array — one blank entry stands in for it.
+const buildProjectForm = (
+  { name, description, color, inboxIds = [] },
+  logo
+) => {
+  const form = new FormData();
+  form.append('project[name]', name ?? '');
+  form.append('project[description]', description ?? '');
+  form.append('project[color]', color ?? '');
+  if (inboxIds.length) {
+    inboxIds.forEach(id => form.append('project[inbox_ids][]', id));
+  } else {
+    form.append('project[inbox_ids][]', '');
+  }
+  form.append('project[avatar]', logo);
+  return form;
+};
+
 export const actions = {
   get: async function get({ commit }) {
     commit(types.SET_PROJECTS_UI_FLAG, { isFetching: true });
@@ -40,10 +60,12 @@ export const actions = {
     }
   },
 
-  create: async function create({ commit }, projectObj) {
+  create: async function create({ commit }, { logo, ...projectObj }) {
     commit(types.SET_PROJECTS_UI_FLAG, { isCreating: true });
     try {
-      const response = await ProjectsAPI.create(snakecaseKeys(projectObj));
+      const response = logo
+        ? await ProjectsAPI.createWithLogo(buildProjectForm(projectObj, logo))
+        : await ProjectsAPI.create(snakecaseKeys(projectObj));
       commit(types.ADD_PROJECT, camelcaseKeys(response.data));
       return response.data;
     } catch (error) {
@@ -54,13 +76,29 @@ export const actions = {
     }
   },
 
-  update: async function update({ commit }, { id, ...projectParams }) {
+  update: async function update({ commit }, { id, logo, ...projectParams }) {
     commit(types.SET_PROJECTS_UI_FLAG, { isUpdating: true });
     try {
-      const response = await ProjectsAPI.update(
-        id,
-        snakecaseKeys(projectParams)
-      );
+      const response = logo
+        ? await ProjectsAPI.updateWithLogo(
+            id,
+            buildProjectForm(projectParams, logo)
+          )
+        : await ProjectsAPI.update(id, snakecaseKeys(projectParams));
+      commit(types.EDIT_PROJECT, camelcaseKeys(response.data));
+      return response.data;
+    } catch (error) {
+      throwErrorMessage(error);
+      throw error;
+    } finally {
+      commit(types.SET_PROJECTS_UI_FLAG, { isUpdating: false });
+    }
+  },
+
+  deleteLogo: async function deleteLogo({ commit }, projectId) {
+    commit(types.SET_PROJECTS_UI_FLAG, { isUpdating: true });
+    try {
+      const response = await ProjectsAPI.deleteLogo(projectId);
       commit(types.EDIT_PROJECT, camelcaseKeys(response.data));
       return response.data;
     } catch (error) {

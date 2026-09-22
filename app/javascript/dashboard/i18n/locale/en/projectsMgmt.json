@@ -38,6 +38,13 @@
         "LABEL": "Description",
         "PLACEHOLDER": "What this project covers"
       },
+      "LOGO": {
+
+        "LABEL": "Logo",
+
+        "HELP": "Shown next to the project in the sidebar. A square image works best."
+
+      },
       "COLOR": {
         "LABEL": "Colour"
       },

@@ -373,10 +373,16 @@ const projectSections = computed(() =>
       {
         name: `project-${project.id}`,
         label: project.name,
-        icon: h('span', {
-          class: `size-[8px] rounded-sm`,
-          style: { backgroundColor: project.color },
-        }),
+        icon: project.avatarUrl
+          ? h('img', {
+              src: project.avatarUrl,
+              alt: '',
+              class: 'size-4 rounded-sm object-cover',
+            })
+          : h('span', {
+              class: `size-[8px] rounded-sm`,
+              style: { backgroundColor: project.color },
+            }),
         badgeCount: getProjectUnreadCount.value(project),
         collapsible: true,
         showTreeLine: true,

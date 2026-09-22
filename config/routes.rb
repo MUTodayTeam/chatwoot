@@ -347,7 +347,9 @@ Rails.application.routes.draw do
             end
           end
 
-          resources :projects
+          resources :projects do
+            delete :avatar, on: :member
+          end
           resources :live_chat_rules
 
           # Assignment V2 Routes
