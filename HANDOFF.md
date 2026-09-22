@@ -121,6 +121,60 @@ ReplyService (T9) ships.
 
 ---
 
+## 2026-09-22 — DEPLOYED: project logo + Lark alerts only when overdue (PRs #30, #31) · Opus 5
+
+**Merged:** #30 (project logo) then #31 (Lark on overdue) → `develop` head
+`7809979a974bb40b1d59591d882f9f959a8fa76f`. One build for both. 0 migrations, no dependency change.
+
+### PR #30 — a project can carry a logo
+`Project` includes `Avatarable`; the serializer returns `avatar_url`; `DELETE .../projects/:id/avatar`
+purges it; the project form has an upload/remove control and the sidebar renders an `<img>` in place of
+the colour square when `avatarUrl` is set. **Bug caught by testing, not by CI:** removing a logo returned
+500 because `ProjectPolicy` had no `avatar?` — Pundit's `check_authorization` calls `<action>?`, so every
+new controller action needs its policy method. Two multipart facts worth keeping:
+- Rails does **not** run `wrap_parameters` on multipart requests, so the payload names its own
+  `project[...]` keys instead of relying on the controller's `wrap_parameters` line.
+- A form cannot carry an empty array. An empty inbox selection travels as one blank entry and the
+  controller drops blanks (`compact_blank`); without that, unticking every inbox silently left them
+  attached. Verified on dev that unticking really does detach.
+The store only builds a multipart body when a logo is actually in play, so every other project save keeps
+its JSON path.
+
+**libvips.** `Avatarable#avatar_url` builds a *variant* URL, which needs libvips at request time. The
+production image has `/usr/lib/libvips.so.42` (only the `vips` CLI is absent, which ruby-vips does not
+need) and existing user avatars render there — confirmed with a real 200/image/jpeg fetch. The local Mac
+has neither, so avatar images 500 in local dev; that is the machine, not the code.
+
+### PR #31 — Lark fires when the countdown turns red
+`HookListener` no longer subscribes Lark to `message.created` (it keeps `conversation.resolved`, which
+clears the marker). `Integrations::Lark::AnnounceOverdueConversationsJob` selects, per enabled Lark hook,
+conversations that are open, still waiting on us, past `reply_due_at`, and not yet announced, and sends
+each through the existing `SendOnLarkService` — which writes the marker, so one message per conversation.
+It runs from `TriggerScheduledItemsJob` (`*/5 * * * *`), because **nothing raises an event when a deadline
+passes**; with the default 60-minute reply rule the alert lands within 5 minutes of the countdown going
+red. The fork-owned wiring guard in `spec/lib/integrations/lark/send_on_lark_service_spec.rb` was updated
+to assert the new path and now also covers not-yet-due, already-announced and "is scheduled" — 7 examples;
+`hook_job` / `hook_listener` / `trigger_scheduled_items_job` stay green (36 examples).
+Spec gotcha: the job reads hooks from the database, so a lazy `let(:hook)` must be realised before
+`perform_now` or the job sees no hooks and the example passes vacuously.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` → `docker compose up -d` at 11:57 UTC. Rollback image
+`chatwoot/chatwoot:v4.17.0-mutoday-pre-logo-lark` (`.git_sha 3cb73355f`). After the flip: rails and
+sidekiq Up · container `.git_sha` = develop head · `/api` ok/ok · new bundle `dashboard-CxAGS_CR.js` 200,
+previous `dashboard-DSLGtKr5.js` 404 · 0 errors. On production: the job class loads, `supported_hook_event?`
+is now false for `message.created` and true for `conversation.resolved`, `TriggerScheduledItemsJob` is
+registered in sidekiq-cron (`*/5 * * * *`, enabled, last run 11:55 UTC), and the job's scope returns **0**
+conversations — correct, because both currently-overdue chats (#8, #48) were already announced under the
+old behaviour, so the switch does not re-spam the group.
+
+**Not proven on production:** a message actually reaching the Lark group through the new path. Every open
+conversation that is waiting is already overdue *and* already announced, so there was no candidate to
+borrow, and forcing one would post a real message into the team's group. The path itself is the unchanged
+`SendOnLarkService` that has been delivering all along; only its trigger moved. First genuine overdue chat
+will confirm it.
+
+---
+
 ## 2026-09-22 — DEPLOYED: inbox wizard agent defaults + project picker (PR #28) · Opus 5
 
 **Merged:** PR #28 → `develop` head `3cb73355f98190c0f839f41621cb78b04373fc99`. Frontend only, 0 migrations,
