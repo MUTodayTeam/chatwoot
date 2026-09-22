@@ -377,6 +377,7 @@ const projectSections = computed(() =>
           class: `size-[8px] rounded-sm`,
           style: { backgroundColor: project.color },
         }),
+        badgeCount: getProjectUnreadCount.value(project),
         collapsible: true,
         showTreeLine: true,
         children: [

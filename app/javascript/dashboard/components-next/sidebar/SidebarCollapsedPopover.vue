@@ -147,6 +147,10 @@ onMounted(async () => {
                     class="size-4 flex-shrink-0"
                   />
                   <span class="flex-1 truncate text-sm">{{ child.label }}</span>
+                  <SidebarUnreadBadge
+                    v-if="expandedSubGroup !== child.name"
+                    :count="child.badgeCount"
+                  />
                 </button>
                 <div class="flex flex-shrink-0 items-center gap-1 pe-2">
                   <SidebarSortMenu
