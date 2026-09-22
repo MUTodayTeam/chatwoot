@@ -70,6 +70,23 @@ M365 directory-photo integration (admin credentials + real work).
 
 ### In flight: `feat/unread-badge-on-avatar` → PR #22
 
+### In flight: `fix/line-dedupe-redelivered-events` → PR #24 (prerequisite for LINE Webhook redelivery)
+
+`Line::IncomingMessageService` built a message for every event; `message.id` went into `source_id` but was
+never checked, and `index_messages_on_source_id` is not unique. LINE's docs: with redelivery on "the same
+webhook event may be sent to your bot server more than once" and order is not guaranteed. The service now
+skips an event whose id is already a `source_id` in the inbox (same pattern as the IMAP fetcher). Spec added,
+11/11 green locally (rspec now runs on this Mac: Ruby 3.4.4 via rbenv, `RAILS_ENV=test rails db:prepare`).
+Prod baseline: 0 duplicate `source_id`s across 205 incoming LINE messages. **Merge and deploy this before
+the requester flips Webhook redelivery on**, otherwise every resent event becomes a second message.
+
+Also verified: Google OAuth is already configured on prod (3 env vars set, login page shows the button) and
+6 of the 7 team mail domains are Google Workspace (MX aspmx.l.google.com; 7ideasgroup.com is Lark). But
+`omniauth_callbacks_controller` only fetches the Google picture in `create_account_for_user` — an existing
+user signing in with Google gets nothing. Candidate fork change: enqueue `Avatar::AvatarFromUrlJob` with
+`auth_hash['info']['image']` for an existing resource whose avatar is not attached (uploaded picture wins,
+which is the priority the requester asked for).
+
 ### In flight: `feat/avatar-opens-contact-panel` → PR #23
 
 The floating round `SidepanelSwitch` (person icon over the messages, top-right) is gone from both the
