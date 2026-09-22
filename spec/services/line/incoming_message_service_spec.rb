@@ -267,6 +267,14 @@ describe Line::IncomingMessageService do
         )
       end
 
+      it 'does not store the message twice when LINE delivers the same event again' do
+        described_class.new(inbox: line_channel.inbox, params: params).perform
+
+        expect do
+          described_class.new(inbox: line_channel.inbox, params: params).perform
+        end.not_to change(Message, :count)
+      end
+
       it 'creates appropriate conversations, message and contacts' do
         described_class.new(inbox: line_channel.inbox, params: params).perform
         expect(line_channel.inbox.conversations).not_to eq(0)

@@ -18,6 +18,10 @@ class Line::IncomingMessageService
   def parse_events
     params[:events].each do |event|
       next unless event_type_message?(event)
+      # LINE sends the same event again when it did not get our 2xx in time, even
+      # though we may already have stored it; the message id is what keeps a
+      # retried delivery from turning into a second message in the conversation.
+      next if already_received?(event)
 
       get_line_contact_info(event)
       next if @line_contact_info['userId'].blank?
@@ -30,6 +34,10 @@ class Line::IncomingMessageService
       attach_files event['message']
       @message.save!
     end
+  end
+
+  def already_received?(event)
+    @inbox.messages.exists?(source_id: event['message']['id'].to_s)
   end
 
   def message_created?(event)
