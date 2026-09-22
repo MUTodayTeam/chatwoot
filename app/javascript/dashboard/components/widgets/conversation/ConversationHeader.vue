@@ -14,6 +14,8 @@ import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
 import { useInbox } from 'dashboard/composables/useInbox';
+import { useUISettings } from 'dashboard/composables/useUISettings';
+import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { copyTextToClipboard } from 'shared/helpers/clipboard';
@@ -35,6 +37,7 @@ const route = useRoute();
 const conversationHeader = ref(null);
 const { width } = useElementSize(conversationHeader);
 const { isAWebWidgetInbox } = useInbox();
+const { uiSettings, updateUISettings } = useUISettings();
 
 const currentChat = computed(() => store.getters.getSelectedChat);
 const accountId = computed(() => store.getters.getCurrentAccountId);
@@ -98,6 +101,19 @@ const hasSlaPolicyId = computed(
   () => props.chat?.applied_sla?.id && !currentContact.value?.blocked
 );
 
+// The contact's picture is the way into the contact panel, replacing the
+// floating switch that used to sit over the messages. Alt+O moved here with it.
+const toggleContactPanel = () => {
+  updateUISettings({
+    is_contact_sidebar_open: !uiSettings.value.is_contact_sidebar_open,
+    is_copilot_panel_open: false,
+  });
+};
+
+useKeyboardEvents({
+  'Alt+KeyO': { action: toggleContactPanel },
+});
+
 const copyConversationId = async () => {
   try {
     await copyTextToClipboard(String(props.chat.id));
@@ -121,13 +137,22 @@ const copyConversationId = async () => {
         :back-url="backButtonUrl"
         class="me-2"
       />
-      <Avatar
-        :name="currentContact.name"
-        :src="currentContact.thumbnail"
-        :size="32"
-        :status="currentContact.availability_status"
-        hide-offline-status
-      />
+      <button
+        v-tooltip.bottom="$t('CONVERSATION.SIDEBAR.CONTACT')"
+        type="button"
+        class="flex-shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-n-brand"
+        :aria-label="$t('CONVERSATION.SIDEBAR.CONTACT')"
+        :aria-pressed="Boolean(uiSettings.is_contact_sidebar_open)"
+        @click="toggleContactPanel"
+      >
+        <Avatar
+          :name="currentContact.name"
+          :src="currentContact.thumbnail"
+          :size="32"
+          :status="currentContact.availability_status"
+          hide-offline-status
+        />
+      </button>
       <div class="flex flex-col items-start min-w-0 ms-2 overflow-hidden">
         <div class="flex flex-row items-center max-w-full gap-1 p-0 m-0">
           <span

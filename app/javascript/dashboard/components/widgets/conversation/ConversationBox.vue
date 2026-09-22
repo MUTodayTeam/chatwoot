@@ -132,7 +132,6 @@ export default {
         v-if="!currentChat.id && !isInboxView"
         :is-on-expanded-layout="isOnExpandedLayout"
       />
-      <slot />
     </div>
     <DashboardAppFrame
       v-for="(dashboardApp, index) in dashboardApps"
