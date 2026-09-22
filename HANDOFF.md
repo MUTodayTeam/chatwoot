@@ -70,6 +70,20 @@ M365 directory-photo integration (admin credentials + real work).
 
 ### In flight: `feat/unread-badge-on-avatar` → PR #22
 
+### In flight: `feat/google-avatar-for-existing-users` → PR #25
+
+`DeviseOverrides::OmniauthCallbacksController#sign_in_user` (and the SAML `sign_in_user_on_mobile`, which
+the enterprise override calls) now enqueue `Avatar::AvatarFromUrlJob` with `auth_hash.info.image` when
+`@resource.avatar` is not attached — sign-up already did this for new users only. Uploaded picture always
+wins (the requester's rule). Two request specs added; 11/11 green locally, rubocop clean.
+Spec gotcha found on the way: on Rails 7.2, `user.avatar.attach(io:)` on a persisted record does **not**
+write the attachment row until the record is saved again (same instance says `attached? == true`, a fresh
+`find_by` says false, 0 rows). Give the avatar at `create(:user, avatar: Rack::Test::UploadedFile…)` instead,
+or `save!` after `attach`. Both verified with a rolled-back probe in the test DB.
+Recommended order for the requester: deploy → each agent clicks "Sign in with Google" once → picture appears
+within a minute (`AvatarFromUrlJob` on the `purgable` queue). 7ideasgroup.com is on Lark, not Google: those
+two agents upload a picture or register at gravatar.com.
+
 ### In flight: `fix/line-dedupe-redelivered-events` → PR #24 (prerequisite for LINE Webhook redelivery)
 
 `Line::IncomingMessageService` built a message for every event; `message.id` went into `source_id` but was
