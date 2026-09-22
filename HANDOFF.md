@@ -121,6 +121,40 @@ ReplyService (T9) ships.
 
 ---
 
+## 2026-09-22 — DEPLOYED: inbox wizard agent defaults + project picker (PR #28) · Opus 5
+
+**Merged:** PR #28 → `develop` head `3cb73355f98190c0f839f41621cb78b04373fc99`. Frontend only, 0 migrations,
+no dependency change.
+
+**What shipped.** The Agents step of the add-inbox wizard now starts with **every** agent selected (a
+watcher seeds `selectedAgentIds` the first time the list arrives, since it loads after mount) and offers
+**Select all** / **Clear**; the same **Select all** is on an existing inbox's Collaborators tab, disabled
+once everyone is a member. The step also asks for the inbox's **Project** — until now a new inbox could
+only be filed under a project from the project's own edit form, so every inbox started outside the
+sidebar tree. `project_id` was already permitted and returned by the API, so the backend is untouched.
+New strings are English-only — other locales go through Crowdin, matching how this fork's own Projects
+and Live-chat-rules screens already read in English.
+
+**Deploy:** `./build.sh v4.17.0-mutoday` → `docker compose up -d` at 10:29 UTC. Rollback image
+`chatwoot/chatwoot:v4.17.0-mutoday-pre-inbox-wizard` (`.git_sha 545731177`). After the flip: rails and
+sidekiq Up · container `.git_sha` = develop head · `/api` ok/ok · new bundle `dashboard-DSLGtKr5.js` 200
+and the previous `dashboard-Dbws_ZuN.js` 404 · 0 errors in the logs. The live bundle carries
+`INBOX_MGMT.ADD.AGENTS.SELECT_ALL`, `INBOX_MGMT.ADD.PROJECT.TITLE` and the `inbox-project` select, and the
+served inboxMgmt locale chunk carries `"SELECT_ALL":"Select all","CLEAR_ALL":"Clear"`.
+
+**Verification gotcha (cost one aborted flip).** Grepping the dashboard bundle for the *English text* of a
+new i18n string finds nothing — locale strings live in their own chunk, and `"Select all"` additionally
+already existed elsewhere as `"Select all ({count})"`. Check the **key**
+(`INBOX_MGMT.ADD.AGENTS.SELECT_ALL`) in the dashboard bundle, and the value in the chunk that also holds a
+known sibling string such as `"Pick agents for the inbox"`. The pre-flip gate did its job and stopped the
+deploy on the bad check.
+
+**Shell gotcha.** `git stash -q push -m ...` is rejected ("subcommand wasn't specified"); the flag has to
+follow the subcommand: `git stash push -q -m ...`. In an `&&` chain that failure silently skips every
+later step.
+
+---
+
 ## 2026-09-22 — Facebook (Messenger) connected to production · Fable 5.1
 
 **Result.** Inbox #2 "MUToday" (`Channel::FacebookPage`, page_id `1155390994323924`, page "MUToday - มูทูเดย์")
