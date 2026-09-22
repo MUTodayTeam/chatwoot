@@ -72,6 +72,16 @@ const handleAgentRemove = index => {
   selectedAgentIds.value.splice(index, 1);
 };
 
+const areAllAgentsSelected = computed(
+  () =>
+    !!agentList.value.length &&
+    selectedAgentIds.value.length === agentList.value.length
+);
+
+const selectAllAgents = () => {
+  selectedAgentIds.value = agentList.value.map(({ id }) => id);
+};
+
 const isFeatureEnabled = feature => {
   const accountId = Number(route.params.accountId);
   return store.getters['accounts/isFeatureEnabledonAccount'](
@@ -381,6 +391,14 @@ onMounted(() => {
           @remove="handleAgentRemove"
         />
       </div>
+      <button
+        type="button"
+        class="p-0 mt-2 text-sm font-medium bg-transparent border-0 text-n-blue-text hover:underline disabled:opacity-50 disabled:no-underline"
+        :disabled="areAllAgentsSelected"
+        @click="selectAllAgents"
+      >
+        {{ $t('INBOX_MGMT.SETTINGS_POPUP.SELECT_ALL_AGENTS') }}
+      </button>
 
       <template #extra>
         <div class="grid grid-cols-1 lg:grid-cols-8">

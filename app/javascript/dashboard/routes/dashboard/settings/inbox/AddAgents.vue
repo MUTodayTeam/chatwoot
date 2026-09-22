@@ -29,13 +29,22 @@ export default {
   data() {
     return {
       selectedAgentIds: [],
+      selectedProjectId: '',
+      hasSeededAgents: false,
       isCreating: false,
     };
   },
   computed: {
     ...mapGetters({
       agentList: 'agents/getAgents',
+      projects: 'projects/getProjects',
     }),
+    areAllAgentsSelected() {
+      return (
+        !!this.agentList.length &&
+        this.selectedAgentIds.length === this.agentList.length
+      );
+    },
     selectedAgentNames() {
       return this.selectedAgentIds.map(
         id => this.agentList.find(a => a.id === id)?.name ?? ''
@@ -52,8 +61,22 @@ export default {
         }));
     },
   },
+  watch: {
+    // The agent list arrives after mount. Seed the selection with everyone the
+    // first time it lands: an inbox with no agents is invisible to the team, and
+    // narrowing it afterwards is one click.
+    agentList: {
+      immediate: true,
+      handler(agents) {
+        if (this.hasSeededAgents || !agents.length) return;
+        this.hasSeededAgents = true;
+        this.selectedAgentIds = agents.map(({ id }) => id);
+      },
+    },
+  },
   mounted() {
     this.$store.dispatch('agents/get');
+    this.$store.dispatch('projects/get');
   },
   methods: {
     handleAgentAdd({ value }) {
@@ -64,6 +87,12 @@ export default {
     handleAgentRemove(index) {
       this.selectedAgentIds.splice(index, 1);
     },
+    selectAllAgents() {
+      this.selectedAgentIds = this.agentList.map(({ id }) => id);
+    },
+    clearAgents() {
+      this.selectedAgentIds = [];
+    },
     async addAgents() {
       this.isCreating = true;
       const inboxId = this.$route.params.inbox_id;
@@ -73,6 +102,13 @@ export default {
           inboxId,
           agentList: this.selectedAgentIds,
         });
+        if (this.selectedProjectId) {
+          await this.$store.dispatch('inboxes/updateInbox', {
+            id: inboxId,
+            formData: false,
+            project_id: this.selectedProjectId,
+          });
+        }
         router.replace({
           name: 'settings_inbox_finish',
           params: {
@@ -120,6 +156,44 @@ export default {
               {{ $t('INBOX_MGMT.ADD.AGENTS.VALIDATION_ERROR') }}
             </span>
           </label>
+          <div class="flex gap-3 mt-2">
+            <button
+              type="button"
+              class="p-0 text-sm font-medium bg-transparent border-0 text-n-blue-text hover:underline disabled:opacity-50 disabled:no-underline"
+              :disabled="areAllAgentsSelected"
+              @click="selectAllAgents"
+            >
+              {{ $t('INBOX_MGMT.ADD.AGENTS.SELECT_ALL') }}
+            </button>
+            <button
+              type="button"
+              class="p-0 text-sm font-medium bg-transparent border-0 text-n-slate-11 hover:underline disabled:opacity-50 disabled:no-underline"
+              :disabled="!selectedAgentIds.length"
+              @click="clearAgents"
+            >
+              {{ $t('INBOX_MGMT.ADD.AGENTS.CLEAR_ALL') }}
+            </button>
+          </div>
+        </div>
+        <div v-if="projects.length" class="w-full mb-4">
+          <label for="inbox-project">
+            {{ $t('INBOX_MGMT.ADD.PROJECT.TITLE') }}
+            <select id="inbox-project" v-model="selectedProjectId">
+              <option value="">
+                {{ $t('INBOX_MGMT.ADD.PROJECT.NONE') }}
+              </option>
+              <option
+                v-for="project in projects"
+                :key="project.id"
+                :value="project.id"
+              >
+                {{ project.name }}
+              </option>
+            </select>
+          </label>
+          <p class="mt-0 text-sm text-n-slate-11">
+            {{ $t('INBOX_MGMT.ADD.PROJECT.DESC') }}
+          </p>
         </div>
         <div class="w-full">
           <NextButton
