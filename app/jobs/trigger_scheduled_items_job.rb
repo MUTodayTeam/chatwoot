@@ -22,6 +22,9 @@ class TriggerScheduledItemsJob < ApplicationJob
 
     # Job to trigger pending executions
     AutomationRules::TriggerPendingExecutionsJob.perform_later
+
+    # Job to tell Lark about conversations whose reply deadline has passed
+    Integrations::Lark::AnnounceOverdueConversationsJob.perform_later
   end
 end
 
