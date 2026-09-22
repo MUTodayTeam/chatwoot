@@ -68,7 +68,21 @@ return 404.** Corporate addresses with no gravatar.com account yield nothing. Op
 gravatar.com per person (picked up automatically), upload in profile settings, or a Google Workspace /
 M365 directory-photo integration (admin credentials + real work).
 
-### In flight: `feat/unread-badge-on-avatar` (not yet a PR)
+### In flight: `feat/unread-badge-on-avatar` → PR #22
+
+### In flight: `feat/avatar-opens-contact-panel` → PR #23
+
+The floating round `SidepanelSwitch` (person icon over the messages, top-right) is gone from both the
+conversations screen and My Inbox; the component file is deleted, and `ConversationBox`'s default slot —
+which only ever held it — with it. The contact's picture in `ConversationHeader` is now a `<button>`
+(tooltip/aria-label `CONVERSATION.SIDEBAR.CONTACT`, `aria-pressed` mirrors the panel) that toggles
+`is_contact_sidebar_open` and closes the copilot panel, exactly what the switch did. **`Alt+O` moved
+with it** (it is listed in the shortcuts help modal, `widgets/modal/constants.js`). Side effect, on
+purpose: the Copilot button lived in that switch behind the CAPTAIN flag, which this install hides, so
+nothing user-visible changed there. Both screens share `ConversationBox → ConversationHeader`, so one
+edit covers both. Verified on dev in the browser: 0 floating icons, click opens the panel, Alt+O closes
+it. Branch cut from `develop`, so it carries no HANDOFF change; this note lives here to avoid a conflict.
+
 
 Unread badge moved from the right-hand column to the avatar's top-left corner in **both** live cards
 (`widgets/conversation/ConversationCard.vue` condensed; `CardAvatar.vue` for the expanded card,
