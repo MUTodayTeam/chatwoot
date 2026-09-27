@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
+import { CONVERSATION_STATUS } from 'shared/constants/messages';
 
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -26,7 +27,11 @@ const rules = useMapGetter('liveChatRules/getLiveChatRules');
 const projects = useMapGetter('projects/getProjects');
 
 const replyDueAt = computed(() => props.chat.reply_due_at ?? 0);
-const isWaiting = computed(() => replyDueAt.value > 0);
+// The deadline is only tracked on open conversations, so the extend button is
+// hidden together with the countdown on pending, snoozed and resolved ones.
+const isWaiting = computed(
+  () => replyDueAt.value > 0 && props.chat.status === CONVERSATION_STATUS.OPEN
+);
 
 // The project is read from the projects list rather than from the inbox payload:
 // inboxes are served from an IndexedDB cache that only refreshes when an inbox
@@ -71,7 +76,11 @@ const onExtend = async () => {
 
 <template>
   <div v-if="isWaiting" class="flex items-center gap-1">
-    <ReplyCountdown :reply-due-at="replyDueAt" show-label />
+    <ReplyCountdown
+      :reply-due-at="replyDueAt"
+      :status="chat.status"
+      show-label
+    />
     <Button
       v-tooltip.top="
         $t('CONVERSATION.REPLY_COUNTDOWN.EXTEND_TOOLTIP', {

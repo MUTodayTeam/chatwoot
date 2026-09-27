@@ -1,4 +1,5 @@
 import { computed, onUnmounted, ref, unref } from 'vue';
+import { CONVERSATION_STATUS } from 'shared/constants/messages';
 
 const TICK_INTERVAL = 1000;
 // Below this many seconds left the chip warns that the deadline is close.
@@ -12,13 +13,19 @@ const pad = value => String(value).padStart(2, '0');
  * `replyDueAt` is a unix timestamp in seconds, or 0/null when nobody is waiting
  * (the agent has replied, or the conversation is resolved) — in which case the
  * countdown reports itself inactive and no timer runs.
+ *
+ * `status` is the conversation status. The countdown only counts while the
+ * conversation is open; pending, snoozed and resolved conversations report it
+ * inactive even when `replyDueAt` is still set.
  */
-export const useReplyCountdown = replyDueAt => {
+export const useReplyCountdown = (replyDueAt, status) => {
   const now = ref(Math.floor(Date.now() / 1000));
   let timer = null;
 
   const dueAt = computed(() => Number(unref(replyDueAt)) || 0);
-  const isActive = computed(() => dueAt.value > 0);
+  const isActive = computed(
+    () => dueAt.value > 0 && unref(status) === CONVERSATION_STATUS.OPEN
+  );
   const remainingSeconds = computed(() =>
     isActive.value ? dueAt.value - now.value : 0
   );
