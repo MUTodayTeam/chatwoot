@@ -165,6 +165,13 @@ class Rack::Attack
     req.ip if req.path_without_extensions == '/api/v1/accounts' && req.post?
   end
 
+  ## Inbound channel webhooks ###
+  # Channel webhooks such as LINE enqueue a job before the signature is checked, so a
+  # flood from one IP fills Sidekiq. Real providers stay far below this limit.
+  throttle('inbound_webhooks/ip', limit: ENV.fetch('RATE_LIMIT_INBOUND_WEBHOOKS', '300').to_i, period: 1.minute) do |req|
+    req.ip if req.post? && (req.path.start_with?('/webhooks/') || req.path_without_extensions == '/bot')
+  end
+
   ##-----------------------------------------------##
 
   ###-----------------------------------------------###
