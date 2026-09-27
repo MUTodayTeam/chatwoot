@@ -18,6 +18,7 @@ const getViewKey = ({
   status,
   labels,
   teamId,
+  projectId,
   conversationType,
   queryData,
 }) =>
@@ -28,6 +29,7 @@ const getViewKey = ({
       status,
       labels,
       teamId,
+      projectId,
       conversationType,
     },
   ]);
