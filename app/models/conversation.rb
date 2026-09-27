@@ -164,6 +164,14 @@ class Conversation < ApplicationRecord
     update!(reply_due_at: reply_due_at + live_chat_rule.extension_minutes.minutes)
   end
 
+  # The deadline follows the customer's latest message, so every inbound message while we
+  # still owe a reply restarts the clock, dropping any time added by extend_reply_deadline!.
+  def restart_reply_deadline(from)
+    return if waiting_since.blank?
+
+    update(reply_due_at: from + live_chat_rule.reply_timeout_minutes.minutes)
+  end
+
   def can_reply?
     Conversations::MessageWindowService.new(self).can_reply?
   end
@@ -314,9 +322,9 @@ class Conversation < ApplicationRecord
     self.waiting_since = created_at
   end
 
-  # The customer is owed a reply until an agent sends one, so the deadline hangs off
-  # waiting_since and is cleared with it. Any time granted by "add time" is dropped on
-  # purpose: a fresh inbound message starts a fresh clock.
+  # The customer is owed a reply until an agent sends one, so the deadline starts when
+  # waiting_since is set and is cleared with it. Later inbound messages move it forward
+  # through restart_reply_deadline.
   def sync_reply_due_at
     self.reply_due_at = waiting_since.present? ? waiting_since + live_chat_rule.reply_timeout_minutes.minutes : nil
   end
@@ -369,7 +377,7 @@ class Conversation < ApplicationRecord
 
   def list_of_keys
     %w[team_id assignee_id assignee_agent_bot_id ai_assignee_type status snoozed_until custom_attributes label_list waiting_since
-       first_reply_created_at priority]
+       first_reply_created_at priority reply_due_at]
   end
 
   def allowed_keys?
