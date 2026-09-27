@@ -164,12 +164,26 @@ class Conversation < ApplicationRecord
     update!(reply_due_at: reply_due_at + live_chat_rule.extension_minutes.minutes)
   end
 
-  # The deadline follows the customer's latest message, so every inbound message while we
-  # still owe a reply restarts the clock, dropping any time added by extend_reply_deadline!.
-  def restart_reply_deadline(from)
-    return if waiting_since.blank?
+  # The deadline follows the customer's latest message, so every inbound message on an open
+  # conversation we still owe a reply restarts the clock, dropping any time added by
+  # extend_reply_deadline!. The guards run in SQL so a reply saved after this object was loaded
+  # wins, and the latest message is read back so out-of-order callbacks cannot move it backwards.
+  # Only agents' countdowns need to hear about it, so this skips conversation_updated and the
+  # automation, webhook and bot listeners behind it.
+  def restart_reply_deadline
+    due = messages.incoming.maximum(:created_at) + live_chat_rule.reply_timeout_minutes.minutes
+    now = Time.current
+    # rubocop:disable Rails/SkipsModelValidations
+    restarted = Conversation.open.where(id: id).where.not(waiting_since: nil)
+                            .where('reply_due_at IS DISTINCT FROM ?', due)
+                            .update_all(reply_due_at: due, updated_at: now)
+    # rubocop:enable Rails/SkipsModelValidations
+    return if restarted.zero?
 
-    update(reply_due_at: from + live_chat_rule.reply_timeout_minutes.minutes)
+    self.reply_due_at = due
+    self.updated_at = now
+    clear_attribute_changes(%w[reply_due_at updated_at])
+    Rails.configuration.dispatcher.dispatch(CONVERSATION_REPLY_DEADLINE_CHANGED, now, conversation: self)
   end
 
   def can_reply?
@@ -377,7 +391,7 @@ class Conversation < ApplicationRecord
 
   def list_of_keys
     %w[team_id assignee_id assignee_agent_bot_id ai_assignee_type status snoozed_until custom_attributes label_list waiting_since
-       first_reply_created_at priority reply_due_at]
+       first_reply_created_at priority]
   end
 
   def allowed_keys?

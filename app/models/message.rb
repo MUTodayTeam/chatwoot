@@ -358,7 +358,7 @@ class Message < ApplicationRecord
   def set_waiting_since_on_incoming_message
     # Set waiting_since when customer sends a message (if currently blank)
     conversation.update(waiting_since: created_at) if incoming? && conversation.waiting_since.blank?
-    conversation.restart_reply_deadline(created_at) if incoming?
+    conversation.restart_reply_deadline if incoming?
   end
 
   def human_response?
