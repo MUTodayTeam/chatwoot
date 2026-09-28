@@ -13,7 +13,8 @@ RSpec.describe Custom::ConversationFinder do
 
   it 'returns every conversation still being worked on for status=active' do
     active = %i[open pending snoozed].map { |status| create(:conversation, account: account, inbox: inbox, status: status) }
-    %i[resolved closed].each { |status| create(:conversation, account: account, inbox: inbox, status: status) }
+    create(:conversation, account: account, inbox: inbox, status: :resolved)
+    create(:conversation, account: account, inbox: inbox, status: :resolved).tap(&:closed!)
 
     expect(result[:conversations].map(&:id)).to match_array(active.map(&:id))
   end

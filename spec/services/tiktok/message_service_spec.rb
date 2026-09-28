@@ -177,7 +177,7 @@ RSpec.describe Tiktok::MessageService do
 
       it 'creates a new conversation if the last one is closed' do
         inbox.update!(lock_to_single_conversation: true)
-        closed_conversation = create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :closed)
+        closed_conversation = create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved).tap(&:closed!)
 
         perform_text_message
 
@@ -202,7 +202,7 @@ RSpec.describe Tiktok::MessageService do
 
       it 'creates a new conversation if the previous one is closed' do
         inbox.update!(lock_to_single_conversation: false)
-        create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :closed)
+        create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved).tap(&:closed!)
 
         perform_text_message
 

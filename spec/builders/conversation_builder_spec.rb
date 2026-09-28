@@ -53,6 +53,16 @@ describe ConversationBuilder do
 
         expect(conversation.id).to eq(existing_conversation.id)
       end
+
+      it 'creates a new conversation when the last one is closed' do
+        closed_conversation = create(:conversation, contact_inbox: contact_sms_inbox, status: :resolved).tap(&:closed!)
+        conversation = described_class.new(
+          contact_inbox: contact_sms_inbox,
+          params: {}
+        ).perform
+
+        expect(conversation.id).not_to eq(closed_conversation.id)
+      end
     end
 
     context 'when lock_to_single_conversation is true for api inbox' do

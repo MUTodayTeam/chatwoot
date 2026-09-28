@@ -122,6 +122,8 @@ const onCmdOpenConversation = () => {
 };
 
 const onCmdResolveConversation = () => {
+  if (isClosed.value) return;
+
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
   const { hasMissing, missing } = checkMissingAttributes(
     currentCustomAttributes

@@ -116,6 +116,7 @@ en:
       resolved: Conversation is resolved and does not accept new messages
       closed: Conversation is closed and does not accept new messages
       closed_status_change: can only change from closed by reopening the conversation
+      closed_requires_resolved: can only be closed after the conversation is resolved
       unread_counts:
         feature_not_enabled: Conversation unread counts feature not enabled for this account
     data_import:

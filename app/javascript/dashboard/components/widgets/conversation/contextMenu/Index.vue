@@ -272,6 +272,10 @@ export default {
       }
     },
     show(key) {
+      // A closed conversation can only be reopened.
+      if (this.status === wootConstants.STATUS_TYPE.CLOSED) {
+        return key === wootConstants.STATUS_TYPE.OPEN;
+      }
       // If the conversation status is same as the action, then don't display the option
       // i.e.: Don't show an option to resolve if the conversation is already resolved.
       return this.status !== key;

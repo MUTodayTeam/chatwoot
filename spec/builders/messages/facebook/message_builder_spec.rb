@@ -332,7 +332,7 @@ describe Messages::Facebook::MessageBuilder do
 
         it 'creates a new conversation if last conversation is closed' do
           closed_conversation = create(:conversation, account_id: facebook_channel.inbox.account.id, inbox_id: facebook_channel.inbox.id,
-                                                      contact_id: contact.id, contact_inbox_id: contact_inbox.id, status: :closed)
+                                                      contact_id: contact.id, contact_inbox_id: contact_inbox.id, status: :resolved).tap(&:closed!)
 
           expect { mocked_message_builder }.to change(Conversation, :count).by(1)
           expect(facebook_channel.inbox.conversations.last.id).not_to eq(closed_conversation.id)
@@ -373,7 +373,7 @@ describe Messages::Facebook::MessageBuilder do
           conversation_attributes = { account_id: facebook_channel.inbox.account.id, inbox_id: facebook_channel.inbox.id,
                                       contact_id: contact.id, contact_inbox_id: contact_inbox.id }
           older_conversation = create(:conversation, conversation_attributes.merge(status: :resolved, created_at: 2.days.ago))
-          closed_conversation = create(:conversation, conversation_attributes.merge(status: :closed, created_at: 1.day.ago))
+          closed_conversation = create(:conversation, conversation_attributes.merge(status: :resolved, created_at: 1.day.ago)).tap(&:closed!)
 
           expect { mocked_message_builder }.to change(Conversation, :count).by(1)
           expect(facebook_channel.inbox.conversations.last.id).not_to be_in([older_conversation.id, closed_conversation.id])

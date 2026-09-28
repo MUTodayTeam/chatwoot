@@ -4870,7 +4870,7 @@
         ],
         "operationId": "toggle-status-of-a-conversation",
         "summary": "Toggle Status",
-        "description": "Toggle the status of a conversation. Pass `status` to explicitly set the\nconversation state. Use `snoozed` along with `snoozed_until` to snooze a\nconversation until a specific time. If `snoozed_until` is omitted, the\nconversation is snoozed until the next reply from the contact. Regardless\nof the value provided, snoozed conversations always reopen on the next\nreply from the contact. A `closed` conversation is read-only and can only\nbe changed back to `open`.",
+        "description": "Toggle the status of a conversation. Pass `status` to explicitly set the\nconversation state. Use `snoozed` along with `snoozed_until` to snooze a\nconversation until a specific time. If `snoozed_until` is omitted, the\nconversation is snoozed until the next reply from the contact. Regardless\nof the value provided, snoozed conversations always reopen on the next\nreply from the contact. Only a `resolved` conversation can be `closed`. A\n`closed` conversation is read-only and can only be changed back to `open`.",
         "security": [
           {
             "userApiKey": []

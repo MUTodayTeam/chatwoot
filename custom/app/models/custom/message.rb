@@ -12,17 +12,19 @@ module Custom::Message
     errors.add(:base, I18n.t('errors.conversations.closed')) if conversation&.closed?
   end
 
-  # A customer replying to a conversation an agent parked as pending hands it back to
-  # that agent. Unassigned pending is how Chatwoot marks a bot's conversation (Captain,
-  # agent bots, Dialogflow), so only a pending conversation with an agent and no AI
-  # assignee is reopened.
+  # A customer replying to a pending conversation hands it back to the agents.
+  # LINE, Facebook, Instagram and TikTok start a new conversation after closed, so a
+  # closed one only gets here on the other channels; reopen it so the message is seen.
   def reopen_conversation
-    return super unless incoming? && agent_pending_conversation? && !conversation.muted?
+    return super unless incoming? && !conversation.muted? && (conversation.closed? || agent_pending_conversation?)
 
     conversation.open!
   end
 
+  # Pending is also how Chatwoot hands a conversation to a bot (Captain, agent bots,
+  # Dialogflow), and a bot inbox reopens a resolved conversation as pending, so pending
+  # stays with the bot whenever the inbox has one.
   def agent_pending_conversation?
-    conversation.pending? && conversation.assignee_id.present? && conversation.ai_assignee.blank?
+    conversation.pending? && conversation.ai_assignee.blank? && !conversation.inbox.active_bot?
   end
 end

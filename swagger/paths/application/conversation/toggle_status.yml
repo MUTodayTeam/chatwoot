@@ -8,8 +8,8 @@ description: |-
   conversation until a specific time. If `snoozed_until` is omitted, the
   conversation is snoozed until the next reply from the contact. Regardless
   of the value provided, snoozed conversations always reopen on the next
-  reply from the contact. A `closed` conversation is read-only and can only
-  be changed back to `open`.
+  reply from the contact. Only a `resolved` conversation can be `closed`. A
+  `closed` conversation is read-only and can only be changed back to `open`.
 security:
   - userApiKey: []
   - agentBotApiKey: []

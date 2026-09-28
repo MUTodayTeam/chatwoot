@@ -2839,14 +2839,16 @@
               "type": "string",
               "enum": [
                 "all",
+                "active",
                 "open",
                 "resolved",
                 "pending",
-                "snoozed"
+                "snoozed",
+                "closed"
               ],
               "default": "open"
             },
-            "description": "Filter by conversation status."
+            "description": "Filter by conversation status. `active` returns open, pending and snoozed conversations together."
           },
           {
             "name": "q",
@@ -2965,14 +2967,16 @@
               "type": "string",
               "enum": [
                 "all",
+                "active",
                 "open",
                 "resolved",
                 "pending",
-                "snoozed"
+                "snoozed",
+                "closed"
               ],
               "default": "open"
             },
-            "description": "Filter by conversation status."
+            "description": "Filter by conversation status. `active` returns open, pending and snoozed conversations together."
           },
           {
             "name": "q",
@@ -3409,7 +3413,7 @@
         ],
         "operationId": "toggle-status-of-a-conversation",
         "summary": "Toggle Status",
-        "description": "Toggle the status of a conversation. Pass `status` to explicitly set the\nconversation state. Use `snoozed` along with `snoozed_until` to snooze a\nconversation until a specific time. If `snoozed_until` is omitted, the\nconversation is snoozed until the next reply from the contact. Regardless\nof the value provided, snoozed conversations always reopen on the next\nreply from the contact.",
+        "description": "Toggle the status of a conversation. Pass `status` to explicitly set the\nconversation state. Use `snoozed` along with `snoozed_until` to snooze a\nconversation until a specific time. If `snoozed_until` is omitted, the\nconversation is snoozed until the next reply from the contact. Regardless\nof the value provided, snoozed conversations always reopen on the next\nreply from the contact. Only a `resolved` conversation can be `closed`. A\n`closed` conversation is read-only and can only be changed back to `open`.",
         "security": [
           {
             "userApiKey": []
@@ -3434,7 +3438,8 @@
                       "open",
                       "resolved",
                       "pending",
-                      "snoozed"
+                      "snoozed",
+                      "closed"
                     ],
                     "description": "The status of the conversation",
                     "example": "open"
@@ -3472,7 +3477,8 @@
                             "open",
                             "resolved",
                             "pending",
-                            "snoozed"
+                            "snoozed",
+                            "closed"
                           ]
                         },
                         "conversation_id": {
@@ -7773,7 +7779,7 @@
             "userApiKey": []
           }
         ],
-        "description": "Get conversation counts grouped by channel type and status for a given date range.\nReturns statistics for each channel type including open, resolved, pending, snoozed, and total conversation counts.\n\n**Note:** This API endpoint is available only in Chatwoot version 4.10.0 and above. The date range is limited to a maximum of 6 months.\n",
+        "description": "Get conversation counts grouped by channel type and status for a given date range.\nReturns statistics for each channel type including open, resolved, pending, snoozed, closed, and total conversation counts.\n\n**Note:** This API endpoint is available only in Chatwoot version 4.10.0 and above. The date range is limited to a maximum of 6 months.\n",
         "responses": {
           "200": {
             "description": "Success",
@@ -9134,7 +9140,9 @@
             "enum": [
               "open",
               "resolved",
-              "pending"
+              "pending",
+              "snoozed",
+              "closed"
             ],
             "description": "The status of the conversation"
           },
@@ -10409,8 +10417,11 @@
             "description": "The type of the audited object (e.g., Conversation, Contact, User)"
           },
           "auditable": {
-            "type": "object",
-            "description": "The audited object data"
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The audited object data. Null for message deletion entries, which are served without the message payload."
           },
           "associated_id": {
             "type": "integer",
@@ -10469,7 +10480,14 @@
               "string",
               "null"
             ],
-            "description": "IP address from which the action was performed"
+            "description": "IP address from which the action was performed. Masked to the network portion (for example 203.0.113.x) unless the account has the audit_log_ip_address feature enabled, in which case the full address is returned."
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "City and country resolved from remote_address, present only when the account has the ip_lookup feature enabled and the address has been resolved. Omitted when the account returns full IP addresses."
           }
         }
       },
@@ -10667,7 +10685,8 @@
               "open",
               "resolved",
               "pending",
-              "snoozed"
+              "snoozed",
+              "closed"
             ],
             "description": "The status of the conversation"
           },
@@ -13892,6 +13911,10 @@
               "type": "number",
               "description": "Number of snoozed conversations"
             },
+            "closed": {
+              "type": "number",
+              "description": "Number of closed conversations"
+            },
             "total": {
               "type": "number",
               "description": "Total number of conversations"
@@ -13904,13 +13927,15 @@
             "resolved": 20,
             "pending": 5,
             "snoozed": 2,
-            "total": 37
+            "closed": 4,
+            "total": 41
           },
           "Channel::Api": {
             "open": 5,
             "resolved": 15,
             "pending": 3,
             "snoozed": 1,
+            "closed": 0,
             "total": 24
           }
         }

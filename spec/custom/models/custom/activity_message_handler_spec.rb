@@ -17,6 +17,7 @@ RSpec.describe Custom::ActivityMessageHandler do
   end
 
   it 'keeps the automation rule copy' do
+    conversation.update!(status: :resolved)
     Current.executed_by = create(:automation_rule, account: conversation.account)
 
     expect { conversation.update!(status: :closed) }

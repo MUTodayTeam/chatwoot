@@ -23,7 +23,7 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
         create(:conversation, account: account, inbox: web_widget_inbox, status: :resolved, created_at: 2.days.ago)
         create(:conversation, account: account, inbox: web_widget_inbox, status: :pending, created_at: 1.day.ago)
         create(:conversation, account: account, inbox: web_widget_inbox, status: :snoozed, created_at: 1.day.ago)
-        create(:conversation, account: account, inbox: web_widget_inbox, status: :closed, created_at: 1.day.ago)
+        create(:conversation, account: account, inbox: web_widget_inbox, status: :resolved, created_at: 1.day.ago).tap(&:closed!)
 
         # Email conversations
         create(:conversation, account: account, inbox: email_inbox, status: :open, created_at: 2.days.ago)

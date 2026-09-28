@@ -1,27 +1,30 @@
 module Custom::Conversation
   def self.prepended(base)
     base.class_eval do
-      validate :closed_conversation_only_reopens, on: :update
+      validate :closed_status_transition
     end
+  end
+
+  # Closed is already past resolved, so muting a closed conversation only blocks the contact.
+  def mute!
+    return super unless closed?
+    return unless contact
+
+    contact.update(blocked: true)
+    create_muted_message
   end
 
   private
 
-  # Closed is the end of the lifecycle: the only way out is reopening it. Resolving it
-  # again would count a second resolution in the reports.
-  def closed_conversation_only_reopens
-    return unless status_changed? && status_was == 'closed' && !open?
+  # Closed is the end of the lifecycle. It follows resolved, so the resolution is reported,
+  # CSAT goes out and the resolved listeners run exactly once; the only way out is reopening.
+  def closed_status_transition
+    return unless will_save_change_to_status?
 
-    errors.add(:status, I18n.t('errors.conversations.closed_status_change'))
-  end
-
-  # Nothing waits on a reply once a conversation is closed, same as resolved.
-  def handle_resolved_status_change
-    super
-    return unless saved_change_to_status? && closed?
-
-    # rubocop:disable Rails/SkipsModelValidations
-    update_columns(waiting_since: nil, reply_due_at: nil)
-    # rubocop:enable Rails/SkipsModelValidations
+    if closed? && status_in_database != 'resolved'
+      errors.add(:status, I18n.t('errors.conversations.closed_requires_resolved'))
+    elsif status_in_database == 'closed' && !open?
+      errors.add(:status, I18n.t('errors.conversations.closed_status_change'))
+    end
   end
 end

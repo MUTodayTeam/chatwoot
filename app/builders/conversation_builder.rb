@@ -10,7 +10,8 @@ class ConversationBuilder
   def look_up_exising_conversation
     return unless @contact_inbox.inbox.lock_to_single_conversation?
 
-    @contact_inbox.conversations.last
+    # a closed conversation is read-only, so the next one starts fresh
+    @contact_inbox.conversations.last.then { |last| last unless last&.closed? }
   end
 
   def create_new_conversation

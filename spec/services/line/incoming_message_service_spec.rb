@@ -494,7 +494,7 @@ describe Line::IncomingMessageService do
         )
 
         described_class.new(inbox: line_channel.inbox, params: params).perform
-        line_channel.inbox.conversations.last.update!(status: :closed)
+        line_channel.inbox.conversations.last.tap(&:resolved!).closed!
 
         new_params = params.deep_dup
         new_params[:events][0][:message][:id] = '325709'
@@ -558,7 +558,7 @@ describe Line::IncomingMessageService do
         )
 
         described_class.new(inbox: line_channel.inbox, params: params).perform
-        line_channel.inbox.conversations.last.update!(status: :closed)
+        line_channel.inbox.conversations.last.tap(&:resolved!).closed!
 
         new_params = params.deep_dup
         new_params[:events][0][:message][:id] = '325709'

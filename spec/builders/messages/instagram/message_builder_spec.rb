@@ -253,7 +253,7 @@ describe Messages::Instagram::MessageBuilder do
       messaging = dm_params[:entry][0]['messaging'][0]
       contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
       closed_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
-                                                  contact_id: contact.id, status: :closed)
+                                                  contact_id: contact.id, status: :resolved).tap(&:closed!)
 
       expect { described_class.new(messaging, instagram_inbox).perform }.to change(Conversation, :count).by(1)
       expect(instagram_inbox.conversations.last.id).not_to eq(closed_conversation.id)
@@ -295,7 +295,7 @@ describe Messages::Instagram::MessageBuilder do
       messaging = dm_params[:entry][0]['messaging'][0]
       contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
       closed_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
-                                                  contact_id: contact.id, status: :closed)
+                                                  contact_id: contact.id, status: :resolved).tap(&:closed!)
 
       expect { described_class.new(messaging, instagram_inbox).perform }.to change(Conversation, :count).by(1)
       expect(instagram_inbox.conversations.last.id).not_to eq(closed_conversation.id)
