@@ -4,7 +4,9 @@ describe Integrations::Dialogflow::ProcessorService do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:hook) { create(:integrations_hook, :dialogflow, inbox: inbox, account: account) }
-  let(:conversation) { create(:conversation, account: account, status: :pending) }
+  # The conversation sits in the hook's inbox, as in production: a pending conversation only stays
+  # pending on a customer message while the inbox has an active bot.
+  let(:conversation) { create(:conversation, account: account, inbox: inbox, status: :pending) }
   let(:message) { create(:message, account: account, conversation: conversation) }
   let(:template_message) { create(:message, account: account, conversation: conversation, message_type: :template, content: 'Bot message') }
   let(:event_name) { 'message.created' }

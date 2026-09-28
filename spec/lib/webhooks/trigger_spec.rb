@@ -71,8 +71,12 @@ describe Webhooks::Trigger do
 
     context 'when webhook type is agent bot' do
       let(:webhook_type) { :agent_bot_webhook }
-      let!(:pending_conversation) { create(:conversation, inbox: inbox, status: :pending, account: account) }
+      let!(:pending_conversation) { create(:conversation, inbox: inbox, account: account) }
       let!(:pending_message) { create(:message, account: account, inbox: inbox, conversation: pending_conversation) }
+
+      # Pending is set after the customer's message: on an inbox without a bot, that message would hand
+      # a pending conversation back to the agents and open it.
+      before { pending_conversation.pending! }
 
       it 'raises 500 errors for retry and does not reopen conversation immediately' do
         payload = { event: 'message_created', id: pending_message.id }
