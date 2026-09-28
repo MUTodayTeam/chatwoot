@@ -14,6 +14,15 @@ RSpec.describe Custom::ActivityMessageHandler do
       .with(conversation, hash_including(content: 'Conversation was marked resolved by system after 12 hours in pending'))
   end
 
+  it 'uses the singular for one hour' do
+    conversation.update!(status: :pending)
+    Current.executed_by = conversation.account.live_chat_rules.create!(auto_solve_hours: 1)
+
+    expect { conversation.update!(status: :resolved) }
+      .to have_enqueued_job(Conversations::ActivityMessageJob)
+      .with(conversation, hash_including(content: 'Conversation was marked resolved by system after 1 hour in pending'))
+  end
+
   it 'says how long a conversation was resolved when the live chat rules close it' do
     conversation.update!(status: :resolved)
     Current.executed_by = conversation.account.live_chat_rules.create!

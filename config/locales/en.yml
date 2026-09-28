@@ -347,8 +347,12 @@ en:
         pending: 'Conversation was marked as pending by %{user_name}'
         snoozed: 'Conversation was snoozed by %{user_name}'
         closed: 'Conversation was closed by %{user_name}'
-        auto_solved: 'Conversation was marked resolved by system after %{count} hours in pending'
-        auto_closed: 'Conversation was closed by system %{count} hours after it was resolved'
+        auto_solved:
+          one: 'Conversation was marked resolved by system after %{count} hour in pending'
+          other: 'Conversation was marked resolved by system after %{count} hours in pending'
+        auto_closed:
+          one: 'Conversation was closed by system %{count} hour after it was resolved'
+          other: 'Conversation was closed by system %{count} hours after it was resolved'
         auto_resolved_days: 'Conversation was marked resolved by system due to %{count} days of inactivity'
         auto_resolved_hours: 'Conversation was marked resolved by system due to %{count} hours of inactivity'
         auto_resolved_minutes: 'Conversation was marked resolved by system due to %{count} minutes of inactivity'
