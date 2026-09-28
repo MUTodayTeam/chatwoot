@@ -90,6 +90,13 @@ class ActionCableListener < BaseListener
     broadcast(account, tokens, CONVERSATION_UPDATED, conversation.push_event_data)
   end
 
+  # Agents' countdowns only: the contact's widget has no use for the reply deadline.
+  def conversation_reply_deadline_changed(event)
+    conversation, account = extract_conversation_and_account(event)
+
+    broadcast(account, user_tokens(account, conversation.inbox.members), CONVERSATION_UPDATED, conversation.push_event_data)
+  end
+
   def conversation_unread_count_changed(event)
     account, inbox_members = ::Conversations::UnreadCounts::BroadcastScope.new(event).perform
     return if account.blank? || !account.feature_enabled?('conversation_unread_counts')
