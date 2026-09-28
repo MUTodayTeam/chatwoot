@@ -41,6 +41,18 @@ class ReportsAPI extends ApiClient {
     });
   }
 
+  getCdpDashboard({ from, to, projectId, signal }) {
+    return axios.get(`${this.url}/cdp_dashboard`, {
+      params: {
+        since: from,
+        until: to,
+        project_id: projectId,
+        timezone_offset: getTimeOffset(),
+      },
+      signal,
+    });
+  }
+
   getDrilldown({
     metric,
     bucketTimestamp,
