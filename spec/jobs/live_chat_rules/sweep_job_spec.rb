@@ -19,7 +19,7 @@ RSpec.describe LiveChatRules::SweepJob do
 
   describe 'missed' do
     it 'flags an open conversation nobody picked up within the waiting time, once' do
-      conversation.update_columns(created_at: 61.minutes.ago)
+      conversation.update_columns(created_at: 61.minutes.ago, status_changed_at: 61.minutes.ago)
 
       described_class.perform_now
       missed_at = conversation.reload.missed_at
@@ -30,7 +30,7 @@ RSpec.describe LiveChatRules::SweepJob do
     end
 
     it 'leaves a conversation that is still within the waiting time' do
-      conversation.update_columns(created_at: 59.minutes.ago)
+      conversation.update_columns(created_at: 59.minutes.ago, status_changed_at: 59.minutes.ago)
 
       described_class.perform_now
 
@@ -38,7 +38,16 @@ RSpec.describe LiveChatRules::SweepJob do
     end
 
     it 'leaves a conversation that an agent picked up' do
-      conversation.update_columns(created_at: 2.hours.ago, assignee_id: create(:user, account: account).id)
+      conversation.update_columns(created_at: 2.hours.ago, status_changed_at: 2.hours.ago, assignee_id: create(:user, account: account).id)
+
+      described_class.perform_now
+
+      expect(conversation.reload.missed_at).to be_nil
+    end
+
+    it 'counts from the handoff for a conversation the bot held' do
+      conversation.update_columns(status: Conversation.statuses[:pending], created_at: 3.hours.ago)
+      conversation.update!(status: :open)
 
       described_class.perform_now
 
@@ -46,7 +55,7 @@ RSpec.describe LiveChatRules::SweepJob do
     end
 
     it 'leaves a conversation that an agent replied to' do
-      conversation.update_columns(created_at: 2.hours.ago, first_reply_created_at: 90.minutes.ago)
+      conversation.update_columns(created_at: 2.hours.ago, status_changed_at: 2.hours.ago, first_reply_created_at: 90.minutes.ago)
 
       described_class.perform_now
 
@@ -96,6 +105,26 @@ RSpec.describe LiveChatRules::SweepJob do
       expect(conversation.reload).to be_resolved
     end
 
+    it 'resolves a conversation that was pending before status changes were timed, by its last update' do
+      conversation.update_columns(status_changed_at: nil, updated_at: 25.hours.ago)
+
+      described_class.perform_now
+
+      expect(conversation.reload).to be_resolved
+    end
+
+    it 'skips a conversation whose contact is being deleted, so it does not hold up the batch' do
+      stub_const('Limits::BULK_ACTIONS_LIMIT', 1)
+      orphan = create(:conversation, account: account, inbox: inbox, status: :pending)
+      orphan.update_columns(contact_id: nil, status_changed_at: 30.hours.ago)
+      conversation.update_columns(status_changed_at: 25.hours.ago)
+
+      described_class.perform_now
+
+      expect(conversation.reload).to be_resolved
+      expect(orphan.reload).to be_pending
+    end
+
     it 'leaves a conversation that has not been pending that long' do
       conversation.update_columns(status_changed_at: 23.hours.ago)
 
@@ -132,6 +161,14 @@ RSpec.describe LiveChatRules::SweepJob do
         .to have_enqueued_job(Conversations::ActivityMessageJob)
         .with(conversation, hash_including(content: 'Conversation was closed by system 48 hours after it was resolved'))
         .exactly(:once)
+      expect(conversation.reload).to be_closed
+    end
+
+    it 'closes a conversation that was resolved before status changes were timed, by its last update' do
+      conversation.update_columns(status_changed_at: nil, updated_at: 49.hours.ago)
+
+      described_class.perform_now
+
       expect(conversation.reload).to be_closed
     end
 
@@ -184,7 +221,9 @@ RSpec.describe LiveChatRules::SweepJob do
     end
 
     it "flags missed on the project's waiting time" do
-      [conversation, project_conversation].each { |c| c.update_columns(status: Conversation.statuses[:open], created_at: 15.minutes.ago) }
+      [conversation, project_conversation].each do |c|
+        c.update_columns(status: Conversation.statuses[:open], created_at: 15.minutes.ago, status_changed_at: 15.minutes.ago)
+      end
 
       described_class.perform_now
 

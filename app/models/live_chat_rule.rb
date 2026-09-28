@@ -20,15 +20,27 @@
 #
 #  index_live_chat_rules_on_account_id                 (account_id)
 #  index_live_chat_rules_on_account_id_and_project_id  (account_id,project_id) UNIQUE
+#  index_live_chat_rules_on_account_id_default         (account_id) UNIQUE WHERE (project_id IS NULL)
 #  index_live_chat_rules_on_project_id                 (project_id)
+#  index_live_chat_rules_on_transfer_team_id           (transfer_team_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (transfer_team_id => teams.id) ON DELETE => nullify
 #
 class LiveChatRule < ApplicationRecord
   belongs_to :account
   belongs_to :project, optional: true
   belongs_to :transfer_team, class_name: 'Team', optional: true
 
-  validates :reply_timeout_minutes, :extension_minutes, :waiting_time_minutes, :auto_solve_hours, :auto_close_hours,
-            numericality: { only_integer: true, greater_than: 0 }
+  # A year at most. Much larger values put `n.hours.ago` outside the timestamp range, and
+  # the query that raises would stop the sweep for every account after this one.
+  MAX_MINUTES = 525_600
+  MAX_HOURS = 8_760
+
+  validates :reply_timeout_minutes, :extension_minutes, :waiting_time_minutes,
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_MINUTES }
+  validates :auto_solve_hours, :auto_close_hours, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_HOURS }
   validates :assisted_weight, :transfer_penalty, numericality: { greater_than_or_equal_to: 0, less_than: 100 }
   validates :project_id, uniqueness: { scope: :account_id }
   validate :transfer_team_in_account
@@ -44,6 +56,6 @@ class LiveChatRule < ApplicationRecord
   private
 
   def transfer_team_in_account
-    errors.add(:transfer_team_id, :invalid) if transfer_team && transfer_team.account_id != account_id
+    errors.add(:transfer_team_id, :invalid) if transfer_team_id? && transfer_team&.account_id != account_id
   end
 end

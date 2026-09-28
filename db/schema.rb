@@ -1237,7 +1237,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_000001) do
     t.decimal "transfer_penalty", precision: 4, scale: 2, default: "0.2", null: false
     t.index ["account_id", "project_id"], name: "index_live_chat_rules_on_account_id_and_project_id", unique: true
     t.index ["account_id"], name: "index_live_chat_rules_on_account_id"
+    t.index ["account_id"], name: "index_live_chat_rules_on_account_id_default", unique: true, where: "(project_id IS NULL)"
     t.index ["project_id"], name: "index_live_chat_rules_on_project_id"
+    t.index ["transfer_team_id"], name: "index_live_chat_rules_on_transfer_team_id"
   end
 
   create_table "macros", force: :cascade do |t|
@@ -1640,6 +1642,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_000001) do
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
