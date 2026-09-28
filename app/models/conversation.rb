@@ -10,9 +10,11 @@
 #  cached_label_list      :text
 #  contact_last_seen_at   :datetime
 #  custom_attributes      :jsonb
+#  expired_at             :datetime
 #  first_reply_created_at :datetime
 #  identifier             :string
 #  last_activity_at       :datetime         not null
+#  missed_at              :datetime
 #  priority               :integer
 #  reply_due_at           :datetime
 #  snoozed_until          :datetime
@@ -38,6 +40,8 @@
 #  conv_acid_inbid_stat_asgnid_idx                      (account_id,inbox_id,status,assignee_id)
 #  index_conversations_on_account_id                    (account_id)
 #  index_conversations_on_account_id_and_display_id     (account_id,display_id) UNIQUE
+#  index_conversations_on_account_id_and_expired_at     (account_id,expired_at) WHERE (expired_at IS NOT NULL)
+#  index_conversations_on_account_id_and_missed_at      (account_id,missed_at) WHERE (missed_at IS NOT NULL)
 #  index_conversations_on_account_id_status_created_at  (account_id,status,created_at)
 #  index_conversations_on_assignee_id_and_account_id    (assignee_id,account_id)
 #  index_conversations_on_campaign_id                   (campaign_id)

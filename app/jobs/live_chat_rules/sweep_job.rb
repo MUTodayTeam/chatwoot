@@ -1,0 +1,79 @@
+# Moves conversations along the live chat lifecycle as time passes, following the
+# live chat rule that governs each inbox's project:
+#
+# - missed: open, nobody assigned and nobody replied within waiting_time_minutes
+# - expired: open and past its reply deadline (the Lark overdue alert's condition)
+# - pending for auto_solve_hours -> resolved, unless the conversation is with a bot
+# - resolved for auto_close_hours -> closed
+#
+# Nothing fires an event when a clock runs out, so config/schedule.yml runs this every
+# minute. Each step only matches rows that still need it, so a run that overlaps the
+# previous one, or repeats it, changes nothing twice.
+#
+# Accounts that use these rules must leave the account setting auto_resolve_after
+# unset: Conversations::ResolutionJob would resolve open conversations on its own clock.
+class LiveChatRules::SweepJob < ApplicationJob
+  queue_as :scheduled_jobs
+
+  def perform
+    Account.active.find_each do |account|
+      flag_expired(account)
+      inboxes_by_rule(account).each { |rule, inboxes| sweep(account.conversations.where(inbox: inboxes), inboxes, rule) }
+    end
+  end
+
+  private
+
+  # Every inbox follows its project's rule, else the account default, as in
+  # LiveChatRule.for_project. The default row is saved here because the dispatcher
+  # serialises Current.executed_by as a GlobalID, which an unsaved rule does not have.
+  def inboxes_by_rule(account)
+    default_rule = account.live_chat_rules.find_or_create_by!(project_id: nil)
+    project_rules = account.live_chat_rules.where.not(project_id: nil).index_by(&:project_id)
+    account.inboxes.group_by { |inbox| project_rules[inbox.project_id] || default_rule }
+  end
+
+  def sweep(conversations, inboxes, rule)
+    flag_missed(conversations, rule)
+    # The activity messages name the rule, so they read as automatic.
+    Current.executed_by = rule
+    transition(auto_solvable(conversations, inboxes, rule), :resolved)
+    transition(conversations.resolved.where(status_changed_at: ...rule.auto_close_hours.hours.ago), :closed)
+  ensure
+    Current.executed_by = nil
+  end
+
+  # rubocop:disable Rails/SkipsModelValidations
+  # The flags are markers for reporting. A single UPDATE that only matches unflagged
+  # rows sets each of them once, however many runs overlap.
+  def flag_expired(account)
+    account.conversations.open.where.not(waiting_since: nil)
+           .where(reply_due_at: ...Time.current, expired_at: nil)
+           .update_all(expired_at: Time.current)
+  end
+
+  def flag_missed(conversations, rule)
+    conversations.open.where(assignee_id: nil, first_reply_created_at: nil, missed_at: nil)
+                 .where(created_at: ...rule.waiting_time_minutes.minutes.ago)
+                 .update_all(missed_at: Time.current)
+  end
+  # rubocop:enable Rails/SkipsModelValidations
+
+  # Pending in an inbox with a bot is the bot's conversation (see Custom::Message), not
+  # a conversation waiting on the customer, so only agent inboxes auto-solve.
+  def auto_solvable(conversations, inboxes, rule)
+    conversations.pending.where(assignee_agent_bot_id: nil).where.not(inbox: inboxes.select(&:active_bot?))
+                 .where(status_changed_at: ...rule.auto_solve_hours.hours.ago)
+  end
+
+  # Loading each row through the same scope with FOR UPDATE re-checks it once the row
+  # is locked, so a conversation a customer reopened, or another run already moved,
+  # is left alone.
+  def transition(scope, status)
+    scope.order(:status_changed_at).limit(Limits::BULK_ACTIONS_LIMIT).ids.each do |id|
+      Conversation.transaction do
+        scope.lock.find_by(id: id)&.update(status: status)
+      end
+    end
+  end
+end
