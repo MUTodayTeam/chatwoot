@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_21_000001) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_28_100001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -550,6 +550,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_21_000001) do
     t.index ["assistant_id", "enabled"], name: "index_captain_scenarios_on_assistant_id_and_enabled"
     t.index ["assistant_id"], name: "index_captain_scenarios_on_assistant_id"
     t.index ["enabled"], name: "index_captain_scenarios_on_enabled"
+  end
+
+  create_table "cases", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "project_id"
+    t.bigint "team_id"
+    t.integer "display_id", null: false
+    t.string "subject", default: "", null: false
+    t.integer "severity", default: 3, null: false
+    t.bigint "case_category_id"
+    t.bigint "resolved_by_id"
+    t.integer "reopened_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_cases_on_account_id_and_created_at"
+    t.index ["account_id", "display_id"], name: "index_cases_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "project_id"], name: "index_cases_on_account_id_and_project_id"
+    t.index ["account_id", "team_id"], name: "index_cases_on_account_id_and_team_id"
+    t.index ["conversation_id"], name: "index_cases_on_conversation_id", unique: true
   end
 
   create_table "categories", force: :cascade do |t|
@@ -1404,6 +1424,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_21_000001) do
     t.string "color"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "code", limit: 10
     t.index ["account_id", "name"], name: "index_projects_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_projects_on_account_id"
   end

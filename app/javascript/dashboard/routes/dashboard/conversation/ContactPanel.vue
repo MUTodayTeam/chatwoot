@@ -11,6 +11,7 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
+import RelatedCases from './RelatedCases.vue';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
@@ -226,6 +227,22 @@ onMounted(() => {
                 :empty-state-message="
                   $t('CONVERSATION_CUSTOM_ATTRIBUTES.NO_RECORDS_FOUND')
                 "
+              />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'related_cases'">
+            <AccordionItem
+              v-if="contact.id"
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.RELATED_CASES')"
+              :is-open="isContactSidebarItemOpen('is_related_cases_open')"
+              compact
+              @toggle="
+                value => toggleSidebarUIState('is_related_cases_open', value)
+              "
+            >
+              <RelatedCases
+                :contact-id="contact.id"
+                :case-id="currentChat.case?.id"
               />
             </AccordionItem>
           </div>

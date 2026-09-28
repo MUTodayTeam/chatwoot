@@ -4,6 +4,11 @@ module Custom::ConversationFinder
 
   private
 
+  # Every conversation in the list shows its case number
+  def conversations_base_query
+    super.preload(case: :project)
+  end
+
   def filter_by_status
     return super unless params[:status] == 'active'
 

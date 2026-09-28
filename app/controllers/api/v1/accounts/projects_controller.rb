@@ -54,6 +54,6 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
   end
 
   def project_params
-    params.require(:project).permit(:name, :description, :color, :avatar)
+    params.require(:project).permit(:name, :code, :description, :color, :avatar)
   end
 end

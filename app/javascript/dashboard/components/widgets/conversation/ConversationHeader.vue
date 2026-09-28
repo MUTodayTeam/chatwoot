@@ -179,6 +179,12 @@ const copyConversationId = async () => {
           >
             {{ `#${chat.id}` }}
           </button>
+          <template v-if="chat.case">
+            <span>•</span>
+            <span class="text-label-small text-n-ruby-11">
+              {{ $t('CASES.HEADER_CHIP', { display: chat.case.display }) }}
+            </span>
+          </template>
           <span v-if="hasMultipleInboxes">•</span>
           <InboxName v-if="hasMultipleInboxes" :inbox="inbox" class="!mx-0" />
           <span v-if="isSnoozed">•</span>

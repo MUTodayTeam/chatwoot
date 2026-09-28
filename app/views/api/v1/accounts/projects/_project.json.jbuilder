@@ -1,5 +1,6 @@
 json.id project.id
 json.name project.name
+json.code project.code
 json.description project.description
 json.color project.color
 json.avatar_url project.avatar_url
