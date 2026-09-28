@@ -34,6 +34,8 @@ describe Integrations::Lark::SendOnLarkService do
     it 'is dispatched by the scheduled job once the reply deadline has passed' do
       hook # the job reads hooks from the database, so this lazy record has to exist first
       allow(described_class).to receive(:new).and_return(service)
+      # The deadline is derived from the latest customer message, so that message has to be old.
+      message.update!(created_at: 2.hours.ago)
       conversation.update!(status: :open, waiting_since: 2.hours.ago, reply_due_at: 1.hour.ago)
 
       Integrations::Lark::AnnounceOverdueConversationsJob.perform_now
@@ -55,6 +57,7 @@ describe Integrations::Lark::SendOnLarkService do
     it 'skips a conversation that was already announced' do
       hook
       allow(described_class).to receive(:new).and_return(service)
+      message.update!(created_at: 2.hours.ago)
       conversation.update!(status: :open, waiting_since: 2.hours.ago, reply_due_at: 1.hour.ago,
                            additional_attributes: { 'lark_announced_at' => 1.minute.ago.iso8601 })
 
