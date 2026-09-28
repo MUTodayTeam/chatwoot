@@ -421,7 +421,8 @@ RSpec.describe 'Api::V1::Accounts::MacrosController', type: :request do
                  headers: administrator.create_new_auth_token
           end
 
-          expect(conversation.reload.assignee_id).to be_nil
+          # assign_agent skips user_1, so the macro's own send_message reply assigns the administrator who ran it
+          expect(conversation.reload.assignee_id).to eq(administrator.id)
         end
 
         it 'Assign the labels' do
