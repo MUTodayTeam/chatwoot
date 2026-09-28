@@ -163,7 +163,10 @@ class Conversation < ApplicationRecord
   def extend_reply_deadline!
     return false if reply_due_at.blank?
 
-    update!(reply_due_at: reply_due_at + live_chat_rule.extension_minutes.minutes)
+    minutes = live_chat_rule.extension_minutes
+    update!(reply_due_at: reply_due_at + minutes.minutes)
+    create_reply_deadline_extended_message(minutes)
+    true
   end
 
   # The deadline follows the customer's latest message, so every inbound message on an open

@@ -597,6 +597,45 @@ RSpec.describe Conversation do
     end
   end
 
+  describe '#extend_reply_deadline!' do
+    subject(:extend_reply_deadline!) { conversation.extend_reply_deadline! }
+
+    let(:account) { create(:account) }
+    let(:user) { create(:user, account: account, role: :agent) }
+    let(:conversation) { create(:conversation, account: account) }
+
+    before do
+      LiveChatRule.create!(account: account, extension_minutes: 15)
+      Current.user = user
+    end
+
+    it 'pushes the reply deadline back by the configured extension' do
+      expect { extend_reply_deadline! }.to change { conversation.reload.reply_due_at }.by(15.minutes)
+    end
+
+    it 'creates reply deadline extended message' do
+      extend_reply_deadline!
+      expect(Conversations::ActivityMessageJob)
+        .to(have_been_enqueued.with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id,
+                                                    message_type: :activity,
+                                                    content: "#{user.name} extended the reply deadline by 15 minutes" }))
+    end
+
+    context 'when nobody is waiting on a reply' do
+      before do
+        conversation.update_columns(reply_due_at: nil) # rubocop:disable Rails/SkipsModelValidations
+      end
+
+      it 'returns false' do
+        expect(extend_reply_deadline!).to be(false)
+      end
+
+      it 'does not enqueue an activity message' do
+        expect { extend_reply_deadline! }.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+      end
+    end
+  end
+
   describe 'unread_messages' do
     subject(:unread_messages) { conversation.unread_messages }
 

@@ -107,17 +107,21 @@ module ActivityMessageHandler
   end
 
   def create_muted_message
-    create_mute_change_activity('muted')
+    create_user_action_activity('muted')
   end
 
   def create_unmuted_message
-    create_mute_change_activity('unmuted')
+    create_user_action_activity('unmuted')
   end
 
-  def create_mute_change_activity(change_type)
+  def create_reply_deadline_extended_message(minutes)
+    create_user_action_activity('reply_deadline_extended', minutes: minutes)
+  end
+
+  def create_user_action_activity(action, **)
     return unless Current.user
 
-    content = I18n.t("conversations.activity.#{change_type}", user_name: Current.user.name)
+    content = I18n.t("conversations.activity.#{action}", user_name: Current.user.name, **)
     ::Conversations::ActivityMessageJob.perform_later(self, activity_message_params(content)) if content
   end
 end
