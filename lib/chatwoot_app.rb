@@ -37,14 +37,10 @@ module ChatwootApp
     ENV.fetch('HELPCENTER_URL', nil) || ENV.fetch('FRONTEND_URL', nil)
   end
 
+  # custom/ can exist without enterprise/ (the CE build and CE specs remove it), so each
+  # extension is listed only when its own folder is loaded.
   def self.extensions
-    if custom?
-      %w[enterprise custom]
-    elsif enterprise?
-      %w[enterprise]
-    else
-      %w[]
-    end
+    %w[enterprise custom].select { |extension| public_send("#{extension}?") }
   end
 
   def self.advanced_search_allowed?
