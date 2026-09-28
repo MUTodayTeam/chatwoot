@@ -20,6 +20,8 @@ const icons = {
   [CONVERSATION_STATUS.RESOLVED]: 'i-woot-status-resolved',
   [CONVERSATION_STATUS.PENDING]: 'i-woot-status-pending',
   [CONVERSATION_STATUS.SNOOZED]: 'i-woot-status-snoozed',
+  // Closed is read-only, the only way back is reopening.
+  [CONVERSATION_STATUS.CLOSED]: 'i-lucide-lock',
 };
 
 const iconName = computed(() => {

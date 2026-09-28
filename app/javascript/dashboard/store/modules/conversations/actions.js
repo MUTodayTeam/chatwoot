@@ -15,6 +15,7 @@ import messageReadActions from './actions/messageReadActions';
 import messageTranslateActions from './actions/messageTranslateActions';
 import * as Sentry from '@sentry/vue';
 import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
+import { throwErrorMessage } from 'dashboard/store/utils/api';
 import {
   handleVoiceCallCreated,
   handleVoiceCallUpdated,
@@ -385,7 +386,8 @@ const actions = {
         snoozedUntil: updatedSnoozedUntil,
       });
     } catch (error) {
-      // Handle error
+      // Callers alert with the reason, such as a close the lifecycle rules refuse.
+      throwErrorMessage(error);
     }
   },
 

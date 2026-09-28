@@ -78,6 +78,20 @@ describe('useFilter', () => {
       });
     });
 
+    it('should expand the active status into the statuses behind it', () => {
+      const { initializeStatusAndAssigneeFilterToModal } = useFilter({
+        filteri18nKey: 'TEST',
+        attributeModel: 'conversation',
+      });
+      const result = initializeStatusAndAssigneeFilterToModal('active', {}, '');
+
+      expect(result.values.map(value => value.id)).toEqual([
+        'open',
+        'pending',
+        'snoozed',
+      ]);
+    });
+
     it('should return null when no active filters', () => {
       const { initializeStatusAndAssigneeFilterToModal } = useFilter({
         filteri18nKey: 'TEST',
