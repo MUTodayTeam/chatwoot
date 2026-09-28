@@ -8,10 +8,12 @@
     "LIST": {
       "404": "There are no projects yet. Add one to group your inboxes.",
       "NO_INBOXES": "No inboxes yet",
+      "ALL_INBOX_MEMBERS": "All inbox members",
       "TABLE_HEADER": {
         "NAME": "Name",
         "DESCRIPTION": "Description",
         "INBOXES": "Inboxes",
+        "TEAMS": "Teams",
         "ACTION": "Actions"
       }
     },
@@ -28,7 +30,7 @@
       }
     },
     "FORM": {
-      "DESC": "Name the project and pick the inboxes that belong to it.",
+      "DESC": "Name the project and pick the teams entitled to it and the inboxes that belong to it.",
       "NAME": {
         "LABEL": "Project name",
         "PLACEHOLDER": "Enter a project name",
@@ -47,6 +49,13 @@
       },
       "COLOR": {
         "LABEL": "Colour"
+      },
+      "TEAMS": {
+        "LABEL": "Teams",
+        "PLACEHOLDER": "Any inbox member",
+        "SEARCH_PLACEHOLDER": "Search teams",
+        "EMPTY": "There are no teams in this account yet.",
+        "HELP": "Only members of these teams can be assigned this project's chats, admins included. Leave empty to allow every inbox member."
       },
       "INBOXES": {
         "LABEL": "Inboxes",

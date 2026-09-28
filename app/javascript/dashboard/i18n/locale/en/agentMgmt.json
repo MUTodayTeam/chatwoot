@@ -15,7 +15,10 @@
       "TITLE": "Manage agents in your team",
       "DESC": "You can add/remove agents to/in your team.",
       "NAME": "Name",
-      "EMAIL": "EMAIL",
+      "EMAIL": "Email",
+      "ROLE": "Role",
+      "TEAMS": "Teams",
+      "PROJECTS": "Projects",
       "STATUS": "Status",
       "ACTIONS": "Actions",
       "VERIFIED": "Verified",
@@ -98,6 +101,12 @@
       }
     },
     "SEARCH_PLACEHOLDER": "Search agents...",
+    "FILTER": {
+      "PROJECT": "Filter by project",
+      "ALL_PROJECTS": "All projects",
+      "ROLE": "Filter by role",
+      "ALL_ROLES": "All roles"
+    },
     "NO_RESULTS": "No agents found matching your search",
     "SEARCH": {
       "NO_RESULTS": "No results found."

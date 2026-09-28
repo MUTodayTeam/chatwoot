@@ -119,6 +119,8 @@ en:
       closed_requires_resolved: can only be closed after the conversation is resolved
       unread_counts:
         feature_not_enabled: Conversation unread counts feature not enabled for this account
+    projects:
+      team_account_mismatch: must belong to the same account as the project
     data_import:
       data_type:
         invalid: Invalid data type

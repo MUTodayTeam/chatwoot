@@ -21,6 +21,15 @@ class Project < ApplicationRecord
   belongs_to :account
   has_many :inboxes, dependent: :nullify
   has_many :live_chat_rules, dependent: :destroy
+  has_many :project_teams, dependent: :delete_all
+  has_many :teams, through: :project_teams
 
   validates :name, presence: true, uniqueness: { scope: :account_id }
+
+  # Members of the teams entitled to this project's chats, or nil when no team is set,
+  # in which case every inbox member stays entitled as in stock Chatwoot.
+  def entitled_user_ids
+    team_ids = project_teams.pluck(:team_id)
+    TeamMember.where(team_id: team_ids).distinct.pluck(:user_id) if team_ids.any?
+  end
 end

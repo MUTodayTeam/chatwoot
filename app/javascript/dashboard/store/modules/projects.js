@@ -28,21 +28,26 @@ export const getters = {
 };
 
 // Rails does not run the params wrapper on multipart requests, so every key is
-// namespaced by hand. An empty inbox selection still has to reach the server,
-// and a form cannot carry an empty array — one blank entry stands in for it.
+// namespaced by hand. An empty selection still has to reach the server, and a
+// form cannot carry an empty array — one blank entry stands in for it.
+const appendIds = (form, key, ids) => {
+  if (ids.length) {
+    ids.forEach(id => form.append(`project[${key}][]`, id));
+  } else {
+    form.append(`project[${key}][]`, '');
+  }
+};
+
 const buildProjectForm = (
-  { name, description, color, inboxIds = [] },
+  { name, description, color, inboxIds = [], teamIds = [] },
   logo
 ) => {
   const form = new FormData();
   form.append('project[name]', name ?? '');
   form.append('project[description]', description ?? '');
   form.append('project[color]', color ?? '');
-  if (inboxIds.length) {
-    inboxIds.forEach(id => form.append('project[inbox_ids][]', id));
-  } else {
-    form.append('project[inbox_ids][]', '');
-  }
+  appendIds(form, 'inbox_ids', inboxIds);
+  appendIds(form, 'team_ids', teamIds);
   form.append('project[avatar]', logo);
   return form;
 };
