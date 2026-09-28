@@ -65,6 +65,17 @@ RSpec.describe 'Enterprise Reports API', type: :request do
     end
   end
 
+  describe 'GET /api/v2/accounts/:account_id/reports/cdp_dashboard' do
+    it 'returns success for agents with report_manage permission' do
+      get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard",
+          params: params.merge(since: start_of_today.to_s, until: end_of_today.to_s),
+          headers: agent_with_role.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:success)
+    end
+  end
+
   describe 'GET /api/v2/accounts/:account_id/reports/drilldown' do
     context 'when it is an agent with report_manage permission' do
       let(:params) do
