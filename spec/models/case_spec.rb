@@ -41,6 +41,29 @@ RSpec.describe Case do
       expect(conversation.messages.activity.pluck(:content)).to eq(['Case #CK-1 opened automatically'])
     end
 
+    it 'names the team in the activity message when the case has one' do
+      team = create(:team, account: account, name: 'crm')
+      create(:team_member, team: team, user: agent)
+
+      described_class.ensure_for!(conversation, agent)
+
+      expect(conversation.messages.activity.pluck(:content)).to eq(['Case #CK-1 opened automatically → crm'])
+    end
+
+    # The assignment that opened the case already sent conversation_updated, so automation rules
+    # and webhooks must not run a second time. Only the agents' screens hear about the case.
+    it 'pushes the case to the header without dispatching conversation_updated again' do
+      create(:inbox_member, inbox: inbox, user: agent)
+      allow(Rails.configuration.dispatcher).to receive(:dispatch).and_call_original
+
+      described_class.ensure_for!(conversation, agent)
+
+      expect(Rails.configuration.dispatcher).not_to have_received(:dispatch).with(Events::Types::CONVERSATION_UPDATED, any_args)
+      expect(ActionCableBroadcastJob).to have_been_enqueued.with(
+        anything, Events::Types::CONVERSATION_UPDATED, hash_including(case: hash_including(display: '#CK-1'))
+      )
+    end
+
     it 'returns the case another worker created first' do
       existing = create(:case, conversation: conversation)
       lookups = 0
@@ -98,8 +121,30 @@ RSpec.describe Case do
       expect(kase.errors[:team_id]).to be_present
     end
 
+    it 'rejects a team that does not exist' do
+      kase = build(:case, conversation: conversation, team_id: 0)
+
+      expect(kase).not_to be_valid
+      expect(kase.errors[:team_id]).to be_present
+    end
+
+    it 'rejects a missing subject' do
+      expect(build(:case, conversation: conversation, subject: nil)).not_to be_valid
+    end
+
     it 'rejects an unknown severity' do
       expect(build(:case, conversation: conversation, severity: 'p9')).not_to be_valid
+    end
+  end
+
+  describe 'deleting its team' do
+    it 'leaves the case without a team' do
+      team = create(:team, account: account)
+      kase = create(:case, conversation: conversation, team: team)
+
+      team.destroy!
+
+      expect(kase.reload.team_id).to be_nil
     end
   end
 end

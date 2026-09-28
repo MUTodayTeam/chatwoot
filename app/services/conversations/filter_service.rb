@@ -31,7 +31,8 @@ class Conversations::FilterService < FilterService
       :contact_inbox
     ).preload(
       inbox: :channel,
-      ai_assignee: { avatar_attachment: [:blob] }
+      ai_assignee: { avatar_attachment: [:blob] },
+      case: :project
     )
 
     Conversations::PermissionFilterService.new(

@@ -39,7 +39,7 @@ class Case < ApplicationRecord
 
   enum :severity, { p1: 0, p2: 1, p3: 2, p4: 3 }, validate: true
 
-  validates :subject, length: { maximum: 255 }
+  validates :subject, length: { maximum: 255 }, exclusion: { in: [nil], message: :blank }
   validate :team_belongs_to_account
 
   after_create_commit :create_opened_activity
@@ -64,11 +64,15 @@ class Case < ApplicationRecord
         project_id: conversation.inbox.project_id,
         team_id: user.teams.where(account_id: account.id).order(:id).pick(:id),
         display_id: where(account_id: account.id).maximum(:display_id).to_i + 1,
-        subject: conversation.messages.incoming.reorder(:created_at, :id).first&.content.to_s.squish.truncate(SUBJECT_LENGTH)
+        subject: subject_from(conversation.messages.incoming.reorder(:created_at, :id).first)
       )
     end
   end
   private_class_method :open_for!
+
+  def self.subject_from(message)
+    message&.content.to_s.squish.truncate(SUBJECT_LENGTH)
+  end
 
   # #CK-858 when the project has a code, #858 otherwise
   def display
@@ -82,8 +86,9 @@ class Case < ApplicationRecord
 
   private
 
+  # A team_id that loads no team is as wrong as one from another account
   def team_belongs_to_account
-    errors.add(:team_id, :invalid) if team && team.account_id != account_id
+    errors.add(:team_id, :invalid) if team_id && team&.account_id != account_id
   end
 
   def create_opened_activity
@@ -91,9 +96,19 @@ class Case < ApplicationRecord
       account_id: account_id,
       inbox_id: conversation.inbox_id,
       message_type: :activity,
-      content: I18n.t('conversations.activity.case_opened', display: display, locale: account.locale)
+      content: opened_activity_content
     )
-    # The header shows the case, so agents already looking at the conversation need to hear about it
-    conversation.dispatch_conversation_updated_event
+    # The header shows the case, so agents already looking at the conversation need to hear about it.
+    # Only their screens: the assignment that opened the case already dispatched conversation_updated,
+    # and dispatching it again would run automation rules and webhooks twice.
+    ActionCableListener.instance.conversation_updated(
+      Events::Base.new(Events::Types::CONVERSATION_UPDATED, Time.zone.now, conversation: conversation)
+    )
+  end
+
+  def opened_activity_content
+    return I18n.t('conversations.activity.case_opened', display: display, locale: account.locale) if team.blank?
+
+    I18n.t('conversations.activity.case_opened_for_team', display: display, team: team.name, locale: account.locale)
   end
 end

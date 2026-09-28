@@ -64,5 +64,42 @@ describe CaseListener do
       expect(conversation.reload).to be_open
       expect(kase.reload.reopened_count).to eq(1)
     end
+
+    # With a bot on the inbox the customer's message hands the conversation back to the bot
+    # (pending), and the later handoff to an agent starts from pending, so that is the reopen.
+    it 'counts the reopen once when a bot inbox takes the conversation back' do
+      create(:agent_bot_inbox, inbox: conversation.inbox, agent_bot: create(:agent_bot, account: account))
+      conversation.resolved!
+
+      perform_enqueued_jobs(only: EventDispatcherJob) { create(:message, account: account, conversation: conversation, message_type: :incoming) }
+      expect(conversation.reload).to be_pending
+      perform_enqueued_jobs(only: EventDispatcherJob) { conversation.open! }
+
+      expect(kase.reload.reopened_count).to eq(1)
+    end
+  end
+
+  describe '#message_created' do
+    let!(:kase) { create(:case, conversation: conversation, subject: '') }
+
+    def message_created(message)
+      listener.message_created(Events::Base.new(:message_created, Time.zone.now, message: message))
+    end
+
+    it "takes the subject from the customer's first message when the case opened before it" do
+      message_created(create(:message, account: account, conversation: conversation, message_type: :outgoing, content: 'Hi, how can we help?'))
+      message_created(create(:message, account: account, conversation: conversation, message_type: :incoming, content: " Room key\n not working "))
+      message_created(create(:message, account: account, conversation: conversation, message_type: :incoming, content: 'Hello?'))
+
+      expect(kase.reload.subject).to eq('Room key not working')
+    end
+
+    it 'keeps a subject the case already has' do
+      kase.update!(subject: 'Cannot check in')
+
+      message_created(create(:message, account: account, conversation: conversation, message_type: :incoming, content: 'Hello?'))
+
+      expect(kase.reload.subject).to eq('Cannot check in')
+    end
   end
 end

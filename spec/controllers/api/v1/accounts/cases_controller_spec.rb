@@ -128,6 +128,15 @@ RSpec.describe 'Cases API', type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
 
+    it 'rejects a missing subject and a team that does not exist' do
+      patch path, params: { subject: nil }, headers: agent.create_new_auth_token, as: :json
+      expect(response).to have_http_status(:unprocessable_content)
+
+      patch path, params: { team_id: 0 }, headers: agent.create_new_auth_token, as: :json
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(agent_case.reload).to have_attributes(subject: 'Cannot check in', team_id: team.id)
+    end
+
     it 'refuses a case outside the agent inboxes' do
       patch "/api/v1/accounts/#{account.id}/cases/#{hidden_case.id}", params: { subject: 'x' },
                                                                       headers: agent.create_new_auth_token, as: :json

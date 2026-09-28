@@ -5,11 +5,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
+import { useUISettings } from 'dashboard/composables/useUISettings';
 import CasesAPI from 'dashboard/api/cases';
 import {
   buildCaseTabs,
   caseTabParams,
   CASE_TABS,
+  CASE_FINISHED_STATUSES,
 } from 'dashboard/helper/caseHelper';
 import { conversationUrl, frontendURL } from 'dashboard/helper/URLHelper';
 import { dynamicTime } from 'shared/helpers/timeHelper';
@@ -27,6 +29,7 @@ import PaginationFooter from 'dashboard/components-next/pagination/PaginationFoo
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import CaseSeverityLabel from 'dashboard/components-next/Cases/CaseSeverityLabel.vue';
 import CaseStatusLabel from 'dashboard/components-next/Cases/CaseStatusLabel.vue';
+import ChannelName from 'dashboard/routes/dashboard/settings/inbox/components/ChannelName.vue';
 
 // Matches CaseFinder::RESULTS_PER_PAGE
 const RESULTS_PER_PAGE = 25;
@@ -36,6 +39,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 const { run, isPending } = useAbortableRequest();
+const { uiSettings, updateUISettings } = useUISettings();
 
 const accountId = useMapGetter('getCurrentAccountId');
 const teams = useMapGetter('teams/getTeams');
@@ -83,7 +87,7 @@ const summary = computed(
     `${t('CASES.COUNT', meta.value.count)} · ${t('CASES.OPEN_COUNT', { n: meta.value.open_count })}`
 );
 
-const inboxName = inboxId => inboxGetter.value(inboxId)?.name;
+const inboxMedium = inboxId => inboxGetter.value(inboxId)?.medium;
 
 const syncFiltersToUrl = () => {
   router.replace({
@@ -137,7 +141,16 @@ const onPageChange = page => {
   fetchCases();
 };
 
+// A Solved or Closed thread is not in the default list, so the list opens on its status
 const openThread = kase => {
+  if (CASE_FINISHED_STATUSES.includes(kase.status)) {
+    updateUISettings({
+      conversations_filter_by: {
+        ...uiSettings.value.conversations_filter_by,
+        status: kase.status,
+      },
+    });
+  }
   router.push(
     frontendURL(
       conversationUrl({ accountId: accountId.value, id: kase.conversation.id })
@@ -220,9 +233,11 @@ onMounted(() => {
                 <span v-else class="text-n-slate-11">
                   {{ t('CASES.NO_PROJECT') }}
                 </span>
-                <span class="text-label-small text-n-slate-11">
-                  {{ inboxName(kase.conversation.inbox_id) }}
-                </span>
+                <ChannelName
+                  :channel-type="kase.conversation.channel"
+                  :medium="inboxMedium(kase.conversation.inbox_id)"
+                  class="text-label-small text-n-slate-11"
+                />
               </div>
             </BaseTableCell>
             <BaseTableCell>

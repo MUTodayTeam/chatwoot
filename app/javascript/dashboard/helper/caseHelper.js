@@ -1,4 +1,5 @@
-// Colours from components-next/label/Label.vue: P1 red, P2 amber, P3 dark, P4 grey (spec 9.2)
+// Colours from components-next/label/Label.vue: P1 red, P2 amber, P3 iris (Label has no dark
+// tone for the spec's black), P4 grey (spec 9.2)
 export const CASE_SEVERITY_COLORS = Object.freeze({
   p1: 'ruby',
   p2: 'amber',
@@ -14,6 +15,9 @@ export const CASE_STATUS_COLORS = Object.freeze({
   resolved: 'teal',
   closed: 'slate',
 });
+
+// Solved and Closed: the case is no longer being worked on
+export const CASE_FINISHED_STATUSES = Object.freeze(['resolved', 'closed']);
 
 export const CASE_TABS = Object.freeze({ ALL: 'all', MINE: 'mine' });
 
