@@ -8,6 +8,11 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  // The countdown only shows while the conversation is open.
+  status: {
+    type: String,
+    default: '',
+  },
   // The conversation header has room to say what the clock means; the list row
   // keeps it to the time and carries the wording in the tooltip.
   showLabel: {
@@ -19,8 +24,11 @@ const props = defineProps({
 const { t } = useI18n();
 
 const replyDueAt = computed(() => props.replyDueAt);
-const { isActive, isOverdue, isNearlyDue, formattedTime } =
-  useReplyCountdown(replyDueAt);
+const status = computed(() => props.status);
+const { isActive, isOverdue, isNearlyDue, formattedTime } = useReplyCountdown(
+  replyDueAt,
+  status
+);
 
 const toneClasses = computed(() => {
   if (isOverdue.value) return 'bg-n-ruby-9 text-white';

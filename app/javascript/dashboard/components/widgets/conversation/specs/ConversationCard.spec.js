@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils';
+import { CONVERSATION_STATUS } from 'shared/constants/messages';
 import ConversationCard from '../ConversationCard.vue';
 
 const defaultChat = {
@@ -27,6 +28,7 @@ const mountComponent = (chat, currentContact = {}, props = {}) =>
     global: {
       stubs: {
         'fluent-icon': true,
+        ReplyCountdown: false,
       },
     },
   });
@@ -69,5 +71,27 @@ describe('ConversationCard', () => {
     expect(wrapper.findComponent({ name: 'Icon' }).props('icon')).toBe(
       'i-lucide-bot'
     );
+  });
+
+  it('shows the reply countdown on an open conversation', () => {
+    const wrapper = mountComponent({
+      status: CONVERSATION_STATUS.OPEN,
+      reply_due_at: Math.floor(Date.now() / 1000) + 600,
+    });
+
+    expect(wrapper.find('.i-lucide-timer').exists()).toBe(true);
+  });
+
+  it.each([
+    CONVERSATION_STATUS.PENDING,
+    CONVERSATION_STATUS.SNOOZED,
+    CONVERSATION_STATUS.RESOLVED,
+  ])('hides the reply countdown on a %s conversation', status => {
+    const wrapper = mountComponent({
+      status,
+      reply_due_at: Math.floor(Date.now() / 1000) + 600,
+    });
+
+    expect(wrapper.find('.i-lucide-timer').exists()).toBe(false);
   });
 });
