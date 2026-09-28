@@ -16,6 +16,9 @@ additionalProperties:
     snoozed:
       type: number
       description: Number of snoozed conversations
+    closed:
+      type: number
+      description: Number of closed conversations
     total:
       type: number
       description: Total number of conversations
@@ -25,10 +28,12 @@ example:
     resolved: 20
     pending: 5
     snoozed: 2
-    total: 37
+    closed: 4
+    total: 41
   Channel::Api:
     open: 5
     resolved: 15
     pending: 3
     snoozed: 1
+    closed: 0
     total: 24

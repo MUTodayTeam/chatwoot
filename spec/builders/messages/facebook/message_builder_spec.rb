@@ -329,6 +329,14 @@ describe Messages::Facebook::MessageBuilder do
           expect(facebook_channel.inbox.conversations.last.id).not_to eq(existing_conversation.id)
           expect(Conversation.count).to eq(inital_count + 1)
         end
+
+        it 'creates a new conversation if last conversation is closed' do
+          closed_conversation = create(:conversation, account_id: facebook_channel.inbox.account.id, inbox_id: facebook_channel.inbox.id,
+                                                      contact_id: contact.id, contact_inbox_id: contact_inbox.id, status: :closed)
+
+          expect { mocked_message_builder }.to change(Conversation, :count).by(1)
+          expect(facebook_channel.inbox.conversations.last.id).not_to eq(closed_conversation.id)
+        end
       end
 
       context 'when lock to single conversation is enabled' do
@@ -359,6 +367,16 @@ describe Messages::Facebook::MessageBuilder do
 
           expect(facebook_channel.inbox.conversations.last.id).to eq(existing_conversation.id)
           expect(Conversation.count).to eq(inital_count)
+        end
+
+        it 'creates a new conversation instead of reusing an older one if last conversation is closed' do
+          conversation_attributes = { account_id: facebook_channel.inbox.account.id, inbox_id: facebook_channel.inbox.id,
+                                      contact_id: contact.id, contact_inbox_id: contact_inbox.id }
+          older_conversation = create(:conversation, conversation_attributes.merge(status: :resolved, created_at: 2.days.ago))
+          closed_conversation = create(:conversation, conversation_attributes.merge(status: :closed, created_at: 1.day.ago))
+
+          expect { mocked_message_builder }.to change(Conversation, :count).by(1)
+          expect(facebook_channel.inbox.conversations.last.id).not_to be_in([older_conversation.id, closed_conversation.id])
         end
       end
     end

@@ -10,6 +10,9 @@ export default {
     RESOLVED: 'resolved',
     PENDING: 'pending',
     SNOOZED: 'snoozed',
+    CLOSED: 'closed',
+    // open, pending and snoozed together: every conversation still being worked on
+    ACTIVE: 'active',
     ALL: 'all',
   },
   CONVERSATION_TYPE: {

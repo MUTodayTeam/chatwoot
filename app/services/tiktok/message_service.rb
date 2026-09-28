@@ -23,10 +23,11 @@ class Tiktok::MessageService
   end
 
   def conversation
+    # a closed conversation is read-only, so a message after it always starts a new one
     @conversation ||= if channel.inbox.lock_to_single_conversation
-                        contact_inbox.conversations.order(created_at: :desc).first
+                        contact_inbox.conversations.order(created_at: :desc).first.then { |last| last unless last&.closed? }
                       else
-                        contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
+                        contact_inbox.conversations.where.not(status: %i[resolved closed]).order(created_at: :desc).first
                       end
     @conversation ||= create_conversation(channel, contact_inbox, tt_conversation_id)
   end

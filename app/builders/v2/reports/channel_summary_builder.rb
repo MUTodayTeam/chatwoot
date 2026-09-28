@@ -26,13 +26,15 @@ class V2::Reports::ChannelSummaryBuilder
     resolved_count = status_counts['resolved'] || 0
     pending_count = status_counts['pending'] || 0
     snoozed_count = status_counts['snoozed'] || 0
+    closed_count = status_counts['closed'] || 0
 
     {
       open: open_count,
       resolved: resolved_count,
       pending: pending_count,
       snoozed: snoozed_count,
-      total: open_count + resolved_count + pending_count + snoozed_count
+      closed: closed_count,
+      total: open_count + resolved_count + pending_count + snoozed_count + closed_count
     }
   end
 end

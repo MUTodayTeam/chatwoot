@@ -248,6 +248,16 @@ describe Messages::Instagram::MessageBuilder do
       expect(instagram_inbox.conversations.last.id).not_to eq(existing_conversation.id)
       expect(Conversation.count).to eq(initial_count + 1)
     end
+
+    it 'creates a new conversation if last conversation is closed' do
+      messaging = dm_params[:entry][0]['messaging'][0]
+      contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+      closed_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
+                                                  contact_id: contact.id, status: :closed)
+
+      expect { described_class.new(messaging, instagram_inbox).perform }.to change(Conversation, :count).by(1)
+      expect(instagram_inbox.conversations.last.id).not_to eq(closed_conversation.id)
+    end
   end
 
   context 'when lock to single conversation is enabled' do
@@ -279,6 +289,16 @@ describe Messages::Instagram::MessageBuilder do
 
       expect(instagram_inbox.conversations.last.id).to eq(existing_conversation.id)
       expect(Conversation.count).to eq(initial_count)
+    end
+
+    it 'creates a new conversation if last conversation is closed' do
+      messaging = dm_params[:entry][0]['messaging'][0]
+      contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+      closed_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
+                                                  contact_id: contact.id, status: :closed)
+
+      expect { described_class.new(messaging, instagram_inbox).perform }.to change(Conversation, :count).by(1)
+      expect(instagram_inbox.conversations.last.id).not_to eq(closed_conversation.id)
     end
   end
 

@@ -479,6 +479,31 @@ describe Line::IncomingMessageService do
         expect(line_channel.inbox.conversations.last.messages.count).to eq(2)
         expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
       end
+
+      it 'creates a new conversation when the previous conversation is closed' do
+        line_bot = double
+        line_user_profile = double
+        allow(Line::Bot::Client).to receive(:new).and_return(line_bot)
+        allow(line_bot).to receive(:get_profile).and_return(line_user_profile)
+        allow(line_user_profile).to receive(:body).and_return(
+          {
+            'displayName': 'LINE Test',
+            'userId': 'U4af4980629',
+            'pictureUrl': 'https://test.com'
+          }.to_json
+        )
+
+        described_class.new(inbox: line_channel.inbox, params: params).perform
+        line_channel.inbox.conversations.last.update!(status: :closed)
+
+        new_params = params.deep_dup
+        new_params[:events][0][:message][:id] = '325709'
+        new_params[:events][0][:message][:text] = 'Second message'
+        described_class.new(inbox: line_channel.inbox, params: new_params).perform
+
+        expect(line_channel.inbox.conversations.count).to eq(2)
+        expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
+      end
     end
 
     context 'when lock_to_single_conversation is true' do
@@ -516,6 +541,31 @@ describe Line::IncomingMessageService do
         # Should use the same conversation
         expect(line_channel.inbox.conversations.count).to eq(1)
         expect(line_channel.inbox.conversations.last.messages.count).to eq(2)
+        expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
+      end
+
+      it 'creates a new conversation when the latest conversation is closed' do
+        line_bot = double
+        line_user_profile = double
+        allow(Line::Bot::Client).to receive(:new).and_return(line_bot)
+        allow(line_bot).to receive(:get_profile).and_return(line_user_profile)
+        allow(line_user_profile).to receive(:body).and_return(
+          {
+            'displayName': 'LINE Test',
+            'userId': 'U4af4980629',
+            'pictureUrl': 'https://test.com'
+          }.to_json
+        )
+
+        described_class.new(inbox: line_channel.inbox, params: params).perform
+        line_channel.inbox.conversations.last.update!(status: :closed)
+
+        new_params = params.deep_dup
+        new_params[:events][0][:message][:id] = '325709'
+        new_params[:events][0][:message][:text] = 'Second message'
+        described_class.new(inbox: line_channel.inbox, params: new_params).perform
+
+        expect(line_channel.inbox.conversations.count).to eq(2)
         expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
       end
     end

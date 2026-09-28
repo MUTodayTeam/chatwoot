@@ -45,6 +45,12 @@ module Chatwoot
     # rubocop:disable Rails/FilePath
     config.eager_load_paths += Dir["#{Rails.root}/enterprise/app/**"]
     # rubocop:enable Rails/FilePath
+    # MU Today fork overrides, prepended after enterprise by prepend_mod_with (ChatwootApp.extensions)
+    config.eager_load_paths << Rails.root.join('custom/lib')
+    config.eager_load_paths << Rails.root.join('custom/listeners')
+    # rubocop:disable Rails/FilePath
+    config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]
+    # rubocop:enable Rails/FilePath
     # Add enterprise views to the view paths
     config.paths['app/views'].unshift('enterprise/app/views')
 
