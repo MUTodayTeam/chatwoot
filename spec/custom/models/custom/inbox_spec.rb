@@ -18,7 +18,7 @@ RSpec.describe Custom::Inbox do
 
   context 'when the project has no team' do
     it 'keeps every inbox member and every admin assignable' do
-      expect(inbox.assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
+      expect(inbox.entitled_assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
     end
 
     it 'keeps every inbox member as an auto-assignment candidate' do
@@ -30,13 +30,24 @@ RSpec.describe Custom::Inbox do
     before { project.teams << team }
 
     it 'offers only inbox members of those teams, admins included only through a team' do
-      expect(inbox.assignable_agents).to contain_exactly(team_agent, team_admin)
+      expect(inbox.entitled_assignable_agents).to contain_exactly(team_agent, team_admin)
     end
 
     it 'leaves out a team member who is not in the inbox' do
       create(:team_member, team: team, user: create(:user, account: account, role: :agent))
 
-      expect(inbox.assignable_agents).to contain_exactly(team_agent, team_admin)
+      expect(inbox.entitled_assignable_agents).to contain_exactly(team_agent, team_admin)
+    end
+
+    it 'keeps the stock assignable agents, which also decide who can be a participant' do
+      expect(inbox.assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
+    end
+
+    it 'still lets an inbox member or an admin outside those teams be a participant' do
+      conversation = create(:conversation, account: account, inbox: inbox)
+
+      expect(conversation.conversation_participants.create(user: other_agent)).to be_persisted
+      expect(conversation.conversation_participants.create(user: other_admin)).to be_persisted
     end
 
     it 'narrows auto-assignment candidates to those teams' do
@@ -47,6 +58,6 @@ RSpec.describe Custom::Inbox do
   it 'keeps an inbox without a project on stock behaviour' do
     inbox.update!(project: nil)
 
-    expect(inbox.assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
+    expect(inbox.entitled_assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
   end
 end

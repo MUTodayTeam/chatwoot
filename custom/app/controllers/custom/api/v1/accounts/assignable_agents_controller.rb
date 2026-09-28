@@ -5,6 +5,6 @@ module Custom::Api::V1::Accounts::AssignableAgentsController
     super
     return unless ProjectTeam.exists?(project_id: @inboxes.map(&:project_id))
 
-    @assignable_agents = @inboxes.map { |inbox| inbox.assignable_agents.to_a }.inject(:&)
+    @assignable_agents = @inboxes.map { |inbox| inbox.entitled_assignable_agents.to_a }.inject(:&)
   end
 end

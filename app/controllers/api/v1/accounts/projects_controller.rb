@@ -7,7 +7,7 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
   def index
-    @projects = Current.account.projects.order(:name)
+    @projects = Current.account.projects.includes(:inboxes, :project_teams).order(:name)
   end
 
   def show; end
