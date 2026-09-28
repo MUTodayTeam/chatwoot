@@ -597,6 +597,8 @@
         "NO_AGENTS": "No agents in this project"
       },
       "INTERVAL_SUMMARY": {
+        "HEADER": "Interval summary",
+        "SCOPE_NOTE": "Covers this card's period and project, by each chat's first customer message. The Conversation Interval heatmap below has its own range.",
         "PEAK_HOUR": "Peak hour",
         "PEAK_HOUR_DETAIL": "{count} of {total} chats",
         "BUSIEST_DAY": "Busiest day",

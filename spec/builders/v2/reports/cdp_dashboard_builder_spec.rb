@@ -38,6 +38,8 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
 
     create(:message, account: account, inbox: line_inbox, conversation: line_conversation, message_type: :incoming,
                      created_at: Time.utc(2026, 9, 14, 10))
+    create(:message, account: account, inbox: line_inbox, conversation: line_conversation, message_type: :outgoing,
+                     sender: create(:agent_bot, account: account), created_at: Time.utc(2026, 9, 14, 10, 1))
     create(:message, account: account, inbox: line_inbox, conversation: line_conversation, message_type: :outgoing, sender: alice,
                      private: true, created_at: Time.utc(2026, 9, 14, 10, 5))
     create(:message, account: account, inbox: line_inbox, conversation: line_conversation, message_type: :outgoing, sender: alice,
@@ -83,9 +85,9 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
       expect(report[:kpis][:total_chats]).to eq(current: 3, previous: 1, delta_percent: 200.0)
     end
 
-    it 'counts incoming and outgoing messages without private notes or activity messages' do
+    it 'counts customer and agent messages without private notes, activity or bot messages' do
       expect(report[:kpis][:incoming_messages]).to eq(current: 5, previous: 1, delta_percent: 400.0)
-      expect(report[:kpis][:outgoing_messages]).to eq(current: 2, previous: 1, delta_percent: 100.0)
+      expect(report[:kpis][:outgoing_messages]).to eq(current: 1, previous: 1, delta_percent: 0.0)
     end
 
     it 'averages the first agent reply over conversations that have one' do

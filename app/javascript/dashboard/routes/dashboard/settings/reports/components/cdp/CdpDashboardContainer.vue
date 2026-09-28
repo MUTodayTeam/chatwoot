@@ -7,7 +7,6 @@ import endOfDay from 'date-fns/endOfDay';
 import format from 'date-fns/format';
 import fromUnixTime from 'date-fns/fromUnixTime';
 import getUnixTime from 'date-fns/getUnixTime';
-import parseISO from 'date-fns/parseISO';
 import startOfDay from 'date-fns/startOfDay';
 import startOfMonth from 'date-fns/startOfMonth';
 import subDays from 'date-fns/subDays';
@@ -24,6 +23,8 @@ import MetricCard from '../overview/MetricCard.vue';
 import {
   DELTA_TONES,
   buildDailyChannelChart,
+  formatCount,
+  formatDayWithWeekday,
   formatDeltaPercent,
   formatDuration,
   formatHourRange,
@@ -173,7 +174,7 @@ const comparedWith = computed(() => {
 
 const formatKpiValue = (kpi, value) => {
   if (kpi.duration) return formatDuration(value);
-  return value.toLocaleString(locale.value);
+  return formatCount(value, locale.value);
 };
 
 const kpiCards = computed(() =>
@@ -235,7 +236,7 @@ const intervalCards = computed(() => {
     {
       key: 'busiestDay',
       label: t('OVERVIEW_REPORTS.CDP_DASHBOARD.INTERVAL_SUMMARY.BUSIEST_DAY'),
-      value: format(parseISO(busiestDay.date), 'dd/MM (EEE)'),
+      value: formatDayWithWeekday(busiestDay.date, locale.value),
       detail: t(
         'OVERVIEW_REPORTS.CDP_DASHBOARD.INTERVAL_SUMMARY.BUSIEST_DAY_DETAIL',
         {
@@ -423,6 +424,16 @@ onMounted(() => {
           </div>
         </div>
 
+        <div class="flex flex-col gap-1">
+          <h6 class="mb-0 text-heading-3 text-n-slate-12">
+            {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.INTERVAL_SUMMARY.HEADER') }}
+          </h6>
+          <span class="text-body-main text-n-slate-11">
+            {{
+              t('OVERVIEW_REPORTS.CDP_DASHBOARD.INTERVAL_SUMMARY.SCOPE_NOTE')
+            }}
+          </span>
+        </div>
         <div
           v-if="intervalCards.length"
           class="grid grid-cols-1 gap-4 md:grid-cols-3"

@@ -56,10 +56,26 @@ export const getAgentLoadPercent = ({ assignedCount, limit }) => {
 export const formatHourRange = hour =>
   `${String(hour).padStart(2, '0')}:00 – ${String((hour + 1) % 24).padStart(2, '0')}:00`;
 
+// vue-i18n keys some locales with an underscore (pt_BR, zh_CN), which Intl rejects.
+const toIntlLocale = locale => locale.replace('_', '-');
+
+export const formatCount = (value, locale) =>
+  value.toLocaleString(toIntlLocale(locale));
+
 export const getWeekdayName = (weekday, locale) => {
   const date = new Date(REFERENCE_SUNDAY);
   date.setDate(REFERENCE_SUNDAY.getDate() + weekday);
-  return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
+  return new Intl.DateTimeFormat(toIntlLocale(locale), {
+    weekday: 'long',
+  }).format(date);
+};
+
+export const formatDayWithWeekday = (isoDate, locale) => {
+  const date = parseISO(isoDate);
+  const weekday = new Intl.DateTimeFormat(toIntlLocale(locale), {
+    weekday: 'short',
+  }).format(date);
+  return `${format(date, 'dd/MM')} (${weekday})`;
 };
 
 // `series` lists { key, label, color } in stack order, bottom first.

@@ -1,6 +1,8 @@
 import {
   DELTA_TONES,
   buildDailyChannelChart,
+  formatCount,
+  formatDayWithWeekday,
   formatDeltaPercent,
   formatDuration,
   formatHourRange,
@@ -75,6 +77,16 @@ describe('cdpDashboardHelper', () => {
     expect(getWeekdayName(0, 'en')).toBe('Sunday');
     expect(getWeekdayName(1, 'en')).toBe('Monday');
     expect(getWeekdayName(6, 'en')).toBe('Saturday');
+  });
+
+  it('accepts the underscore locale keys vue-i18n uses', () => {
+    expect(getWeekdayName(1, 'pt_BR')).toBe('segunda-feira');
+    expect(formatCount(1234, 'pt_BR')).toBe('1.234');
+    expect(formatDayWithWeekday('2026-09-14', 'zh_CN')).toBe('14/09 (周一)');
+  });
+
+  it('names the busiest day with a weekday in the same locale', () => {
+    expect(formatDayWithWeekday('2026-09-14', 'en')).toBe('14/09 (Mon)');
   });
 
   it('builds a stacked series per channel with the day total in the label', () => {

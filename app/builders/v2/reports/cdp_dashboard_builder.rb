@@ -48,24 +48,13 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def build
-    {
-      period: period,
-      kpis: kpis,
-      daily_channels: daily_channels,
-      interval_summary: interval_summary,
-      agent_load: agent_load
-    }
+    { period: period, kpis: kpis, daily_channels: daily_channels, interval_summary: interval_summary, agent_load: agent_load }
   end
 
   private
 
   def period
-    {
-      since: range.begin.to_i,
-      until: range.end.to_i,
-      previous_since: previous_range.begin.to_i,
-      previous_until: previous_range.end.to_i
-    }
+    { since: range.begin.to_i, until: range.end.to_i, previous_since: previous_range.begin.to_i, previous_until: previous_range.end.to_i }
   end
 
   def previous_range
@@ -83,10 +72,10 @@ class V2::Reports::CdpDashboardBuilder
 
   def period_metrics(period_range)
     total_chats, first_response_time = started_chat_stats(period_range)
-    message_counts = account.messages.unscope(:order)
-                            .where(inbox_id: inbox_ids, created_at: period_range, private: false, message_type: %i[incoming outgoing])
-                            .group(:message_type)
-                            .count
+    # Outgoing counts only agent (User) messages; bot, automation and Captain replies are left out.
+    messages = account.messages.unscope(:order).where(inbox_id: inbox_ids, created_at: period_range, private: false)
+    message_counts = messages.where(message_type: :incoming).or(messages.where(message_type: :outgoing, sender_type: 'User'))
+                             .group(:message_type).count
 
     {
       total_chats: total_chats,
@@ -170,18 +159,26 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def agent_load
-    counts = account.conversations.where(inbox_id: inbox_ids, status: ACTIVE_CONVERSATION_STATUSES).group(:assignee_id).count
     agents = account.users.where(id: InboxMember.where(inbox_id: inbox_ids).select(:user_id)).pluck(:id, :name)
-    limits = agent_limits(agents.map(&:first))
+    inbox_limits = agent_inbox_limits(agents.map(&:first))
 
     rows = agents.map do |id, name|
-      { id: id, name: name, assigned_count: counts.fetch(id, 0), limit: limits.fetch(id, DEFAULT_AGENT_CONVERSATION_LIMIT) }
+      limits = inbox_limits[id]
+      # An agent with per-inbox caps is measured only on the capped inboxes, against the sum of those caps.
+      next { id: id, name: name, assigned_count: assigned_count(id, inbox_ids), limit: DEFAULT_AGENT_CONVERSATION_LIMIT } unless limits
+
+      { id: id, name: name, assigned_count: assigned_count(id, limits.keys), limit: limits.values.sum }
     end
     rows.sort_by { |row| [-row[:assigned_count], row[:name]] }
   end
 
-  # Per-agent conversation limits; Enterprise reads them from advanced assignment capacity policies.
-  def agent_limits(_user_ids)
+  def assigned_count(agent_id, counted_inbox_ids)
+    @active_counts ||= account.conversations.where(inbox_id: inbox_ids, status: ACTIVE_CONVERSATION_STATUSES).group(:assignee_id, :inbox_id).count
+    @active_counts.sum { |(assignee_id, inbox_id), count| assignee_id == agent_id && counted_inbox_ids.include?(inbox_id) ? count : 0 }
+  end
+
+  # { user_id => { inbox_id => limit } } for agents capped per inbox; Enterprise reads advanced assignment capacity policies.
+  def agent_inbox_limits(_user_ids)
     {}
   end
 

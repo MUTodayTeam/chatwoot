@@ -34,6 +34,20 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
         { name: 'Bob', limit: 10 }
       )
     end
+
+    it 'counts a capped agent only on the inboxes that have a cap' do
+      uncapped_inbox = create(:inbox, account: account, project: project)
+      create(:inbox_member, user: alice, inbox: uncapped_inbox)
+      create(:conversation, account: account, inbox: first_inbox, assignee: alice, status: :open)
+      create(:conversation, account: account, inbox: second_inbox, assignee: alice, status: :snoozed)
+      create_list(:conversation, 4, account: account, inbox: uncapped_inbox, assignee: alice, status: :open)
+      create_list(:conversation, 2, account: account, inbox: uncapped_inbox, assignee: bob, status: :open)
+
+      expect(agent_load.map { |row| row.slice(:name, :assigned_count, :limit) }).to eq([
+                                                                                         { name: 'Alice', assigned_count: 2, limit: 7 },
+                                                                                         { name: 'Bob', assigned_count: 2, limit: 10 }
+                                                                                       ])
+    end
   end
 
   context 'when advanced assignment is disabled' do
