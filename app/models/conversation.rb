@@ -10,9 +10,11 @@
 #  cached_label_list      :text
 #  contact_last_seen_at   :datetime
 #  custom_attributes      :jsonb
+#  expired_at             :datetime
 #  first_reply_created_at :datetime
 #  identifier             :string
 #  last_activity_at       :datetime         not null
+#  missed_at              :datetime
 #  priority               :integer
 #  reply_due_at           :datetime
 #  snoozed_until          :datetime
@@ -38,6 +40,8 @@
 #  conv_acid_inbid_stat_asgnid_idx                      (account_id,inbox_id,status,assignee_id)
 #  index_conversations_on_account_id                    (account_id)
 #  index_conversations_on_account_id_and_display_id     (account_id,display_id) UNIQUE
+#  index_conversations_on_account_id_and_expired_at     (account_id,expired_at) WHERE (expired_at IS NOT NULL)
+#  index_conversations_on_account_id_and_missed_at      (account_id,missed_at) WHERE (missed_at IS NOT NULL)
 #  index_conversations_on_account_id_status_created_at  (account_id,status,created_at)
 #  index_conversations_on_assignee_id_and_account_id    (assignee_id,account_id)
 #  index_conversations_on_campaign_id                   (campaign_id)
@@ -69,6 +73,8 @@ class Conversation < ApplicationRecord
   include ConversationMuteHelpers
 
   CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS = %w[conversation_language].freeze
+  # Deadline moves smaller than this are not worth a write or a broadcast to every agent.
+  REPLY_DEADLINE_TOLERANCE = 5.seconds
   FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS = %w[browser_language conversation_language mail_subject referer].freeze
   FILTERED_UNREAD_COUNT_UPDATE_KEYS = %w[
     cached_label_list campaign_id custom_attributes first_reply_created_at label_list last_activity_at priority snoozed_until waiting_since
@@ -142,7 +148,7 @@ class Conversation < ApplicationRecord
   before_create :ensure_waiting_since
   # Runs after ensure_waiting_since so the deadline is derived from the value it sets.
   before_create :sync_reply_due_at
-  before_update :sync_reply_due_at, if: :will_save_change_to_waiting_since?
+  before_update :sync_reply_due_at, if: -> { will_save_change_to_waiting_since? || (will_save_change_to_status? && open?) }
 
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
@@ -161,7 +167,34 @@ class Conversation < ApplicationRecord
   def extend_reply_deadline!
     return false if reply_due_at.blank?
 
-    update!(reply_due_at: reply_due_at + live_chat_rule.extension_minutes.minutes)
+    minutes = live_chat_rule.extension_minutes
+    update!(reply_due_at: reply_due_at + minutes.minutes)
+    create_reply_deadline_extended_message(minutes)
+    true
+  end
+
+  # The deadline follows the customer's latest message, so every inbound message on an open
+  # conversation we still owe a reply restarts the clock, dropping any time added by
+  # extend_reply_deadline!. The guards run in SQL so a reply saved after this object was loaded
+  # wins, and the deadline is recomputed from the latest stored message rather than this one.
+  # Only agents' countdowns need to hear about it, so this skips conversation_updated and the
+  # automation, webhook and bot listeners behind it.
+  def restart_reply_deadline
+    return if muted?
+
+    due = reply_deadline_from_latest_message
+    now = Time.current
+    # rubocop:disable Rails/SkipsModelValidations
+    restarted = Conversation.open.where(id: id).where.not(waiting_since: nil)
+                            .where('reply_due_at IS NULL OR ABS(EXTRACT(EPOCH FROM reply_due_at - ?)) >= ?', due, REPLY_DEADLINE_TOLERANCE.to_i)
+                            .update_all(reply_due_at: due, updated_at: now)
+    # rubocop:enable Rails/SkipsModelValidations
+    return if restarted.zero?
+
+    self.reply_due_at = due
+    self.updated_at = now
+    clear_attribute_changes(%w[reply_due_at updated_at])
+    Rails.configuration.dispatcher.dispatch(CONVERSATION_REPLY_DEADLINE_CHANGED, now, conversation: self)
   end
 
   def can_reply?
@@ -314,11 +347,17 @@ class Conversation < ApplicationRecord
     self.waiting_since = created_at
   end
 
-  # The customer is owed a reply until an agent sends one, so the deadline hangs off
-  # waiting_since and is cleared with it. Any time granted by "add time" is dropped on
-  # purpose: a fresh inbound message starts a fresh clock.
+  # The customer is owed a reply until an agent sends one, so the deadline is set with
+  # waiting_since and cleared with it. It is also recomputed when the conversation opens (bot
+  # handoff, leaving hold), since messages that came in meanwhile never moved it. Later inbound
+  # messages on an open conversation move it through restart_reply_deadline.
   def sync_reply_due_at
-    self.reply_due_at = waiting_since.present? ? waiting_since + live_chat_rule.reply_timeout_minutes.minutes : nil
+    self.reply_due_at = waiting_since.present? ? reply_deadline_from_latest_message : nil
+  end
+
+  def reply_deadline_from_latest_message
+    latest = messages.incoming.maximum(:created_at) unless new_record?
+    (latest || waiting_since) + live_chat_rule.reply_timeout_minutes.minutes
   end
 
   def validate_additional_attributes

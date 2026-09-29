@@ -9,6 +9,7 @@ import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDeadlineControl.vue';
+import StatusDropdown from 'dashboard/components-next/Conversation/StatusDropdown.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
@@ -206,6 +207,7 @@ const copyConversationId = async () => {
         class="hidden md:flex"
       />
       <ConversationCallButton :inbox="inbox" :chat="currentChat" />
+      <StatusDropdown />
       <MoreActions :conversation-id="currentChat.id" />
     </div>
   </div>

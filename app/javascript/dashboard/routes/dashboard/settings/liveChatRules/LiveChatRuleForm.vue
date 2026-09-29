@@ -25,6 +25,9 @@ const uiFlags = useMapGetter('liveChatRules/getUIFlags');
 const projectId = ref(null);
 const replyTimeoutMinutes = ref(60);
 const extensionMinutes = ref(60);
+const waitingTimeMinutes = ref(60);
+const autoSolveHours = ref(24);
+const autoCloseHours = ref(48);
 
 // The scope of a saved rule is fixed: moving it would silently retarget which
 // conversations it governs. Only a brand new rule lets you choose.
@@ -62,12 +65,18 @@ const isValid = computed(
   () =>
     replyTimeoutMinutes.value > 0 &&
     extensionMinutes.value > 0 &&
+    waitingTimeMinutes.value > 0 &&
+    autoSolveHours.value > 0 &&
+    autoCloseHours.value > 0 &&
     hasSelectableScope.value
 );
 
 onMounted(() => {
   replyTimeoutMinutes.value = props.rule.replyTimeoutMinutes ?? 60;
   extensionMinutes.value = props.rule.extensionMinutes ?? 60;
+  waitingTimeMinutes.value = props.rule.waitingTimeMinutes ?? 60;
+  autoSolveHours.value = props.rule.autoSolveHours ?? 24;
+  autoCloseHours.value = props.rule.autoCloseHours ?? 48;
 
   if (props.rule.projectId) {
     projectId.value = props.rule.projectId;
@@ -84,6 +93,9 @@ const onSubmit = async () => {
     projectId: projectId.value || null,
     replyTimeoutMinutes: Number(replyTimeoutMinutes.value),
     extensionMinutes: Number(extensionMinutes.value),
+    waitingTimeMinutes: Number(waitingTimeMinutes.value),
+    autoSolveHours: Number(autoSolveHours.value),
+    autoCloseHours: Number(autoCloseHours.value),
   };
 
   try {
@@ -152,6 +164,30 @@ const isSaving = computed(
         class="w-full"
         :label="$t('LIVE_CHAT_RULES.FORM.EXTENSION.LABEL')"
         :help-text="$t('LIVE_CHAT_RULES.FORM.EXTENSION.HELP')"
+      />
+
+      <woot-input
+        v-model="waitingTimeMinutes"
+        type="number"
+        class="w-full"
+        :label="$t('LIVE_CHAT_RULES.FORM.WAITING_TIME.LABEL')"
+        :help-text="$t('LIVE_CHAT_RULES.FORM.WAITING_TIME.HELP')"
+      />
+
+      <woot-input
+        v-model="autoSolveHours"
+        type="number"
+        class="w-full"
+        :label="$t('LIVE_CHAT_RULES.FORM.AUTO_SOLVE.LABEL')"
+        :help-text="$t('LIVE_CHAT_RULES.FORM.AUTO_SOLVE.HELP')"
+      />
+
+      <woot-input
+        v-model="autoCloseHours"
+        type="number"
+        class="w-full"
+        :label="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.LABEL')"
+        :help-text="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.HELP')"
       />
 
       <div class="flex items-center justify-end w-full gap-2 px-0 py-2">

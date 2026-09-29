@@ -18,6 +18,9 @@ import {
 // shown before an account has saved any rules of its own.
 const DEFAULT_REPLY_TIMEOUT_MINUTES = 60;
 const DEFAULT_EXTENSION_MINUTES = 60;
+const DEFAULT_WAITING_TIME_MINUTES = 60;
+const DEFAULT_AUTO_SOLVE_HOURS = 24;
+const DEFAULT_AUTO_CLOSE_HOURS = 48;
 
 const store = useStore();
 const { t } = useI18n();
@@ -40,6 +43,9 @@ const accountDefault = computed(() => {
     projectId: null,
     replyTimeoutMinutes: DEFAULT_REPLY_TIMEOUT_MINUTES,
     extensionMinutes: DEFAULT_EXTENSION_MINUTES,
+    waitingTimeMinutes: DEFAULT_WAITING_TIME_MINUTES,
+    autoSolveHours: DEFAULT_AUTO_SOLVE_HOURS,
+    autoCloseHours: DEFAULT_AUTO_CLOSE_HOURS,
   };
 });
 
@@ -100,6 +106,9 @@ const tableHeaders = computed(() => [
   t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.SCOPE'),
   t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.REPLY_TIMEOUT'),
   t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.EXTENSION'),
+  t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.WAITING_TIME'),
+  t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.AUTO_SOLVE'),
+  t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.AUTO_CLOSE'),
   t('LIVE_CHAT_RULES.LIST.TABLE_HEADER.ACTION'),
 ]);
 
@@ -168,6 +177,36 @@ onBeforeMount(() => {
                   {{
                     $t('LIVE_CHAT_RULES.LIST.MINUTES', {
                       n: rule.extensionMinutes,
+                    })
+                  }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell>
+                <span class="text-body-main text-n-slate-11">
+                  {{
+                    $t('LIVE_CHAT_RULES.LIST.MINUTES', {
+                      n: rule.waitingTimeMinutes,
+                    })
+                  }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell>
+                <span class="text-body-main text-n-slate-11">
+                  {{
+                    $t('LIVE_CHAT_RULES.LIST.HOURS', {
+                      n: rule.autoSolveHours,
+                    })
+                  }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell>
+                <span class="text-body-main text-n-slate-11">
+                  {{
+                    $t('LIVE_CHAT_RULES.LIST.HOURS', {
+                      n: rule.autoCloseHours,
                     })
                   }}
                 </span>

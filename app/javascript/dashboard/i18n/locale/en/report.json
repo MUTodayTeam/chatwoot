@@ -571,6 +571,43 @@
       "CONVERSATIONS": "{count} conversations",
       "DOWNLOAD_REPORT": "Download report"
     },
+    "CDP_DASHBOARD": {
+      "HEADER": "Chat performance",
+      "LOADING_MESSAGE": "Loading chat performance...",
+      "ALL_PROJECTS": "All projects",
+      "COMPARED_WITH": "Compared with {range}",
+      "PREVIOUS_VALUE": "Previous period: {value}",
+      "KPIS": {
+        "TOTAL_CHATS": "Total chats",
+        "INCOMING_MESSAGES": "Incoming messages",
+        "OUTGOING_MESSAGES": "Outgoing messages",
+        "FIRST_RESPONSE_TIME": "First response"
+      },
+      "DAILY_CHANNELS": {
+        "HEADER": "Chats per day by channel",
+        "ARIA_LABEL": "Conversations per day split by channel",
+        "LINE": "LINE",
+        "FACEBOOK": "Facebook",
+        "OTHERS": "Others",
+        "NO_DATA": "No chats in this range"
+      },
+      "AGENT_LOAD": {
+        "HEADER": "Agent load now",
+        "COUNT": "{count}/{limit}",
+        "NO_AGENTS": "No agents in this project"
+      },
+      "INTERVAL_SUMMARY": {
+        "HEADER": "Interval summary",
+        "SCOPE_NOTE": "Covers this card's period and project, by each chat's first customer message. The Conversation Interval heatmap below has its own range.",
+        "PEAK_HOUR": "Peak hour",
+        "PEAK_HOUR_DETAIL": "{count} of {total} chats",
+        "BUSIEST_DAY": "Busiest day",
+        "BUSIEST_DAY_DETAIL": "{count} chats · {weekday} has the highest average",
+        "OUTSIDE_BUSINESS_HOURS": "Outside business hours (20:00–06:59)",
+        "OUTSIDE_BUSINESS_HOURS_DETAIL": "{count} of {total} chats",
+        "NO_DATA": "No chats in this range"
+      }
+    },
     "CONVERSATION_INTERVAL": {
       "HEADER": "Conversation Interval",
       "HOUR": "Hour",

@@ -3,7 +3,7 @@
     "HEADER": "Live chat rules",
     "HEADER_BTN_TXT": "Add project override",
     "LOADING": "Fetching live chat rules",
-    "DESCRIPTION": "How long an agent has to reply before a waiting customer counts as overdue, and how much time the extend action buys. Set a default for the account and override it for any project.",
+    "DESCRIPTION": "How long an agent has to reply before a waiting customer counts as overdue, how much time the extend action buys, and when idle conversations are resolved and closed automatically. Set a default for the account and override it for any project.",
     "SCOPE": {
       "ACCOUNT": "All projects (default)",
       "UNKNOWN_PROJECT": "Deleted project"
@@ -11,16 +11,20 @@
     "LIST": {
       "NOT_SAVED": "Not saved yet",
       "MINUTES": "{n} minute | {n} minutes",
+      "HOURS": "{n} hour | {n} hours",
       "TABLE_HEADER": {
         "SCOPE": "Applies to",
         "REPLY_TIMEOUT": "Reply within",
         "EXTENSION": "Extend adds",
+        "WAITING_TIME": "Missed after",
+        "AUTO_SOLVE": "Resolve pending after",
+        "AUTO_CLOSE": "Close resolved after",
         "ACTION": "Actions"
       }
     },
     "FORM": {
       "TITLE": "Live chat rule",
-      "DESC": "These values drive the countdown shown on every waiting conversation.",
+      "DESC": "These values drive the countdown shown on every waiting conversation and the automatic resolve and close.",
       "SCOPE": {
         "LABEL": "Applies to"
       },
@@ -31,6 +35,18 @@
       "EXTENSION": {
         "LABEL": "Extend adds (minutes)",
         "HELP": "How much time the extend action adds to a single conversation."
+      },
+      "WAITING_TIME": {
+        "LABEL": "Missed after (minutes)",
+        "HELP": "An open conversation that nobody is assigned to or replies to within this time counts as missed."
+      },
+      "AUTO_SOLVE": {
+        "LABEL": "Resolve pending after (hours)",
+        "HELP": "A pending conversation the customer has not answered in this time is resolved automatically."
+      },
+      "AUTO_CLOSE": {
+        "LABEL": "Close resolved after (hours)",
+        "HELP": "A resolved conversation is closed after this time and can no longer be replied to."
       },
       "EDIT": "Edit",
       "DELETE": "Delete",
