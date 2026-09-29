@@ -149,6 +149,12 @@
     "SHOW_QUOTED_TEXT": "Show Quoted Text",
     "MESSAGE_READ": "Read",
     "SENDING": "Sending",
-    "UNREAD_COUNT_OVERFLOW": "9+"
+    "CARD": {
+      "UNASSIGNED": "— Unassigned",
+      "AUTO_TRANSITION": {
+        "solved": "→ Solved in {time}",
+        "closed": "→ Closed in {time}"
+      }
+    }
   }
 }

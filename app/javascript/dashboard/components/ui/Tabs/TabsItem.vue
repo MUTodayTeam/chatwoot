@@ -26,6 +26,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Paints the count red, for a count that needs someone's attention.
+  alertCount: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const activeIndex = inject('activeIndex');
@@ -33,6 +38,13 @@ const updateActiveIndex = inject('updateActiveIndex');
 
 const active = computed(() => props.index === activeIndex.value);
 const getItemCount = computed(() => props.count);
+
+const countClass = computed(() => {
+  if (props.alertCount) return 'bg-n-ruby-3 text-n-ruby-11';
+  return active.value
+    ? 'bg-n-blue-3 text-n-blue-11'
+    : 'bg-n-alpha-1 text-n-slate-10';
+});
 
 const onTabClick = event => {
   event.preventDefault();
@@ -60,11 +72,7 @@ const onTabClick = event => {
       <div
         v-if="showBadge"
         class="rounded-full h-5 flex items-center justify-center text-xs font-medium my-0 ltr:ml-1 rtl:mr-1 px-1.5 py-0 min-w-[20px]"
-        :class="[
-          active
-            ? 'bg-n-blue-3 text-n-blue-11'
-            : 'bg-n-alpha-1 text-n-slate-10',
-        ]"
+        :class="countClass"
       >
         <span>
           {{ getItemCount }}

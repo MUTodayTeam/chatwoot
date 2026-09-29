@@ -208,7 +208,6 @@ const onDeleteConversation = () => {
     :inbox="inbox"
     :selected="isConversationSelected(source.id)"
     :is-active-chat="isActiveChat"
-    :show-assignee="showAssignee"
     :show-inbox-name="showInboxName"
     @click="onCardClick"
     @contextmenu="openContextMenu"

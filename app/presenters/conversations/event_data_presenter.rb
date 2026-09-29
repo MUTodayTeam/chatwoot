@@ -54,6 +54,8 @@ class Conversations::EventDataPresenter < SimpleDelegator
       # Cleared with waiting_since, so the countdown goes the moment an agent replies instead
       # of lingering until the next page load. Later inbound messages move it forward.
       reply_due_at: reply_due_at.to_i,
+      # Starts the list row's countdown to the sweep's automatic Solved or Closed.
+      status_changed_at: status_changed_at.to_i,
       agent_last_seen_at: agent_last_seen_at.to_i,
       contact_last_seen_at: contact_last_seen_at.to_i,
       last_activity_at: last_activity_at.to_i,

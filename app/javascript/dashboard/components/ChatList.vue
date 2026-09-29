@@ -69,8 +69,14 @@ const { buildConversationListPath } = useConversationRoutePath();
 
 const resolveAttributesModalRef = ref(null);
 
+// The tab counts follow the status filter. CDP spec §4 counts "All" as bot, open,
+// pending and on hold, which is the Active filter, so the list opens on Active
+// instead of stock Chatwoot's Open and the counts differ from stock. Set this back
+// to STATUS_TYPE.OPEN for stock counts; a status an agent picked is still remembered.
+const DEFAULT_CHAT_STATUS = wootConstants.STATUS_TYPE.ACTIVE;
+
 const activeAssigneeTab = ref(wootConstants.ASSIGNEE_TYPE.ME);
-const activeStatus = ref(wootConstants.STATUS_TYPE.OPEN);
+const activeStatus = ref(DEFAULT_CHAT_STATUS);
 const activeSortBy = ref(wootConstants.SORT_BY_TYPE.LAST_ACTIVITY_AT_DESC);
 const showAdvancedFilters = ref(false);
 // chatsOnView is to store the chats that are currently visible on the screen,
@@ -377,7 +383,7 @@ const uniqueInboxes = computed(() => {
 function setFiltersFromUISettings() {
   const { conversations_filter_by: filterBy = {} } = uiSettings.value;
   const { status, order_by: orderBy } = filterBy;
-  activeStatus.value = status || wootConstants.STATUS_TYPE.OPEN;
+  activeStatus.value = status || DEFAULT_CHAT_STATUS;
   activeSortBy.value = Object.values(wootConstants.SORT_BY_TYPE).includes(
     orderBy
   )
@@ -813,6 +819,8 @@ onMounted(() => {
   store.dispatch('setChatStatusFilter', activeStatus.value);
   store.dispatch('setChatSortFilter', activeSortBy.value);
   resetAndFetchData();
+  // The cards count pending and solved conversations down to their automatic move.
+  store.dispatch('liveChatRules/get');
   if (hasActiveFolders.value) {
     store.dispatch('campaigns/get');
   }

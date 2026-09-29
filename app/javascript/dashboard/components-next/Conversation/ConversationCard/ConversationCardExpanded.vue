@@ -7,10 +7,11 @@ import CardLabels from './CardLabelsV5.vue';
 import CardPriorityIcon from './CardPriorityIcon.vue';
 import InboxName from 'dashboard/components-next/Conversation/InboxName.vue';
 import Avatar from 'next/avatar/Avatar.vue';
-import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import SLACardLabel from 'dashboard/components-next/Conversation/Sla/SLACardLabel.vue';
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
-import CardStatusIcon from './CardStatusIcon.vue';
+import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
+import { formatListRowTime } from 'dashboard/helper/conversationListRow';
+import CardTagRow from './CardTagRow.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 
@@ -47,7 +48,11 @@ const voiceCallData = computed(() => {
   };
 });
 
-const unreadCount = computed(() => props.chat.unread_count);
+const hasUnread = computed(() => props.chat.unread_count > 0);
+
+const lastActivityTime = computed(() =>
+  formatListRowTime(props.chat.timestamp)
+);
 
 const slaCardLabel = useTemplateRef('slaCardLabel');
 
@@ -73,7 +78,7 @@ const selectedModel = computed({
   <div
     class="conversation relative cursor-pointer group grid gap-4 items-center px-3 h-12 border-b border-n-slate-3 hover:border-n-surface-1 hover:z-[1] before:content-[none] before:absolute before:-top-px before:inset-x-0 before:h-px before:bg-n-surface-1 before:pointer-events-none hover:before:content-['']"
     :class="{
-      'active animate-card-select bg-n-alpha-1 dark:bg-n-alpha-3 !border-n-surface-1':
+      'active animate-card-select bg-n-alpha-2 dark:bg-n-alpha-3 !border-n-surface-1':
         isActiveChat,
       'selected bg-n-slate-2 dark:bg-n-slate-3 !border-n-surface-1': selected,
       'hover:bg-n-alpha-1': !isActiveChat && !selected,
@@ -83,6 +88,10 @@ const selectedModel = computed({
     @click="$emit('click', $event)"
     @contextmenu="$emit('contextmenu', $event)"
   >
+    <span
+      v-if="isActiveChat"
+      class="absolute inset-y-0 start-0 w-[0.1875rem] bg-n-brand"
+    />
     <!-- LEFT SECTION -->
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <div class="flex items-center justify-center flex-shrink-0" @click.stop>
@@ -113,10 +122,6 @@ const selectedModel = computed({
           icon="i-woot-empty-assignee"
           class="size-4 text-n-slate-7"
         />
-      </div>
-
-      <div class="w-4 flex items-center justify-center flex-shrink-0">
-        <CardStatusIcon :status="chat.status" show-empty />
       </div>
 
       <div class="w-px h-3 bg-n-slate-6 flex-shrink-0" />
@@ -151,11 +156,14 @@ const selectedModel = computed({
         :selected="false"
         :enable-selection="false"
         :hide-thumbnail="false"
-        :unread-count="unreadCount"
+        :channel-type="chat.meta?.channel"
       />
 
       <h4
-        class="text-heading-3 my-0 capitalize truncate text-n-slate-12 font-medium w-32 flex-shrink-0"
+        class="my-0 capitalize truncate text-n-slate-12 w-32 flex-shrink-0"
+        :class="
+          hasUnread ? 'text-sm font-extrabold' : 'text-heading-3 font-medium'
+        "
       >
         {{ currentContact.name }}
       </h4>
@@ -164,13 +172,15 @@ const selectedModel = computed({
         :last-message="lastMessageInChat"
         :voice-call-status="voiceCallData.status"
         :voice-call-direction="voiceCallData.direction"
-        :unread-count="unreadCount"
+        :unread-count="chat.unread_count"
         :show-expanded-preview="false"
       />
     </div>
 
     <!-- RIGHT SECTION -->
     <div class="flex items-center justify-end gap-1.5 flex-shrink-0">
+      <CardTagRow :chat="chat" :assignee="assignee" class="flex-shrink-0" />
+
       <div v-if="showLabelsSection" class="min-w-0 w-full">
         <CardLabels
           :labels="chat.labels"
@@ -185,18 +195,22 @@ const selectedModel = computed({
         class="flex-shrink-0"
       />
 
+      <AutoTransitionCountdown :chat="chat" class="flex-shrink-0" />
+
       <div v-if="hasSlaPolicyId" class="flex-shrink-0">
         <SLACardLabel ref="slaCardLabel" :chat="chat" />
       </div>
 
       <div class="flex-shrink-0 w-[4.375rem] text-end">
-        <TimeAgo
-          :conversation-id="chat.id"
-          :last-activity-timestamp="chat.timestamp"
-          :created-at-timestamp="chat.created_at"
-          class="font-440 !text-xs text-n-slate-11"
-        />
+        <span class="font-440 text-xs text-n-slate-11">
+          {{ lastActivityTime }}
+        </span>
       </div>
+
+      <span
+        class="size-2 rounded-full flex-shrink-0"
+        :class="hasUnread ? 'bg-n-ruby-9' : 'bg-transparent'"
+      />
     </div>
   </div>
 </template>
