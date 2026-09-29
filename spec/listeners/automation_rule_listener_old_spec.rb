@@ -41,6 +41,9 @@ describe AutomationRuleListener do
     create(:account_user, user: user_1, account: account)
 
     conversation.resolved!
+    # The resolve opened the conversation's case; its activity message is not what these examples count
+    conversation.messages.activity.delete_all
+    conversation.messages.reset
     automation_rule.update!(actions:
                                       [
                                         {

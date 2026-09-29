@@ -476,7 +476,7 @@ describe Line::IncomingMessageService do
 
         # Should use the same conversation
         expect(line_channel.inbox.conversations.count).to eq(1)
-        expect(line_channel.inbox.conversations.last.messages.count).to eq(2)
+        expect(line_channel.inbox.conversations.last.messages.incoming.count).to eq(2)
         expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
       end
 
@@ -540,7 +540,7 @@ describe Line::IncomingMessageService do
 
         # Should use the same conversation
         expect(line_channel.inbox.conversations.count).to eq(1)
-        expect(line_channel.inbox.conversations.last.messages.count).to eq(2)
+        expect(line_channel.inbox.conversations.last.messages.incoming.count).to eq(2)
         expect(line_channel.inbox.conversations.last.messages.last.content).to eq('Second message')
       end
 

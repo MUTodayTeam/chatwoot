@@ -18,6 +18,21 @@ RSpec.describe Conversations::SolveService do
     expect(conversation.messages.activity.pluck(:content).grep(/\ASolved/).size).to eq(1)
   end
 
+  it 'files the case under the category with the summary, and records who solved it' do
+    admin = create(:user, account: account, role: :administrator)
+    category = create(:case_category, account: account, c3: 'Refund')
+    Current.user = admin
+
+    kase = described_class.new(conversation: Conversation.find(conversation.id), user: admin, case_category: category,
+                               summary: 'Refunded', send_survey: true).perform
+
+    expect(kase.reload).to have_attributes(case_category: category, summary: 'Refunded', resolved_by: admin)
+    expect(Conversations::ActivityMessageJob).to have_been_enqueued
+      .with(conversation, hash_including(content: 'Solved · Refund · closes automatically in 48 hours')).exactly(:once)
+  ensure
+    Current.reset
+  end
+
   it "ends the assignee's turn as Solved, by whoever clicked it, before the resolve" do
     admin = create(:user, account: account, role: :administrator)
 

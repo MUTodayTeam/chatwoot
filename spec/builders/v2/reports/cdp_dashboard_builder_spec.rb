@@ -176,8 +176,7 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
       widget_conversation.update!(contact: line_conversation.contact)
       create(:case, conversation: line_conversation, case_category: change_date)
       create(:case, conversation: widget_conversation, case_category: change_date)
-      # E was solved without a category, so it is "Other".
-      create(:case, conversation: unanswered_conversation)
+      # E was solved without a category, so its case, opened by that resolve, is "Other".
       # B started in the previous period.
       create(:case, conversation: facebook_conversation, case_category: refund)
       # D is outside the project.

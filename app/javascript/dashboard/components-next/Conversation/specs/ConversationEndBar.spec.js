@@ -81,13 +81,22 @@ describe('ConversationEndBar', () => {
     expect(wrapper.text()).toContain('→ Closed in 01:00:00');
   });
 
-  it('shows a closed conversation without a countdown or a Reopen button', () => {
+  it('shows the topic picked at Solved', () => {
+    const wrapper = mountBar({
+      status: 'resolved',
+      case: { id: 4, display: '#CK-858', severity: 'p3', topic: 'Refund' },
+    });
+
+    expect(wrapper.text()).toContain('Solved · Refund');
+  });
+
+  it('shows a closed conversation without a countdown, still with Reopen', () => {
     const wrapper = mountBar({ status: 'closed' });
 
     expect(wrapper.text()).toContain('Closed · Other');
     expect(wrapper.text()).not.toContain('Closed in');
     expect(wrapper.text()).toContain('case #CK-858 reopens');
-    expect(wrapper.find('button').exists()).toBe(false);
+    expect(wrapper.find('button').text()).toBe('Reopen');
   });
 
   it('talks about the conversation when it has no case', () => {
@@ -98,16 +107,18 @@ describe('ConversationEndBar', () => {
     );
   });
 
-  it('reopens a solved conversation through toggle_status', async () => {
-    dispatch.mockResolvedValue();
-    const wrapper = mountBar({ status: 'resolved' });
+  it.each(['resolved', 'closed'])(
+    'reopens a %s conversation through the reopen endpoint',
+    async status => {
+      dispatch.mockResolvedValue();
+      const wrapper = mountBar({ status });
 
-    await wrapper.find('button').trigger('click');
-    await flushPromises();
+      await wrapper.find('button').trigger('click');
+      await flushPromises();
 
-    expect(dispatch).toHaveBeenCalledWith('toggleStatus', {
-      conversationId: 12,
-      status: 'open',
-    });
-  });
+      expect(dispatch).toHaveBeenCalledWith('reopenConversation', {
+        conversationId: 12,
+      });
+    }
+  );
 });

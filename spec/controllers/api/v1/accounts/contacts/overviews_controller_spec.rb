@@ -47,8 +47,9 @@ RSpec.describe 'Contact overview API', type: :request do
       'latest_conversation' => { 'id' => latest.display_id, 'status' => 'open' }
     )
     expect(body['history'].pluck('id')).to eq([closed.display_id, solved.display_id])
+    # Resolving the chat nobody took opened its case
     expect(body['history'].first).to include(
-      'status' => 'closed', 'topic' => 'Where is my booking?', 'case' => nil, 'project' => nil,
+      'status' => 'closed', 'topic' => 'Where is my booking?', 'case' => include('display' => '#859'), 'project' => nil,
       'channel' => other_inbox.channel_type, 'agent' => nil, 'bot' => false, 'missed' => true
     )
     expect(body['history'].last).to include(
@@ -71,7 +72,8 @@ RSpec.describe 'Contact overview API', type: :request do
     3.times do |i|
       create(:conversation, account: account, inbox: inbox, contact: contact, created_at: (i + 4).days.ago).tap do |conversation|
         create(:message, conversation: conversation, message_type: :incoming, content: "Question #{i}")
-        conversation.resolved!
+        # Resolved before every resolve opened a case, so it has none
+        conversation.update_columns(status: Conversation.statuses[:resolved]) # rubocop:disable Rails/SkipsModelValidations
       end
       create(:conversation, account: account, inbox: inbox, contact: contact, created_at: (i + 8).days.ago).tap do |conversation|
         create(:case, conversation: conversation, project: project, display_id: 900 + i)

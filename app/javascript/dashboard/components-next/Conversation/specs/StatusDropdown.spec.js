@@ -1,6 +1,12 @@
 import { ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { useAlert } from 'dashboard/composables';
+import { useEmitter } from 'dashboard/composables/emitter';
+import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
+import {
+  CMD_REOPEN_CONVERSATION,
+  CMD_RESOLVE_CONVERSATION,
+} from 'dashboard/helper/commandbar/events';
 import StatusDropdown from '../StatusDropdown.vue';
 
 const dispatch = vi.fn();
@@ -71,6 +77,11 @@ const menuItem = (wrapper, value) =>
     .findAll('button')
     .slice(1)
     .find(button => button.text() === `${STATUS_KEY}.${value}`);
+
+// The handlers the component registered for a shortcut and a command bar event
+const shortcut = keys => useKeyboardEvents.mock.lastCall[0][keys].action;
+const commandHandler = event =>
+  useEmitter.mock.calls.findLast(([name]) => name === event)[1];
 
 describe('StatusDropdown', () => {
   beforeEach(() => {
@@ -236,6 +247,75 @@ describe('StatusDropdown', () => {
     expect(enabled).toEqual(['open']);
     expect(wrapper.text()).not.toContain(
       'CONVERSATION.STATUS_DROPDOWN.SNOOZE_UNTIL'
+    );
+  });
+
+  it.each(['Alt+KeyE', '$mod+Alt+KeyE'])(
+    'asks for the category on %s instead of resolving straight away',
+    async keys => {
+      await mountDropdown({ status: 'open' });
+
+      shortcut(keys)({ preventDefault: vi.fn() });
+
+      expect(dialogOpen).toHaveBeenCalledWith(null);
+      expect(dispatch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('asks for the category from the command bar', async () => {
+    await mountDropdown({ status: 'open' });
+
+    commandHandler(CMD_RESOLVE_CONVERSATION)();
+
+    expect(dialogOpen).toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('does not open the dialog on a conversation already solved', async () => {
+    await mountDropdown({ status: 'resolved' });
+
+    shortcut('Alt+KeyE')({ preventDefault: vi.fn() });
+
+    expect(dialogOpen).not.toHaveBeenCalled();
+  });
+
+  it.each(['resolved', 'closed'])(
+    'reopens a %s conversation through the reopen endpoint',
+    async status => {
+      dispatch.mockResolvedValue();
+      const wrapper = await mountDropdown({ status });
+
+      await menuItem(wrapper, 'open').trigger('click');
+      await flushPromises();
+
+      expect(dispatch).toHaveBeenCalledWith('reopenConversation', {
+        conversationId: 7,
+      });
+    }
+  );
+
+  it('reopens from the command bar through the reopen endpoint once solved', async () => {
+    dispatch.mockResolvedValue();
+    await mountDropdown({ status: 'resolved' });
+
+    commandHandler(CMD_REOPEN_CONVERSATION)();
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('reopenConversation', {
+      conversationId: 7,
+    });
+  });
+
+  it('opens a pending conversation with a plain status change', async () => {
+    dispatch.mockResolvedValue();
+    const wrapper = await mountDropdown({ status: 'pending' });
+
+    await menuItem(wrapper, 'open').trigger('click');
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      'toggleStatus',
+      expect.objectContaining({ status: 'open' })
     );
   });
 

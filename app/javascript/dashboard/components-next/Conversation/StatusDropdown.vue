@@ -46,9 +46,12 @@ const toggleDropdown = (value = !showDropdown.value) => {
 const currentChat = useMapGetter('getSelectedChat');
 
 const lifecycleStatus = computed(() => getLifecycleStatus(currentChat.value));
-const isClosed = computed(
-  () => currentChat.value.status === STATUS_TYPE.CLOSED
+// Solved and Closed are finished: only reopening leaves them
+const isFinished = computed(() =>
+  [STATUS_TYPE.RESOLVED, STATUS_TYPE.CLOSED].includes(currentChat.value.status)
 );
+// $mod+Alt+E moves on to the next conversation once its solve goes through
+const selectNextOnSolve = ref(false);
 
 const statusLabel = value =>
   t(`CONVERSATION.STATUS_DROPDOWN.STATUSES.${value}`);
@@ -91,18 +94,12 @@ const menuSections = computed(() => {
   return sections;
 });
 
-const changeStatus = async (
-  status,
-  snoozedUntil = null,
-  customAttributes = null
-) => {
+const dispatchStatusChange = async (action, payload = {}) => {
   isLoading.value = true;
   try {
-    await store.dispatch('toggleStatus', {
+    await store.dispatch(action, {
       conversationId: currentChat.value.id,
-      status,
-      snoozedUntil,
-      customAttributes,
+      ...payload,
     });
     useAlert(t('CONVERSATION.CHANGE_STATUS'));
   } catch (error) {
@@ -113,23 +110,19 @@ const changeStatus = async (
   }
 };
 
-const resolveConversation = () => {
-  if (isClosed.value) return;
+const changeStatus = (status, snoozedUntil = null, customAttributes = null) =>
+  dispatchStatusChange('toggleStatus', {
+    status,
+    snoozedUntil,
+    customAttributes,
+  });
 
-  const currentCustomAttributes = currentChat.value.custom_attributes || {};
-  const { hasMissing, missing } = checkMissingAttributes(
-    currentCustomAttributes
-  );
-
-  if (hasMissing) {
-    resolveAttributesModalRef.value?.open(missing, currentCustomAttributes, {
-      id: currentChat.value.id,
-      snoozedUntil: null,
-    });
-  } else {
-    changeStatus(STATUS_TYPE.RESOLVED);
-  }
-};
+// Solved and Closed reopen through the reopen endpoint, which gives the conversation
+// back to an agent and opens their turn (spec 7.4); anything else is a plain status change.
+const reopenConversation = () =>
+  isFinished.value
+    ? dispatchStatusChange('reopenConversation')
+    : changeStatus(STATUS_TYPE.OPEN);
 
 const openSelectCategory = (customAttributes = null) => {
   solveCustomAttributes.value = customAttributes;
@@ -138,10 +131,12 @@ const openSelectCategory = (customAttributes = null) => {
   );
 };
 
-// Solved from the menu asks for the category the case is filed under (spec 7.3)
-const solveConversation = () => {
-  if (isClosed.value) return;
+// Every Solved from the conversation asks for the category the case is filed under
+// (spec 7.3): the menu, Alt+E, $mod+Alt+E and the command bar.
+const solveConversation = ({ selectNext = false } = {}) => {
+  if (isFinished.value) return;
 
+  selectNextOnSolve.value = selectNext;
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
   const { hasMissing, missing } = checkMissingAttributes(
     currentCustomAttributes
@@ -151,15 +146,33 @@ const solveConversation = () => {
     resolveAttributesModalRef.value?.open(missing, currentCustomAttributes, {
       id: currentChat.value.id,
       snoozedUntil: null,
-      selectCategory: true,
     });
   } else {
     openSelectCategory();
   }
 };
 
+// What selects the conversation after the active one in the list, wrapping to the top
+const getNextConversation = () => {
+  const all = [
+    ...document.querySelectorAll('.conversations-list .conversation'),
+  ];
+  const activeIndex = all.indexOf(
+    document.querySelector('div.conversations-list div.conversation.active')
+  );
+
+  if (activeIndex < all.length - 1) return () => all[activeIndex + 1].click();
+  if (all.length < 2) return null;
+  return () => {
+    all[0].click();
+    document.querySelector('.conversations-list').scrollTop = 0;
+  };
+};
+
 const onSolve = async ({ caseCategoryId, summary, sendSurvey }) => {
   isSolving.value = true;
+  // Read before the solve, while the list still shows this conversation as the active one
+  const next = selectNextOnSolve.value ? getNextConversation() : null;
   try {
     await store.dispatch('solveConversation', {
       conversationId: currentChat.value.id,
@@ -170,6 +183,7 @@ const onSolve = async ({ caseCategoryId, summary, sendSurvey }) => {
     });
     selectCategoryDialogRef.value?.close();
     useAlert(t('CONVERSATION.CHANGE_STATUS'));
+    next?.();
   } catch (error) {
     useAlert(error.message || t('CONVERSATION.CHANGE_STATUS_FAILED'));
   } finally {
@@ -177,19 +191,10 @@ const onSolve = async ({ caseCategoryId, summary, sendSurvey }) => {
   }
 };
 
-const handleResolveWithAttributes = ({ attributes, context }) => {
-  if (!context) return;
-
+const handleResolveWithAttributes = ({ attributes }) => {
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
-  const customAttributes = { ...currentCustomAttributes, ...attributes };
-  if (context.selectCategory) {
-    openSelectCategory(customAttributes);
-    return;
-  }
-  changeStatus(STATUS_TYPE.RESOLVED, context.snoozedUntil, customAttributes);
+  openSelectCategory({ ...currentCustomAttributes, ...attributes });
 };
-
-const reopenConversation = () => changeStatus(STATUS_TYPE.OPEN);
 
 const openSnoozeModal = () => {
   document.querySelector('ninja-keys')?.open({ parent: 'snooze_conversation' });
@@ -208,24 +213,13 @@ const onMenuAction = ({ action, value }) => {
     solveConversation();
     return;
   }
+  if (value === LIFECYCLE_STATUS.OPEN) {
+    reopenConversation();
+    return;
+  }
 
   const { status } = SELECTABLE_STATUSES.find(item => item.value === value);
   changeStatus(status);
-};
-
-const getConversationParams = () => {
-  const allConversations = document.querySelectorAll(
-    '.conversations-list .conversation'
-  );
-  const activeConversation = document.querySelector(
-    'div.conversations-list div.conversation.active'
-  );
-
-  return {
-    all: allConversations,
-    activeIndex: [...allConversations].indexOf(activeConversation),
-    lastIndex: allConversations.length - 1,
-  };
 };
 
 useKeyboardEvents({
@@ -238,27 +232,19 @@ useKeyboardEvents({
       // Chrome on Windows treats Alt+E as a legacy shortcut for its own menu, so
       // without preventDefault that menu opens on top of the resolve.
       event.preventDefault();
-      resolveConversation();
+      solveConversation();
     },
   },
   '$mod+Alt+KeyE': {
     action: event => {
-      const { all, activeIndex, lastIndex } = getConversationParams();
-      resolveConversation();
-
-      if (activeIndex < lastIndex) {
-        all[activeIndex + 1].click();
-      } else if (all.length > 1) {
-        all[0].click();
-        document.querySelector('.conversations-list').scrollTop = 0;
-      }
       event.preventDefault();
+      solveConversation({ selectNext: true });
     },
   },
 });
 
 useEmitter(CMD_REOPEN_CONVERSATION, reopenConversation);
-useEmitter(CMD_RESOLVE_CONVERSATION, resolveConversation);
+useEmitter(CMD_RESOLVE_CONVERSATION, () => solveConversation());
 </script>
 
 <template>
