@@ -45,8 +45,6 @@ import wootConstants, {
 } from 'dashboard/constants/globals';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
-import { CASE_FINISHED_STATUSES } from 'dashboard/helper/caseHelper';
-import { READ_ONLY_QUERY } from 'dashboard/composables/useOpenConversationThread';
 
 export default {
   components: {
@@ -124,9 +122,6 @@ export default {
     isOpen() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.OPEN;
     },
-    isClosed() {
-      return this.currentChat?.status === wootConstants.STATUS_TYPE.CLOSED;
-    },
     isChatEnded() {
       return showsEndBar(this.currentChat);
     },
@@ -134,13 +129,9 @@ export default {
     dayDividerParts() {
       return [this.project?.name, this.inbox.name];
     },
-    // Closed is always read-only; a thread opened from Contact 360's history stays read-only until it is reopened
+    // Solved and Closed both lock the composer; agents press Reopen on the end bar to reply
     isReadOnly() {
-      return (
-        this.isClosed ||
-        (this.$route?.query[READ_ONLY_QUERY] === 'true' &&
-          CASE_FINISHED_STATUSES.includes(this.currentChat?.status))
-      );
+      return this.isChatEnded;
     },
     shouldShowLabelSuggestions() {
       return (
