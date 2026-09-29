@@ -65,10 +65,11 @@ describe CaseListener do
       expect(kase.reload.reopened_count).to eq(1)
     end
 
-    # With a bot on the inbox the customer's message hands the conversation back to the bot
-    # (pending), and the later handoff to an agent starts from pending, so that is the reopen.
+    # With a bot on the inbox the customer's message hands a conversation without an agent back
+    # to the bot (pending), and the later handoff to an agent starts from pending, so that is the reopen.
     it 'counts the reopen once when a bot inbox takes the conversation back' do
       create(:agent_bot_inbox, inbox: conversation.inbox, agent_bot: create(:agent_bot, account: account))
+      conversation.update!(assignee: nil)
       conversation.resolved!
 
       perform_enqueued_jobs(only: EventDispatcherJob) { create(:message, account: account, conversation: conversation, message_type: :incoming) }

@@ -1,6 +1,6 @@
 class CaseListener < BaseListener
   REOPENED_FROM = %w[resolved closed].freeze
-  # A bot inbox hands a reopened conversation back to the bot, which is pending
+  # A bot inbox hands a reopened conversation nobody holds back to the bot, which is pending
   REOPENED_TO = %w[open pending].freeze
 
   # An agent taking a conversation opens its case, whichever path assigned it.

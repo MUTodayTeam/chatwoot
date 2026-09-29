@@ -358,6 +358,9 @@ en:
         contact_resolved: 'Conversation was resolved by %{contact_name}'
         open: 'Conversation was reopened by %{user_name}'
         pending: 'Conversation was marked as pending by %{user_name}'
+        pending_auto_solve:
+          one: 'Conversation was marked as pending by %{user_name} · it will be solved automatically in %{count} hour'
+          other: 'Conversation was marked as pending by %{user_name} · it will be solved automatically in %{count} hours'
         snoozed: 'Conversation was snoozed by %{user_name}'
         closed: 'Conversation was closed by %{user_name}'
         auto_solved:
@@ -370,6 +373,7 @@ en:
         auto_resolved_hours: 'Conversation was marked resolved by system due to %{count} hours of inactivity'
         auto_resolved_minutes: 'Conversation was marked resolved by system due to %{count} minutes of inactivity'
         system_auto_open: System reopened the conversation due to a new incoming message.
+        customer_reopened: 'The customer wrote back · case %{case_display} reopened, with its history'
       priority:
         added: '%{user_name} set the priority to %{new_priority}'
         updated: '%{user_name} changed the priority from %{old_priority} to %{new_priority}'

@@ -19,6 +19,7 @@ const STATUS_CHANGED = 'conversation_status_changed';
 // The activity types the timeline shows, read from content_attributes.activity.type.
 const ACTIVITY_TONES = Object.freeze({
   assignee_changed: TIMELINE_TONES.ACTION,
+  transferred: TIMELINE_TONES.ACCENT,
   team_changed: TIMELINE_TONES.ACTION,
   reply_deadline_extended: TIMELINE_TONES.SYSTEM,
   case_opened: TIMELINE_TONES.ACCENT,

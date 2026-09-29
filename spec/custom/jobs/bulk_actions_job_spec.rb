@@ -37,6 +37,24 @@ RSpec.describe BulkActionsJob do
     expect(closed_conversation.snoozed_until).to be_nil
   end
 
+  it 'takes a conversation from its bot when assigning it, as a single assignment does' do
+    agent_bot = create(:agent_bot, account: account)
+    open_conversation.update!(status: :pending, ai_assignee: agent_bot)
+
+    perform({ assignee_id: agent.id })
+
+    expect(open_conversation.reload).to be_open
+    expect(open_conversation.assignee).to eq(agent)
+    expect(open_conversation.ai_assignee).to be_nil
+  end
+
+  it 'assigns and changes the status in one bulk action' do
+    perform({ assignee_id: agent.id, status: 'snoozed' })
+
+    expect(open_conversation.reload).to be_snoozed
+    expect(open_conversation.assignee).to eq(agent)
+  end
+
   it 'reopens a closed conversation' do
     perform({ status: 'open' })
 

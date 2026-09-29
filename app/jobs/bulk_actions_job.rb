@@ -66,3 +66,5 @@ class BulkActionsJob < ApplicationJob
     Conversations::PermissionFilterService.new(scope, @user, @account).perform
   end
 end
+
+BulkActionsJob.prepend_mod_with('BulkActionsJob')
