@@ -380,5 +380,92 @@ describe Messages::Facebook::MessageBuilder do
         end
       end
     end
+
+    context 'when resolving the contact name' do
+      let(:sender_id) { incoming_fb_text_message.sender_id }
+      let(:profile_error) do
+        Koala::Facebook::ClientError.new(400, '',
+                                         {
+                                           'type' => 'GraphMethodException',
+                                           'message' => "Unsupported get request. Object with ID '#{sender_id}' does not exist, " \
+                                                        'cannot be loaded due to missing permissions',
+                                           'error_subcode' => 33,
+                                           'code' => 100
+                                         })
+      end
+      let(:page_participant) { { 'name' => 'Test Page', 'id' => facebook_channel.page_id } }
+      let(:sender_participant) { { 'name' => 'Jane Tester', 'email' => "#{sender_id}@facebook.com", 'id' => sender_id } }
+      let(:exception_tracker) { instance_double(ChatwootExceptionTracker, capture_exception: nil) }
+
+      before do
+        allow(Koala::Facebook::API).to receive(:new).and_return(fb_object)
+        allow(ChatwootExceptionTracker).to receive(:new).and_return(exception_tracker)
+      end
+
+      it 'uses the name returned by the profile API' do
+        allow(fb_object).to receive(:get_object).and_return({ name: 'Jane Tester' }.with_indifferent_access)
+
+        message_builder
+
+        expect(facebook_channel.inbox.contacts.first.name).to eq('Jane Tester')
+      end
+
+      it 'uses the conversation participant name when the profile API is not readable' do
+        allow(fb_object).to receive(:get_object).and_raise(profile_error)
+        allow(fb_object).to receive(:get_connections).and_return(
+          [{ 'id' => 't_123', 'participants' => { 'data' => [sender_participant, page_participant] } }]
+        )
+
+        message_builder
+
+        expect(facebook_channel.inbox.contacts.first.name).to eq('Jane Tester')
+        expect(fb_object).to have_received(:get_connections)
+          .with('me', 'conversations', platform: 'messenger', user_id: sender_id, fields: 'participants')
+        expect(exception_tracker).not_to have_received(:capture_exception)
+      end
+
+      it 'keeps the message and falls back to John Doe when the conversation lookup fails' do
+        allow(fb_object).to receive(:get_object).and_raise(profile_error)
+        allow(fb_object).to receive(:get_connections).and_raise(Faraday::TimeoutError)
+
+        message_builder
+
+        expect(facebook_channel.inbox.messages.count).to eq(1)
+        expect(facebook_channel.inbox.contacts.first.name).to eq('John Doe')
+        expect(exception_tracker).not_to have_received(:capture_exception)
+      end
+
+      it 'falls back to John Doe when the conversation does not list the sender' do
+        allow(fb_object).to receive(:get_object).and_raise(profile_error)
+        allow(fb_object).to receive(:get_connections).and_return([{ 'id' => 't_123', 'participants' => { 'data' => [page_participant] } }])
+
+        message_builder
+
+        expect(facebook_channel.inbox.contacts.first.name).to eq('John Doe')
+      end
+
+      it 'does not look up a sender that already has a contact' do
+        contact_inbox = create(:contact_inbox, inbox: facebook_channel.inbox, source_id: sender_id)
+        allow(fb_object).to receive(:get_object).and_raise(profile_error)
+        allow(fb_object).to receive(:get_connections)
+
+        message_builder
+
+        expect(fb_object).not_to have_received(:get_connections)
+        expect(contact_inbox.conversations.first.messages.count).to eq(1)
+      end
+
+      it 'still reports other client errors without looking up the conversation' do
+        other_error = Koala::Facebook::ClientError.new(400, '', { 'type' => 'OAuthException', 'message' => 'Deprecated', 'code' => 12 })
+        allow(fb_object).to receive(:get_object).and_raise(other_error)
+        allow(fb_object).to receive(:get_connections)
+
+        message_builder
+
+        expect(facebook_channel.inbox.contacts.first.name).to eq('John Doe')
+        expect(fb_object).not_to have_received(:get_connections)
+        expect(ChatwootExceptionTracker).to have_received(:new).with(other_error, account: facebook_channel.inbox.account)
+      end
+    end
   end
 end
