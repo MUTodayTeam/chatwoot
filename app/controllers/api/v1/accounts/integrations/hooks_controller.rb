@@ -5,10 +5,12 @@ class Api::V1::Accounts::Integrations::HooksController < Api::V1::Accounts::Inte
 
   def create
     @hook = Current.account.hooks.create!(permitted_params)
+    @hook.inbox&.update_account_cache # active_bot depends on the inbox's Dialogflow hook
   end
 
   def update
     @hook.update!(permitted_params.slice(:status, :settings))
+    @hook.inbox&.update_account_cache
   end
 
   def process_event
@@ -27,6 +29,7 @@ class Api::V1::Accounts::Integrations::HooksController < Api::V1::Accounts::Inte
 
   def destroy
     @hook.destroy!
+    @hook.inbox&.update_account_cache
     head :ok
   end
 

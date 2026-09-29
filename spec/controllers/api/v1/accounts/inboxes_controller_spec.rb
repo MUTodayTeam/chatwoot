@@ -1330,6 +1330,13 @@ RSpec.describe 'Inboxes API', type: :request do
         expect(inbox.reload.agent_bot.id).to eq agent_bot.id
       end
 
+      it 'bumps the inbox cache key so cached inbox lists refetch active_bot' do
+        expect do
+          post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
+               headers: admin.create_new_auth_token, params: valid_params, as: :json
+        end.to(change { account.reload.cache_keys[:inbox] })
+      end
+
       it 'throw error when invalid agent bot id' do
         post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
              headers: admin.create_new_auth_token,

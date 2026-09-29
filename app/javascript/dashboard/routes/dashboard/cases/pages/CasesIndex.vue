@@ -99,6 +99,7 @@ const countdownConversation = kase => ({
   inbox_id: kase.conversation.inbox_id,
   status: kase.status,
   status_changed_at: kase.conversation.status_changed_at,
+  meta: { assignee_type: kase.conversation.assignee_type },
 });
 
 // Picked when the case was solved: a solved case without one is "Other", an open one has none yet

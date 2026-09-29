@@ -81,6 +81,15 @@ RSpec.describe 'Cases API', type: :request do
       expect(clocks).to eq(agent_case.id => conversation.reload.status_changed_at.to_i, hidden_case.id => legacy.reload.updated_at.to_i)
     end
 
+    it 'tells which AI assignee holds the conversation' do
+      conversation.update!(ai_assignee: create(:agent_bot), assignee: nil)
+
+      get path, headers: admin.create_new_auth_token
+
+      held = response.parsed_body['payload'].find { |kase| kase['id'] == agent_case.id }
+      expect(held['conversation']['assignee_type']).to eq('AgentBot')
+    end
+
     it 'counts the open cases apart from the Solved and Closed ones' do
       hidden_case.conversation.resolved!
 

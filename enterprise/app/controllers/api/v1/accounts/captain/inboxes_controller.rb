@@ -10,11 +10,13 @@ class Api::V1::Accounts::Captain::InboxesController < Api::V1::Accounts::BaseCon
     inbox = Current.account.inboxes.find(assistant_params[:inbox_id])
     @captain_inbox = @assistant.captain_inboxes.build(inbox: inbox)
     @captain_inbox.save!
+    inbox.update_account_cache # active_bot depends on the inbox's Captain assistant
   end
 
   def destroy
     @captain_inbox = @assistant.captain_inboxes.find_by!(inbox_id: permitted_params[:inbox_id])
     @captain_inbox.destroy!
+    @captain_inbox.inbox.update_account_cache
     head :no_content
   end
 

@@ -10,7 +10,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def index
     @inboxes = policy_scope(Current.account.inboxes)
-               .includes(:channel, :portal, :working_hours, { avatar_attachment: :blob })
+               .includes(:channel, :portal, :working_hours, :agent_bot_inbox, { avatar_attachment: :blob })
                .order_by_name
   end
 
@@ -74,6 +74,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     elsif @inbox.agent_bot_inbox.present?
       @inbox.agent_bot_inbox.destroy!
     end
+    @inbox.update_account_cache # bump inbox cache key so the cached inbox list refetches active_bot
     head :ok
   end
 
