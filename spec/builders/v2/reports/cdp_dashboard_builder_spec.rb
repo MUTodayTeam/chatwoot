@@ -126,6 +126,97 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
     end
   end
 
+  describe 'avg_duration' do
+    let(:outside_conversation) { account.conversations.where.not(inbox_id: project.inboxes.select(:id)).sole }
+
+    before do
+      handler = lambda do |conversation, user, started_at, ended_at = nil|
+        ConversationHandler.create!(account: account, conversation: conversation, user: user, started_at: started_at, ended_at: ended_at,
+                                    end_reason: ended_at && :solved)
+      end
+      # Assigning the fixtures opened turns at creation time; the example sets its own.
+      ConversationHandler.where(account: account).delete_all
+      # A: two closed turns of 30 minutes each, so 3600 seconds.
+      handler.call(line_conversation, alice, Time.utc(2026, 9, 14, 10), Time.utc(2026, 9, 14, 10, 30))
+      handler.call(line_conversation, bob, Time.utc(2026, 9, 14, 10, 30), Time.utc(2026, 9, 14, 11))
+      # C: a turn still open 20 minutes before now, so 1200 seconds. E has no turn and is left out.
+      handler.call(widget_conversation, alice, Time.utc(2026, 9, 19, 23, 40))
+      # B, previous period: 80 minutes, so 4800 seconds.
+      handler.call(facebook_conversation, bob, Time.utc(2026, 9, 8, 9), Time.utc(2026, 9, 8, 10, 20))
+      # D, outside the project: 3600 seconds.
+      handler.call(outside_conversation, alice, Time.utc(2026, 9, 16, 12), Time.utc(2026, 9, 16, 13))
+      travel_to Time.utc(2026, 9, 20)
+    end
+
+    it 'averages the summed turn lengths of the handled conversations, open turns until now' do
+      expect(report[:kpis][:avg_duration]).to eq(current: 2400, previous: 4800, delta_percent: -50.0)
+    end
+
+    it 'includes every inbox of the account when no project is selected' do
+      params.delete(:project_id)
+
+      expect(report[:kpis][:avg_duration]).to eq(current: 2800, previous: 4800, delta_percent: -41.7)
+    end
+
+    it 'is empty when no conversation of the period was handled' do
+      params[:since] = Time.utc(2026, 8, 1).to_i.to_s
+      params[:until] = Time.utc(2026, 8, 8).to_i.to_s
+
+      expect(report[:kpis][:avg_duration]).to eq(current: nil, previous: nil, delta_percent: nil)
+    end
+  end
+
+  describe 'top_topics' do
+    let(:change_date) { create(:case_category, account: account, c1: 'Booking', c2: 'Change', c3: 'Change date') }
+
+    before do
+      refund = create(:case_category, account: account, c1: 'Payment', c2: '', c3: 'Refund')
+      outside_conversation = account.conversations.where.not(inbox_id: project.inboxes.select(:id)).sole
+      # A and C are one customer on the same topic: 2 chats, 1 contact.
+      widget_conversation.update!(contact: line_conversation.contact)
+      create(:case, conversation: line_conversation, case_category: change_date)
+      create(:case, conversation: widget_conversation, case_category: change_date)
+      # E was solved without a category, so it is "Other".
+      create(:case, conversation: unanswered_conversation)
+      # B started in the previous period.
+      create(:case, conversation: facebook_conversation, case_category: refund)
+      # D is outside the project.
+      create(:case, conversation: outside_conversation, case_category: refund)
+    end
+
+    it 'counts chats and distinct contacts per category, with solved cases without one as Other' do
+      expect(report[:top_topics]).to eq([
+                                          { id: change_date.id, c1: 'Booking', c2: 'Change', c3: 'Change date', chats: 2, contacts: 1 },
+                                          { id: nil, c1: nil, c2: nil, c3: nil, chats: 1, contacts: 1 }
+                                        ])
+    end
+
+    it 'leaves out unsolved cases without a category and conversations without a case' do
+      unanswered_conversation.update!(status: :open)
+      line_conversation.case.destroy!
+
+      expect(report[:top_topics]).to eq([{ id: change_date.id, c1: 'Booking', c2: 'Change', c3: 'Change date', chats: 1, contacts: 1 }])
+    end
+
+    it 'includes every inbox of the account when no project is selected, ties ordered by name with Other last' do
+      params.delete(:project_id)
+
+      expect(report[:top_topics].pluck(:c3, :chats)).to eq([['Change date', 2], ['Refund', 1], [nil, 1]])
+    end
+
+    it 'keeps the top 8' do
+      create_list(:case_category, 9, account: account).each do |category|
+        conversation = create(:conversation, account: account, inbox: line_inbox, status: :resolved)
+        create(:message, account: account, inbox: line_inbox, conversation: conversation, message_type: :incoming,
+                         created_at: Time.utc(2026, 9, 18, 9))
+        create(:case, conversation: conversation, case_category: category)
+      end
+
+      expect(report[:top_topics].size).to eq(8)
+      expect(report[:top_topics].first[:c3]).to eq('Change date')
+    end
+  end
+
   describe 'daily_channels' do
     it 'splits conversations per day into LINE, Facebook and others' do
       expect(report[:daily_channels].pluck(:date)).to eq(%w[2026-09-13 2026-09-14 2026-09-15 2026-09-16 2026-09-17 2026-09-18 2026-09-19])

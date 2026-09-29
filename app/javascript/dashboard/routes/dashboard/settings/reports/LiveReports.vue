@@ -3,7 +3,6 @@ import ReportHeader from './components/ReportHeader.vue';
 import CdpDashboardContainer from './components/cdp/CdpDashboardContainer.vue';
 import ConversationHeatmapContainer from './components/heatmaps/ConversationHeatmapContainer.vue';
 import ResolutionHeatmapContainer from './components/heatmaps/ResolutionHeatmapContainer.vue';
-import AgentRankingContainer from './components/productivity/AgentRankingContainer.vue';
 import AgentDailyContainer from './components/productivity/AgentDailyContainer.vue';
 import AgentProductivityContainer from './components/productivity/AgentProductivityContainer.vue';
 import AgentLiveReportContainer from './components/AgentLiveReportContainer.vue';
@@ -18,7 +17,6 @@ import StatsLiveReportsContainer from './components/StatsLiveReportsContainer.vu
     <CdpDashboardContainer />
     <ConversationHeatmapContainer />
     <ResolutionHeatmapContainer />
-    <AgentRankingContainer />
     <AgentDailyContainer />
     <AgentProductivityContainer />
     <AgentLiveReportContainer />

@@ -1,13 +1,17 @@
 import format from 'date-fns/format';
 import parseISO from 'date-fns/parseISO';
+import { categoryPath } from 'dashboard/helper/caseCategoryHelper';
 
-// Fewer missed or expired chats and a shorter first response are improvements;
+// Fewer missed or expired chats and a shorter first response or duration are improvements;
 // every other KPI improves as it grows.
 export const LOWER_IS_BETTER_KPIS = [
   'missedChats',
   'expiredChats',
   'firstResponseTime',
+  'avgDuration',
 ];
+
+const OTHER_TOPIC_KEY = 'other';
 
 // With the default limit of 10 this marks an agent from 9 conversations on.
 export const AGENT_LOAD_WARNING_RATIO = 0.9;
@@ -95,3 +99,14 @@ export const buildDailyChannelChart = (dailyChannels, series) => ({
     data: dailyChannels.map(day => day[key]),
   })),
 });
+
+// The row shows Category 3; Category 1 › 2 goes in the tooltip. A topic without an id is the
+// solved chats that got no category, shown as `otherLabel`.
+export const buildTopTopicRows = (topics, otherLabel) =>
+  topics.map(({ id, c1, c2, c3, chats, contacts }) => ({
+    key: id ?? OTHER_TOPIC_KEY,
+    name: id ? c3 : otherLabel,
+    path: id ? categoryPath({ c1, c2 }) : '',
+    chats,
+    contacts,
+  }));
