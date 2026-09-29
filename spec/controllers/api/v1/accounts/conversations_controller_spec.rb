@@ -781,6 +781,53 @@ RSpec.describe 'Conversations API', type: :request do
     end
   end
 
+  describe 'POST /api/v1/accounts/{account.id}/conversations/:id/extend_reply_deadline' do
+    let(:conversation) { create(:conversation, account: account) }
+
+    context 'when it is an unauthenticated user' do
+      it 'returns unauthorized' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/extend_reply_deadline"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when it is an authenticated user' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        create(:inbox_member, user: agent, inbox: conversation.inbox)
+      end
+
+      it 'extends the reply deadline and records it in the conversation' do
+        expect do
+          post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/extend_reply_deadline",
+               headers: agent.create_new_auth_token,
+               as: :json
+        end.to change { conversation.reload.reply_due_at }.by(60.minutes)
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['reply_due_at']).to eq(conversation.reply_due_at.to_i)
+        expect(Conversations::ActivityMessageJob)
+          .to(have_been_enqueued.with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id,
+                                                      message_type: :activity,
+                                                      content: "#{agent.name} extended the reply deadline by 60 minutes" }))
+      end
+
+      it 'returns unprocessable entity when nobody is waiting on a reply' do
+        conversation.update_columns(reply_due_at: nil) # rubocop:disable Rails/SkipsModelValidations
+
+        expect do
+          post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/extend_reply_deadline",
+               headers: agent.create_new_auth_token,
+               as: :json
+        end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+  end
+
   describe 'POST /api/v1/accounts/{account.id}/conversations/:id/toggle_typing_status' do
     let(:conversation) { create(:conversation, account: account) }
 

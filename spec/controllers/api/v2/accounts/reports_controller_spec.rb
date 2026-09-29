@@ -281,6 +281,60 @@ RSpec.describe Api::V2::Accounts::ReportsController, type: :request do
     end
   end
 
+  describe 'GET /api/v2/accounts/{account.id}/reports/cdp_dashboard' do
+    let(:project) { Project.create!(account: account, name: 'Share') }
+    let(:params) { { since: 1.week.ago.to_i.to_s, until: Time.current.to_i.to_s, timezone_offset: 0, project_id: project.id } }
+
+    context 'when unauthenticated' do
+      it 'returns unauthorized' do
+        get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when authenticated as agent' do
+      it 'returns unauthorized' do
+        get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard",
+            params: params, headers: agent.create_new_auth_token, as: :json
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when authenticated as admin' do
+      it 'returns the dashboard for the project' do
+        project_inbox = create(:inbox, account: account, project: project)
+        conversation = create(:conversation, account: account, inbox: project_inbox)
+        create(:message, account: account, inbox: project_inbox, conversation: conversation, message_type: :incoming, created_at: 1.day.ago)
+
+        get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard",
+            params: params, headers: admin.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:success)
+        body = response.parsed_body
+        expect(body.keys).to contain_exactly('period', 'kpis', 'daily_channels', 'interval_summary', 'agent_load')
+        expect(body['period'].keys).to contain_exactly('since', 'until', 'previous_since', 'previous_until')
+        expect(body['kpis'].keys).to contain_exactly('total_chats', 'incoming_messages', 'outgoing_messages', 'first_response_time')
+        expect(body['kpis']['total_chats']).to eq('current' => 1, 'previous' => 0, 'delta_percent' => nil)
+        expect(body['daily_channels'].first.keys).to contain_exactly('date', 'line', 'facebook', 'others', 'total')
+        expect(body['interval_summary'].keys).to contain_exactly('total', 'peak_hour', 'busiest_day', 'busiest_weekday', 'outside_business_hours')
+      end
+
+      it 'returns unprocessable entity without a date range' do
+        get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard",
+            params: { project_id: project.id }, headers: admin.create_new_auth_token, as: :json
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'returns not found for a project of another account' do
+        other_project = Project.create!(account: create(:account), name: 'Other')
+
+        get "/api/v2/accounts/#{account.id}/reports/cdp_dashboard",
+            params: params.merge(project_id: other_project.id), headers: admin.create_new_auth_token, as: :json
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
   describe 'GET /api/v2/accounts/{account.id}/reports/first_response_time_distribution' do
     let!(:web_widget_inbox) { create(:inbox, account: account, channel: create(:channel_widget, account: account)) }
 

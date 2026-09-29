@@ -232,6 +232,7 @@ watch(
         </span>
         <ReplyCountdown
           :reply-due-at="chat.reply_due_at"
+          :status="chat.status"
           class="ltr:ml-auto rtl:mr-auto mt-1"
         />
       </div>

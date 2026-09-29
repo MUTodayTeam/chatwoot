@@ -962,5 +962,14 @@ describe Conversations::FilterService do
       result = service.perform
       expect(result[:conversations].count).to eq 1
     end
+
+    it 'preloads the case and its project that every row shows' do
+      Conversation.where(account: account).find_each { |conversation| create(:case, conversation: conversation) }
+
+      conversation = filter_service.new(params, admin, account).perform[:conversations].first
+
+      expect(conversation.association(:case)).to be_loaded
+      expect(conversation.case.association(:project)).to be_loaded
+    end
   end
 end

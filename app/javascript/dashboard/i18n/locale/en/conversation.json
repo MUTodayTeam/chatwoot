@@ -179,6 +179,19 @@
         "NEXT_WEEK": "Next week"
       }
     },
+    "STATUS_DROPDOWN": {
+      "TOOLTIP": "Change status",
+      "SNOOZE_UNTIL": "Snooze until…",
+      "STATUSES": {
+        "bot": "Bot",
+        "open": "Open",
+        "pending": "Pending",
+        "on_hold": "On Hold",
+        "snoozed": "Snoozed",
+        "solved": "Solved",
+        "closed": "Closed"
+      }
+    },
     "MENTION": {
       "AGENTS": "Agents",
       "TEAMS": "Teams"
@@ -489,6 +502,7 @@
       "CONTACT_NOTES": "Contact Notes",
       "CONTACT_ATTRIBUTES": "Contact Attributes",
       "PREVIOUS_CONVERSATION": "Previous Conversations",
+      "RELATED_CASES": "Related cases",
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders",

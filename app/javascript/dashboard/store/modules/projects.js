@@ -39,11 +39,12 @@ const appendIds = (form, key, ids) => {
 };
 
 const buildProjectForm = (
-  { name, description, color, inboxIds = [], teamIds = [] },
+  { name, code, description, color, inboxIds = [], teamIds = [] },
   logo
 ) => {
   const form = new FormData();
   form.append('project[name]', name ?? '');
+  form.append('project[code]', code ?? '');
   form.append('project[description]', description ?? '');
   form.append('project[color]', color ?? '');
   appendIds(form, 'inbox_ids', inboxIds);

@@ -9,6 +9,7 @@ import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDeadlineControl.vue';
+import StatusDropdown from 'dashboard/components-next/Conversation/StatusDropdown.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
@@ -179,6 +180,12 @@ const copyConversationId = async () => {
           >
             {{ `#${chat.id}` }}
           </button>
+          <template v-if="chat.case">
+            <span>•</span>
+            <span class="text-label-small text-n-ruby-11">
+              {{ $t('CASES.HEADER_CHIP', { display: chat.case.display }) }}
+            </span>
+          </template>
           <span v-if="hasMultipleInboxes">•</span>
           <InboxName v-if="hasMultipleInboxes" :inbox="inbox" class="!mx-0" />
           <span v-if="isSnoozed">•</span>
@@ -200,6 +207,7 @@ const copyConversationId = async () => {
         class="hidden md:flex"
       />
       <ConversationCallButton :inbox="inbox" :chat="currentChat" />
+      <StatusDropdown />
       <MoreActions :conversation-id="currentChat.id" />
     </div>
   </div>

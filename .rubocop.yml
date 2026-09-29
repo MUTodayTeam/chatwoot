@@ -28,6 +28,9 @@ Metrics/ClassLength:
     # One action per thing an agent does to a conversation; it sat two lines under the
     # cap before extend_reply_deadline, so any further action here trips the cop.
     - 'app/controllers/api/v1/accounts/conversations_controller.rb'
+    # One handler per broadcast event; it sat at the cap before the reply-deadline
+    # broadcast, so any further event here trips the cop.
+    - 'app/listeners/action_cable_listener.rb'
 
 Metrics/MethodLength:
   Max: 19

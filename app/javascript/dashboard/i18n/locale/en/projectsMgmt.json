@@ -36,6 +36,12 @@
         "PLACEHOLDER": "Enter a project name",
         "ERROR": "Please enter a project name"
       },
+      "CODE": {
+        "LABEL": "Case prefix",
+        "PLACEHOLDER": "CK",
+        "HELP": "Up to 10 letters or digits shown before this project's case numbers, as in CK-858. Leave it empty to show the number alone.",
+        "ERROR": "Use up to 10 letters or digits"
+      },
       "DESCRIPTION": {
         "LABEL": "Description",
         "PLACEHOLDER": "What this project covers"

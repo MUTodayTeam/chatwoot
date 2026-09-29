@@ -30,6 +30,7 @@ module Events::Types
   CONVERSATION_STATUS_CHANGED = 'conversation.status_changed'
   CONVERSATION_CONTACT_CHANGED = 'conversation.contact_changed'
   CONVERSATION_UNREAD_COUNT_CHANGED = 'conversation.unread_count_changed'
+  CONVERSATION_REPLY_DEADLINE_CHANGED = 'conversation.reply_deadline_changed'
   ASSIGNEE_CHANGED = 'assignee.changed'
   TEAM_CHANGED = 'team.changed'
   CONVERSATION_TYPING_ON = 'conversation.typing_on'

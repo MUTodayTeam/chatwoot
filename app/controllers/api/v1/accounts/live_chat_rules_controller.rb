@@ -28,6 +28,9 @@ class Api::V1::Accounts::LiveChatRulesController < Api::V1::Accounts::BaseContro
   end
 
   def live_chat_rule_params
-    params.require(:live_chat_rule).permit(:project_id, :reply_timeout_minutes, :extension_minutes)
+    params.require(:live_chat_rule).permit(
+      :project_id, :reply_timeout_minutes, :extension_minutes, :waiting_time_minutes, :auto_solve_hours, :auto_close_hours,
+      :transfer_team_id, :assisted_weight, :transfer_penalty
+    )
   end
 end

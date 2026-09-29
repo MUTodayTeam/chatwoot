@@ -11,6 +11,510 @@ Delivery shape agreed with the requester: **one PR per feature**.
 
 ---
 
+## 2026-09-27 — DEPLOYED: v4.18.0-mutoday to production (PR #33) · Opus 5.5
+
+- User said "merge deploy". PR #33 merged → `develop` = `e5268684c` (VERSION_CW 4.18.0). CI at merge:
+  19/20 jobs green incl. all 16 rspec shards; only `security-scan` red (known `rack-proxy`, see below).
+- `./upgrade.sh v4.18.0-mutoday` run detached (`setsid nohup`), log `/opt/mu-support/upgrade-v4.18.0.log`.
+  Backup `backups/chatwoot-20260927-134316.sql.gz` (112K); `.env` copy `.env.pre-v4.18.0`. Build took
+  ~3 min (bundle layer cached, Gemfile.lock unchanged). The "Failed to configure AI Agents SDK:
+  connection refused" line in the log is from `assets:precompile` inside docker build (no DB) — harmless.
+- Verified 13:47 UTC: `/api` → `4.18.0`, queue ok, data ok · image `.git_sha` `e5268684c` · the 3
+  migrations applied, new columns present · `pg_index NOT indisvalid` = 0 · no rails/sidekiq errors ·
+  served bundle `v3app-mIzKfKbJ` / `dashboard-De9y-Hqo` = new image · dashboard opened in Chrome: list,
+  countdown chips, unread badge, tab counts render, 0 console errors · `/robots.txt` 200.
+- **Rollback:** `CHATWOOT_VERSION=v4.17.0-mutoday` in `.env` (copy in `.env.pre-v4.18.0`) +
+  `docker compose up -d`; image `chatwoot/chatwoot:v4.17.0-mutoday` still on the server. The new
+  columns are additive, so the old code runs on the migrated DB; restore the dump only if data broke.
+- Next from the 09-22 audit: 2FA for admins, account hygiene, then the should-do list.
+
+## 2026-09-27 — v4.18.0 security upgrade: merged on a branch, PR #33 open, NOT deployed · Opus 5.5
+
+- Worktree `/Users/chonpriyawit/chatwoot-v418`, branch `chore/upgrade-v4.18.0`, merge commit
+  `5544e9ac1` (parents `8efbf9dc4` develop + tag `v4.18.0`), pushed. PR
+  https://github.com/MUTodayTeam/chatwoot/pull/33 → `develop`. Security commits `7d581dc8c`,
+  `aad2791b4`, `4218dc679` are in HEAD.
+- Conflicts resolved: `apps.yml` (upstream slack + fork lark), `conversation_finder.rb` (took upstream;
+  fork's `reply_due_at_asc/desc` moved into `Conversations::SortService`), `api/inbox/conversation.js`
+  (upstream signature + `projectId`), `useConversationRoutePath.js` + `ChatList.vue` (shared builder
+  carrying `projectId`), `SidepanelSwitch.vue` kept deleted, `db/schema.rb` at `2026_09_21_000001`.
+  Merge commit made with `--no-verify` (pre-commit would autofix ~1,800 upstream files).
+- Local checks green: rspec 549 / 0 failures (isolated DB `chatwoot_v418_test`), vitest 48, eslint 0
+  errors, rubocop clean. Full CI (16 rspec shards) running on the PR; refuter review in progress.
+- Prod pre-flight (read-only, `-d chatwoot_production`): latest migration `20260921000001`, none of the
+  three v4.18.0 migrations applied yet, 0 invalid indexes, 0 pending captain FAQ, DB 22 MB, 51 convs,
+  disk 94 GB free, RAM 7 GB. Migrations are additive (`audits.city/country/country_code`,
+  `provider_name` on channel_instagram/tiktok/facebook_pages, `ai_assignee_type` backfill).
+- Refuter (fresh-context opus): NOT REFUTED, 2 minor findings, both fixed in `deaea8112` (pushed):
+  R1 `conversationStats.js` view key lacked `projectId` (v4.18.0's new active-view cache → tab counts
+  refetched for the previous project after delete; probe confirmed before/after); R2 duplicated
+  `ai_assignee_type` annotation in `conversation.rb`. Local prod `vite build` passes (26 s).
+  Three pre-existing project-view gaps (ChatList no `projectId` watcher, `isAConversationRoute`
+  missing project routes, `applyPageFilters` ignores project) flagged as a separate task — not merge
+  regressions.
+- CI on `5544e9ac1`: 25 pass, only `security-scan` red — and it was already red on develop (PRs #30/#31,
+  then for `ruby_llm` 1.15.0, which v4.18.0 fixes). Now it flags `rack-proxy` 0.7.7
+  (GHSA-42qh-8mx8-7wqm, advisory db updated 2026-09-27). Not reachable in prod: only
+  `ViteRuby::DevServerProxy` uses it and `ViteRuby.run_proxy?` is true only in development mode; it can't
+  be bumped anyway (`vite_ruby` 3.10.2 pins `rack-proxy ~> 0.6`). Brakeman step is `continue-on-error`.
+- **Review gate:** field/endpoint list is in the PR body — user must review before merge.
+- **Next:** CI green + refuter findings addressed → report to user → user says "merge deploy" →
+  merge PR → `rsync` mu-support → `./upgrade.sh v4.18.0-mutoday` (detached) → verify `/api` 4.18.0,
+  queue/data ok, `pg_index NOT indisvalid` = 0. Deadline ~2026-10-06.
+
+---
+
+## 2026-09-23 — Facebook Messenger inbox: App Review unblocked, and why 0 messages ever arrived · Opus 5
+
+**Verdict.** The Messenger plumbing is fully correct. Inbox #2 `Facebook - MUToday`
+(page_id `1155390994323924`) has received 0 messages for one reason only: **the Meta app
+`MUToday Support` (ID `1100184342479006`) is in Development mode, and the only account with a
+role on it is `Mutoday MarComm` (ผู้ดูแล).** In Development mode Messenger delivers webhooks
+only for people holding an app role, so a test from any other Facebook account is silently
+dropped by Meta and never reaches `/bot`.
+
+**Evidence.** `docker compose logs rails --since 48h | grep -c "POST /bot"` → **0**, while on the
+Meta side everything is green: callback URL `https://support.mutoday.com/bot` with verify token
+set (step 1 ✅), page `MUToday - มูทูเดย์` `1155390994323924` subscribed with 6 fields incl.
+`messages` (step 2 ✅), app-level `messages`/`messaging_postbacks`/`message_reads`/
+`message_deliveries`/`message_echoes`/`messaging_handovers` all subscribed. App roles page:
+ผู้ทดสอบ 0 of 50, ผู้พัฒนา 0, one Admin.
+
+**App Review submission was blocked on app settings; that block is now cleared.** The banner read
+"Currently ineligible for submission — missing: ไอคอนแอพ (1024×1024) · URL นโยบายความเป็นส่วนตัว ·
+หมวดหมู่". All of it came from MUToday's own site; saved and re-verified after reload:
+
+| ช่อง | ค่าเดิม | ค่าใหม่ |
+|---|---|---|
+| URL นโยบายความเป็นส่วนตัว | ว่าง | `https://mutoday.com/privacy` (PDPA ฉบับ 2 ก.ย. 2569) |
+| URL ข้อกำหนดของบริการ | `https://www.facebook.com/` ← ผิด | `https://mutoday.com/terms` |
+| การลบข้อมูลผู้ใช้ (URL คำแนะนำ) | `https://www.facebook.com/` ← ผิด | `https://mutoday.com/privacy` (ข้อ 8.2 ลบบัญชี / 8.3 ยื่นคำขอลบ) |
+| App icon | ไม่มี | 1024×1024 จาก `mutoday.com/images/brand/icon/mu-icon-512.png` (upscale 2×) |
+| หมวดหมู่ | ว่าง | ธุรกิจและเพจต่างๆ |
+
+`mutoday.com` is an SPA that returns the same shell HTML for every path, so `curl` on `/privacy`
+looks identical to the homepage — the routes are real (`PrivacyPolicyPage`, `TermsOfUsePage` in
+`/assets/index-*.js`) and must be checked in a browser, not with curl.
+
+**App Review checklist now** (draft submission `1101181172379323`, both permissions attached,
+560 + 11 real API calls justify them): การตั้งค่าแอพ ✅ · การตรวจสอบยืนยัน (Business Verification)
+⬜ · การใช้งานที่อนุญาต ⬜ · การจัดการข้อมูล ⬜ · คำแนะนำของผู้ตรวจสอบ ⬜. The last one needs a
+screencast of a working conversation, which cannot be recorded until an app role exists for the
+account doing the test — same blocker as above.
+
+### 2026-09-23 12:17 UTC — end-to-end test PASSED (both directions)
+
+Sent from `Mutoday MarComm` (`61566831055247`, the app's only Admin → qualifies under the
+Development-mode role rule) to the Page. Full round trip verified:
+
+- `Started POST "/bot" for 69.171.230.38 at 2026-09-23 12:17:55` — Meta delivered the webhook
+- `Enqueued Webhooks::FacebookEventsJob` with sender `29205978459003892`, recipient
+  `1155390994323924`, the exact text
+- message id 411, `message_type 0`, conversation **display_id 50**, contact `Mutoday MarComm`
+- notification id 372, type **`all_conversations_new_message`** (the MUToday type 9) broadcast —
+  **all 14 users got it** (`SELECT ... FROM notifications WHERE primary_actor_id=50` → 14 rows)
+- reply from Chatwoot: message id 412, `message_type 1`, **`status 2` (delivered)**, source_id
+  returned by Meta; visible in the Messenger thread as a Page reply
+- inbox 2 → `project_id 2` (MUToday), so it files under the right project in the sidebar
+
+**Caveat that still stands:** this proves the pipeline, not public availability. While the app is
+in Development mode only people holding an app role can reach the Page — a real customer's message
+is still dropped by Meta before it reaches `/bot`. That lifts only when `pages_messaging` gets
+Advanced Access through App Review.
+
+Also: the "0 `POST /bot`" figure used earlier as evidence was accurate — the log line does appear
+for a real delivery, so the count was 0 because no role-holding account had ever messaged the Page.
+
+
+### 2026-09-23 12:24 UTC — replying from the Page's own inbox also syncs (same role rule)
+
+Question raised: messaging from the Page's Messenger/Business-Suite inbox did not show up in
+Chatwoot. Cause is the same Development-mode role rule, not missing support.
+
+The fork already handles it — `Integrations::Facebook::MessageCreator#agent_message_via_echo?`
+routes any echo that did not come from the Chatwoot app into
+`Messages::Facebook::MessageBuilder.new(..., outgoing_echo: true)`, and both `message_echoes` and
+`messages` are subscribed at app and page level.
+
+Proved by replying as the Page in the Mutoday MarComm thread: webhook arrived with
+`is_echo: true`, sender = page `1155390994323924`, and **message id 413, `message_type 1`**,
+"ตอบจากหน้า inbox ของเพจ", landed in conversation 50.
+
+The natural experiment in the Page inbox is decisive — three messages inside four minutes,
+only the role-holder's got through:
+
+| Bangkok time | sender | app role | reached Chatwoot |
+|---|---|---|---|
+| 19:17 | Mutoday MarComm | Admin | yes (msg 411) |
+| 19:19 | Priyawit Petarewut | none | no — no webhook at all |
+| 19:21 | Sutham Sonnaya | none | no — no webhook at all |
+| 19:24 | Page → Mutoday MarComm | (counterpart is Admin) | yes (msg 413, echo) |
+
+The Page inbox also holds other threads from today that Chatwoot cannot see for the same reason,
+so App Review is not cosmetic — real conversations are being missed while the app stays in
+Development mode. Interim workaround: add up to 50 accounts under ผู้ทดสอบ; each must accept the
+invite, and only then do their threads sync.
+
+
+### 2026-09-23 — App Review: what each remaining step actually asks for (walked the wizard)
+
+Submission `1101181172379323`. Step 2 is green; the other four break down as follows.
+
+**1. การตรวจสอบยืนยัน — the critical path.** The app must be attached to a **verified** business
+portfolio. Two are offered, `Motoday ACC` and `MUToday`, and **both read `Unverified`**. So this is
+not a click: it needs Business Verification with company documents, and only someone with full
+business control can start it. Meta's own review of those documents is what sets the timeline.
+
+**3. การใช้งานที่อนุญาต — per permission, and one gap found.**
+- `pages_manage_metadata`: usage description · screencast of the end-to-end experience ·
+  agreement to the permitted use · **"คุณต้องส่ง `pages_show_list` เพื่อใช้ `pages_manage_metadata`"**
+  — and `pages_show_list` is **not in the draft**: it still sits at Standard access, 11 API calls,
+  "ไม่มีการส่งคำขอตรวจสอบแอพ", with a "ขอสิทธิ์การเข้าถึงระดับสูง" button. It has to be added.
+- `pages_messaging`: usage description · screencast · confirmation that the required API test calls
+  were made (560 recorded, so this is satisfied) · agreement · reproduction instructions.
+
+**4. การจัดการข้อมูล — two required questions, both company declarations.** `processor-0`: are
+there data processors or service providers, including your own company, that can reach Platform
+Data from Meta (yes/no, and name them). `responsible-1`: who is the person or organisation
+responsible for all Platform Data Meta shares with you. Meta prints a warning on the page telling
+you to consult your own legal and data-governance people before answering. The wizard will not
+advance past this step until both are filled.
+
+**5. คำแนะนำของผู้ตรวจสอบ — not inspectable yet**, gated behind step 4. From the checklist text it
+is the access information a Meta reviewer needs to get into the app and exercise the feature, which
+in practice means a test login for `support.mutoday.com`.
+
+Division of labour: adding `pages_show_list`, drafting the usage descriptions and reproduction
+instructions, recording the screencast (possible now that conversation 50 works), and drafting the
+step-4 answers are all doable here. Choosing and verifying the business portfolio, signing the
+attestations, approving the data-handling answers, and deciding on the reviewer test account are
+the account owner's.
+
+Independent of all of this, the ผู้ทดสอบ workaround works today and needs none of it.
+
+
+### 2026-09-23 — Instagram: fork supports it, but it needs its own Meta app
+
+**Traffic being missed.** The Page's Business Suite Instagram tab is busy — ☆ ipyal, Picha
+Kulvaraekdumrong, KNJNPON S., Panupan Jantanawong, iPAN CHANNEL, พี่หมอไอซ์ - icediry,
+COOLKIDS FORTUNE and more, all recent. None of it reaches Chatwoot; there is no Instagram inbox.
+
+**Fork side is ready.** `Channel::Instagram` exists, `channel_instagram` is enabled by default in
+`config/features.yml`, and the routes are in place: `webhooks/instagram` (verify + events) and
+`instagram/callback`.
+
+**Production config** (checked with `GlobalConfigService.load`, values not printed):
+
+| key | state |
+|---|---|
+| FB_APP_ID | `1100184342479006` |
+| FB_APP_SECRET | set, 32 chars |
+| FB_VERIFY_TOKEN | set, 48 chars |
+| IG_VERIFY_TOKEN | **EMPTY** |
+| INSTAGRAM_APP_ID | **EMPTY** |
+| INSTAGRAM_APP_SECRET | **EMPTY** |
+| INSTAGRAM_VERIFY_TOKEN | **EMPTY** |
+
+Note the values live in the DB as a YAML string inside `jsonb`, so `serialized_value->>'value'`
+returns NULL for every row and makes everything look empty. Read them through Rails, not SQL.
+
+**Which route the fork uses — decisive.** `Api::V1::Accounts::Instagram::AuthorizationsController`
+builds the authorize URL with `enable_fb_login: '0'` and
+`REQUIRED_SCOPES = instagram_business_basic, instagram_business_manage_messages`, redirecting to
+`{base_url}/instagram/callback`. That is **Instagram API with Instagram Login**, which needs an
+Instagram App ID and Secret distinct from the Facebook ones. `Channel::FacebookPage` still carries
+a legacy `instagram_id` column and several services read it, but **nothing in this version writes
+it**, so the old Instagram-through-the-Page route cannot be created from the UI any more.
+
+**Where it stalls.** Added the "API กราฟของ Instagram" product to app `1100184342479006`. Its only
+submenu is "การตั้งค่า API ของธุรกิจ", an informational page — there is **no "API setup with
+Instagram login" panel**, so this app issues no Instagram App ID/Secret. The app's type reads
+"ประเภทของแอพ: ไม่มี" and it was created for the Messenger use case, which is the likely reason.
+
+**Correction to what was said earlier in the session:** Instagram cannot be folded into the
+existing `pages_messaging` submission. With this implementation it needs a **separate Meta app
+created with the Instagram use case**, and therefore its own App Review for
+`instagram_business_manage_messages`. Business Verification is per business portfolio, so that part
+is shared once done.
+
+**Why a new app is unavoidable, from Meta's own guide** (`/docs/instagram-platform/create-an-instagram-app/`):
+adding Instagram to an existing app is allowed — "เพิ่มลงในแอพที่มีอยู่ … โปรดเริ่มต้นที่ขั้นตอนที่ 6" — but
+step 4 states "แอพของคุณต้องเป็นแอพประเภทธุรกิจจึงจะสามารถเพิ่มผลิตภัณฑ์ Instagram ได้". App
+`1100184342479006` reads **ประเภทของแอพ: ไม่มี**, and that string is plain text in the header with no
+control anywhere in App Settings > Advanced to change it. That is why the add-product list offered
+only the legacy "API กราฟของ Instagram" instead of the "Instagram" product, which per step 6 would
+have added "การตั้งค่า API ด้วยการเข้าสู่ระบบ Instagram" automatically.
+
+Two useful details from the same guide: a Business-type app with the Instagram product subscribes by
+default to `messages`, `message_reactions` and `messaging_seen`, exactly the fields
+`Channel::Instagram#subscribe` asks for; and the app-role limit is 15 apps, so a second app is fine.
+
+Open decision for the account owner: create that second Meta app, or leave Instagram until the
+Facebook review clears. Either way Development mode applies to Instagram too — Meta's own Instagram
+settings page states it: during development only people holding an app role can be messaged.
+
+
+### 2026-09-24 — TikTok: app is Approved, and it lives on the *other* TikTok portal
+
+**The portal trap.** TikTok has two separate developer portals with separate logins, and the app is
+on the one Chatwoot actually targets:
+
+- `developers.tiktok.com` — Login Kit / Display API. Logging in there as `m***y@mutoday.com` shows
+  **no organizations and no apps** ("You do not have any apps yet"), and `/manage/apps` throws
+  "Something went wrong — unrecognized app type". A dead end; do not look here.
+- `business-api.tiktok.com/portal/apps` — **TikTok for Business Developers. This is the right one.**
+
+**App state there:** `MUToday Support`, App ID **`7688713578483843092`**, Verification Status
+**Approved**, Online toggle on, Secret shown masked in the portal.
+
+**The fork targets this portal.** `Tiktok::AuthClient` cites
+`https://business-api.tiktok.com/portal/docs?id=1832184159540418`, exchanges the code at
+`#{api_base_url}/tt_user/oauth2/token/`, and registers its own webhook through
+`/business/webhook/update/` with `event_type: DIRECT_MESSAGE` — so the webhook needs no manual
+setup in the portal. Authorization itself goes to `https://www.tiktok.com/v2/auth/authorize` with
+`client_key = TIKTOK_APP_ID`.
+
+**Already lined up:** the portal's "Advertiser redirect URLs" is exactly
+`https://support.mutoday.com/tiktok/callback`, which is what `AuthClient#redirect_uri` builds from
+`FRONTEND_URL`. Nothing to change.
+
+**Config now:** `TIKTOK_APP_ID` set to `7688713578483843092` (written via `InstallationConfig` +
+`GlobalConfig.clear_cache` — note `GlobalConfigService.load`'s `first_or_create` will **not** update
+an existing blank row, so writing the record directly is required). `TIKTOK_API_VERSION` `v1.3` and
+`FRONTEND_URL` were already correct. `TIKTOK_APP_SECRET` is still empty, and
+`/opt/mu-support/set-tiktok-secret.sh` now exists for the owner to paste it: `read -rs`, piped to
+`rails runner` over **stdin** (never argv), and it checks the stored value's first and last
+characters against the portal's masked display, without printing it.
+
+**Open question to settle by trying it:** the portal's scope tree is all advertising scopes, and
+`message.list.read/send/manage` were not visible in it. The decisive test is running the real OAuth
+once the secret is in — TikTok will either present the messaging permissions or reject the scope.
+
+**Priority note:** TikTok Business Suite shows 28 unread but the newest thread is 23 Apr 2026, five
+months stale, while Instagram has DMs arriving daily. Instagram is the better use of effort.
+
+
+### 2026-09-24 — TikTok OAuth attempted: rejected, and the reason is now fully evidenced
+
+Secret entered by the owner through `set-tiktok-secret.sh` (40 chars, matching the portal's masked value, verified by an
+independent read-back). Chatwoot's "Connect your TikTok Profile" page rendered — so the frontend
+sees `TIKTOK_APP_ID` — and "Continue with TikTok" redirected to
+`www.tiktok.com/v2/auth/authorize?client_key=7688713578483843092&scope=user.info.basic,…,message.list.read,message.list.send,message.list.manage&redirect_uri=https://support.mutoday.com/tiktok/callback`.
+TikTok answered **`error=unauthorized_client&error_type=client_key`** ("We couldn't log in with
+TikTok… correct the following: client_key"), logid `202609241135242BAAF641DBC1F9ABDC8D`.
+
+**Why.** The approved app is a *Marketing API* app. In its scope tree only Ad account management
+(All), Measurement (All) and CTM event management (All) are ticked — exactly the three scopes TikTok's
+"Access to Business Messaging API" guide tells you to request *as the prerequisite app*. The
+**"TikTok accounts" scope is unticked and carries a ⚠️** whose tooltip reads: "To request the
+Accounts API scope, you must fill out the Accounts API Access Application Form. Failure to do so
+may result in your Accounts and Business Messaging API approvals being rejected." Consistent with
+that, Basic Information shows only an *Advertiser* authorization/redirect URL and **no "TikTok account
+holder authorization URL"** — the Authorization guide says that URL only appears once "TikTok
+Accounts" is selected. Without it, `/v2/auth/authorize` does not recognise the app as a client for
+the TikTok-account (tt_user) flow, hence `unauthorized_client`.
+
+**What TikTok requires before this flow can work** (from `docs/authorization/v1.3`,
+`docs/access-to-business-messaging-api/v1.3`, `docs/tiktok-account-holder-redirect-url-configuration/v1.3`):
+1. Accounts API Access Application Form (Lark form
+   `https://bytedance.sg.larkoffice.com/share/base/form/shrlgu4WEvtSXpEDLcCw56u4Rfc`) → grants
+   "TikTok Accounts" scope.
+2. Business Messaging API access: submit the **Data security and privacy review intake form**;
+   TikTok starts the review within 10 working days and emails a "TikTok/ByteDance Third-Party Due
+   Diligence Questionnaire" (DSPR DDQ) to the contact. For Business Accounts outside the US/EEA/UK
+   (i.e. Thailand) passing DSPR is sufficient; the FAQ recommends *excluding* the US to avoid the
+   extra USDS review.
+3. A **TikTok account holder redirect URL** (a separate field from the Advertiser one). TikTok's
+   formatting rules say it must end with `/`; Chatwoot builds `redirect_uri` without the slash and its
+   own docs say to register `{url}/tiktok/callback` exactly. Verify which TikTok accepts when the
+   field appears — not resolvable before step 1.
+4. An app logo (JPG/PNG ≤ 512×512) — the guide warns users hit an error page without it.
+
+**Accounts API Access Application Form — what it asks** (Lark form opened in the owner's browser;
+guest access works, `View Responses`/`Share` visible): 1 legal Business Name · 2 does it match the
+developer-profile Company Name (`/portal/developer/profile`) · 3 App Name (`MUToday Support`) ·
+4 the TikTok for Business account email used for developer registration (`ads.tiktok.com/ac/page/settings/`)
+· 5 company website · 6 Business Verification: upload a registration document *or* a Business Center
+ID with verified company info · 7 Use Case (why the API rather than native TikTok tools) · 8 Screen
+Recordings (prototypes accepted) · 9 estimated authorizing accounts (choose "Less Than 10") ·
+10 Developer Account Type (Direct Advertiser / Agency / Technology Company) · 11 usage acknowledgment.
+"Please do not submit this form multiple times."
+
+**Screen recording for form Q8 — done 2026-09-24.** Recorded with the Chrome extension's GIF
+recorder on the Chatwoot tab only (no desktop, no other tabs): Facebook inbox → "ทั้งหมด" tab →
+conversation #50 (incoming DM + two agent replies with delivered ticks) → reply typed in the composer
+(not sent, draft cleared afterwards) → Settings › Inboxes list (LINE + Facebook) → Add-inbox channel
+grid with the TikTok tile → "Connect your TikTok Profile" page. Deliberately stayed on the Facebook
+inbox so no LINE customer names or messages appear; only the internal Mutoday MarComm test thread and
+the applicant's own sidebar identity are visible. Files in `~/Downloads`:
+`mutoday-chatwoot-tiktok-usecase-v2.mp4` (22 frames, 16.5 s, 182 KB, ffmpeg from the GIF) and
+`mutoday-chatwoot-tiktok-usecase-v2.gif` (22 frames, 17.8 s, 1.9 MB). Frames verified by extracting
+all 22 with `ffmpeg -fps_mode passthrough`. `mutoday-chatwoot-tiktok-usecase.gif` (no `-v2`) is a
+failed first take — its click landed on an empty "ของฉัน" tab, so it never shows the conversation;
+ignore or delete it.
+
+**How the "TikTok Accounts" scope is actually requested (found 2026-09-24).** The Lark form is only
+the prerequisite; the request itself is made in the portal: App Detail › Authorization › pencil next
+to "Scope of permission" → the tree becomes editable → tick **TikTok accounts** (the ⚠️ one) → fill
+the required "Please state your reason for updating permissions" (≤ 500 chars) → **Submit**. Not
+submitted yet — left in view mode untouched; the owner decides when.
+
+**2026-09-24, portal work on app `7688713578483843092` (owner approved "ทำต่อให้หน่อย"):**
+- Ticking **TikTok accounts** in the scope editor made the portal add two new Basic Information
+  blocks: "TikTok account holder authorization URL" (v2 —
+  `https://www.tiktok.com/v2/auth/authorize?client_key=7688713578483843092&scope=&response_type=code&redirect_uri=…`,
+  the exact endpoint `Tiktok::AuthClient#authorize_url` uses) and "TikTok account holder redirect
+  URLs". A first Submit was blocked by the toast "Add your redirect URL and app logo".
+- **TikTok account holder redirect URL set to `https://support.mutoday.com/tiktok/callback`** — no
+  trailing slash, and the portal accepted it, so it matches Chatwoot's `redirect_uri` byte for byte.
+  The trailing-slash worry from the redirect-URL guide is closed.
+- **App logo uploaded**: `mu-icon-512.png` (512×512, the same MUToday icon used for the Meta app).
+- Reason text (431/500) drafted; a mis-tick on "TikTok Shop" was caught by screenshot before submit
+  and reverted. Note: `find`'s checkbox refs in this tree were off by one row — verify by screenshot,
+  not by ref, before submitting anything here. Also a hidden "reset secret" dialog exposes a
+  "Confirm" button to `find`; never click it blind.
+
+- **Scope request SUBMITTED 2026-09-24.** Second Submit went through (edit mode closed, no error
+  toast). After reload `/portal/apps` shows the app as **"Approved — Scope of Permissions Change
+  Pending"**. The TikTok Accounts request is now in TikTok's queue; nothing further to do on this
+  app until TikTok answers.
+
+- **Form ② (Data Security and Privacy Review intake) SUBMITTED by the owner 2026-09-24**, Lark form
+  `shrlg7vFArGhg9V20neYCEwIKrb`, first-time application, App ID `7688713578483843092`, regions
+  APAC only (US deliberately excluded to avoid the USDS review). Contact email is a
+  `@mutoday.com` address the owner chose; the DSPR DDQ questionnaire will arrive there within
+  ~10 working days and must be answered before Business Messaging access is granted.
+- **State at close of 2026-09-24:** TikTok Accounts scope — *Scope of Permissions Change Pending*;
+  Business Messaging API — intake submitted, DDQ not yet received. Nothing left to do on our side
+  until TikTok writes back. When it does: re-check that the account-holder redirect URL and app
+  logo are still shown on Basic Information (hidden while the change is under review), then run
+  "Continue with TikTok" in Chatwoot — a consent page instead of `unauthorized_client` is the pass
+  signal — and create the inbox.
+
+**How to know the outcome** — three independent signals, in the order they will appear:
+1. Portal: the app row's Verification Status / the ticked scope stops showing pending, and
+   **"TikTok account holder authorization URL" + "TikTok account holder redirect URLs" appear under
+   Basic Information** (the guide says they exist only once TikTok Accounts is granted).
+2. Email to the developer-profile communication address (`•••mutoday.com`): the scope decision, and
+   separately the "TikTok/ByteDance Third-Party Due Diligence Questionnaire" (DSPR DDQ) for Business
+   Messaging — TikTok starts that within 10 working days of the intake form; the DDQ must be answered
+   before Business Messaging access is granted.
+3. Functional, checkable from here any time: `Tiktok::AuthClient.webhook_callback` currently returns
+   `40000: Invalid Params`; and "Continue with TikTok" in Chatwoot currently lands on
+   `error=unauthorized_client&error_type=client_key`. When the consent page appears instead, access
+   is live.
+
+Chatwoot's own guide (`developers.chatwoot.com/self-hosted/configuration/features/integrations/tiktok`)
+agrees: required scope "TikTok Accounts"; Business Messaging API access application required; register
+`{url}/tiktok/callback` (no trailing slash shown); the TikTok Business Account must be set to accept
+DMs from everyone; after credentials, `Tiktok::AuthClient.update_webhook_callback` from a Rails console.
+
+Nothing on the Chatwoot side needs to change: `channel_tiktok` is on for account 1, routes and
+config are in place, and `Tiktok::AuthClient#update_webhook_callback` registers the webhook itself.
+
+
+### 2026-09-24 — Meta Business Verification: where it actually starts (not Security Center)
+
+Checked live with the owner's authenticated Business Suite session:
+- `business_id 1493003645629800` = portfolio **"Motoday ACC"** — the one whose Business Suite hosts
+  the Page `1155390994323924` inbox. It is the right portfolio to verify and connect the app to.
+- `business.facebook.com/latest/settings/security_center?business_id=1493003645629800` says
+  **"การตรวจสอบยืนยัน Motoday ACC — องค์กรของคุณไม่จำเป็นต้องได้รับการตรวจสอบยืนยัน"** with no start
+  button (only a Meta Verified upsell). The `security-center` link given earlier in this session is
+  therefore a dead end for now. `…/authorizations_verifications` lists only ad-related authorisations
+  (Singapore/Taiwan/Australia/India ads, CBD, gambling…) — also not it.
+- The App Review wizard's first step (`app-review/submissions/?submission_id=1101181172379323` →
+  "ไปที่การตรวจสอบยืนยัน") still lists **Motoday ACC — Unverified** and **MUToday — Unverified**.
+  Nothing is pending; no documents have been submitted to Meta yet.
+- **Entry point:** select Motoday ACC there → ถัดไป. That connects app `1100184342479006` to the
+  portfolio (ownership moves to the business — owner's decision, left unclicked) and is what makes
+  verification available for this portfolio.
+- `…/settings/apps` for the portfolio demands a passkey (fingerprint/face) re-auth — owner only.
+- **Update same day, after the owner acted:** app `1100184342479006` is now **connected to
+  Motoday ACC** (the owner did it). The App Review verification step shows Motoday ACC
+  **"● ไม่ได้รับการตรวจสอบยืนยัน"** with a new **"เริ่มการตรวจสอบยืนยัน"** button — but that button opens
+  Security Center, which **redirects to `/latest/settings/mv4b` (the Meta Verified page)**, because
+  Security Center still says the portfolio "ไม่จำเป็นต้องได้รับการตรวจสอบยืนยัน".
+- The owner believed verification was done because the Meta Verified page shows **Meta Verified
+  Business Premium — active** on `@mutodayofficial` (IG) and `MUToday - มูทูเดย์` (FB), both blue-ticked.
+  Meta's own help article (`facebook.com/business/help/2058515294227817`, Thai) settles it:
+  "การตรวจสอบยืนยันธุรกิจของคุณใน Meta Business Suite นั้นแตกต่างจาก Meta Verified สำหรับธุรกิจ" — the
+  badge does **not** satisfy App Review's Business Verification.
+- Same article: the Start button only exists once the portfolio is *eligible*; when it says not
+  eligible, the requirement may instead arrive by email/notification from the product that needs it.
+  Process once open: legal name, address, phone, HTTPS website → match or upload a document
+  (business licence / certificate of incorporation) → confirm a contact (email, phone, SMS,
+  WhatsApp or domain verification) → decision within **14 business days**. Requires full control of
+  the portfolio.
+- **2026-09-25:** eligibility flipped overnight. Security Center for Motoday ACC now reads
+  "องค์กรของคุณต้องได้รับการตรวจสอบยืนยันจึงจะเข้าถึงผลิตภัณฑ์ในเครือ Meta บางอย่างได้ — **มีคุณสมบัติที่จะ
+  เข้ารับการตรวจสอบยืนยัน**" with a "เริ่มการตรวจสอบยืนยัน" button. Clicking it *still* redirects to
+  `/latest/settings/mv4b` (Meta Verified), no dialog, no iframe. `…/settings/business_info` (where
+  the business legal details live) sits behind a fresh **2FA SMS re-auth** to `+*********29` —
+  owner-only. Left on that 2FA screen for the owner; retry the Start button after re-auth.
+
+- **Root cause of "ขออภัย เกิดปัญหาทางเทคนิคกับฟีเจอร์นี้" on Start verification (2026-09-25):**
+  the owner passed 2FA; Security Center now shows a "การตรวจสอบยืนยันธุรกิจ" block with the correct
+  use case pre-selected ("แอพต้องเข้าถึงสิทธิ์การอนุญาตบน Meta for Developers ได้"). Clicking Start
+  opens a modal that loads, then shows that generic error — reproduced from this session too, so it
+  is not the owner's browser. `…/settings/business_info` shows **every business detail blank**:
+  ชื่อธุรกิจตามกฎหมาย "ไม่มีชื่อ", ที่อยู่ "ไม่มีที่อยู่", หมายเลขโทรศัพท์ "ไม่มีหมายเลขโทรศัพท์", เว็บไซต์
+  "ไม่มีเว็บไซต์", เพจหลัก "ไม่มี"; สถานะ "ยังไม่ได้ตรวจสอบยืนยัน". Meta's verification flow starts by
+  confirming exactly those fields, so the empty record is the most likely reason the wizard fails.
+  Fix: owner fills รายละเอียดธุรกิจ (แก้ไข) with the legal details from the หนังสือรับรอง, then retries.
+
+- **Confirmed fix (2026-09-25):** after the owner's team (Thirada Burapachayanon) filled รายละเอียดธุรกิจ
+  — legal name บริษัท มูทูเดย์ จำกัด, address 150 ซอยสุขุมวิท 55 (ทองหล่อ) คลองตันเหนือ วัฒนา กรุงเทพฯ 10110,
+  phone, website https://mutoday.com/ and tax ID all filled — "เริ่มการตรวจสอบยืนยัน" no
+  longer errors: it opens the **passkey re-auth dialog** ("การตรวจสอบยืนยันความถูกต้อง … ใช้พาสคีย์"),
+  which precedes the verification form. Owner-only step; left open for them.
+  Noted for the form's confirm step: address line 1 and line 2 were saved **identical** (the whole
+  street+district string twice); clean it to line 1 = street, line 2 blank, before submitting so it
+  matches the หนังสือรับรอง.
+
+- **Plan change by owner (2026-09-25):** invite the team mailbox **dev@mutoday.com** to Motoday ACC with
+  full control (portfolio + @mutodayofficial IG + MUToday - มูทูเดย์ page + มูทูเดย์ page + ad account
+  MUtoDay ACC) so verification and future sensitive steps run on an account whose credentials live in
+  the team's 1Password, instead of chasing whoever holds the Mutoday MarComm passkey / SMS (…29).
+  The invite's final "ตรวจสอบคำเชิญ" step hung on a spinner; dev@mutoday.com is **not** yet in People.
+  Cause: Meta demands the Mutoday MarComm **passkey re-auth** before granting full control (the same
+  dialog now also gates the People page). This one passkey pass is unavoidable to bootstrap the dev
+  account; afterwards dev's own login + 2FA (TOTP or passkey stored in 1Password) covers everything.
+  Current People list: Napatsorn Sarikawanich (partial), Thirada Burapachayanon (full, shown as "คุณ"),
+  Sarun Maneepongsawat (partial), Siro Sirorat (full), pipatpong laowiriyajaroenchai (full).
+
+- Next: re-check Security Center / the wizard after eligibility propagates (the app link is new), and
+  in parallel use the Meta Verified Business Premium support channel (its "ติดต่อฝ่ายสนับสนุน" link) to
+  ask Meta to open Business Verification for Motoday ACC.
+
+
+
+### 2026-09-27 — status sweep while waiting on Meta/TikTok reviews
+
+- Prod still **4.17.0** (`/api`: queue ok, data ok). The v4.18.0 security upgrade from the 09-22 audit
+  (2FA-bypass fix `7d581dc8c` etc., "within two weeks" → by ~2026-10-06) is **not done**.
+- LINE: 50 convs / 217 incoming, last message 2026-09-27 06:39. Zero incoming 09-23…09-26 looked like
+  an outage but is not: rails/sidekiq up 5 days, the only LINE webhooks on those days
+  (`/webhooks/line/2008480970`, 09-23 12:02 and 09-26 10:36 from 147.92.150.19x) returned 200 and
+  enqueued `LineEventsJob` with no Sidekiq errors — non-message events on a low-traffic OA. The busy
+  days (09-18, 09-21, 09-22, 09-27 burst) line up with team testing.
+- Push subscriptions still **2 of 14 users** — the original "no notification" complaint is unresolved
+  on the people side.
+- Facebook inbox: still only test conversation #50.
+- The Chrome session is now the dev@mutoday.com account ("Priyawit Petarwut", full control of
+  Motoday ACC). It has **no role on Meta app 1100184342479006** — developers.facebook.com opens the
+  generic home instead of the app — so App Review cannot be driven from it until Mutoday MarComm adds
+  it under บทบาทในแอพ. Business info page asks this account for a fresh 2FA re-auth.
+- TikTok portal session expired (redirects to ads.tiktok.com login); status unchecked.
+
+
+**Next step, in order:** add the tester's Facebook account under ผู้ทดสอบ (or ผู้พัฒนา) on the app
+→ message the Page from that account → confirm `POST /bot` appears and the conversation lands in
+inbox #2 → record that as the reviewer screencast → the user completes Business Verification and
+the two attestation steps → submit.
+
+---
+
 ## 2026-09-22 — SECURITY AUDIT of production: keep running, 3 urgent items · Fable 5.1
 
 **Verdict.** `support.mutoday.com` (4.17.0, `develop` head `c01c61da1`) is safe to keep using. The

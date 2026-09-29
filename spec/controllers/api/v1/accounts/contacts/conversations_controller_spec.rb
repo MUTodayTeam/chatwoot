@@ -37,6 +37,19 @@ RSpec.describe '/api/v1/accounts/{account.id}/contacts/:id/conversations', type:
 
           expect(json_response['payload'].length).to eq 4
         end
+
+        it 'reads the cases of all rows at once' do
+          account.conversations.each { |conversation| create(:case, conversation: conversation) }
+          case_queries = 0
+          count_case_queries = ->(*, payload) { case_queries += 1 if payload[:sql].include?('FROM "cases"') }
+
+          ActiveSupport::Notifications.subscribed(count_case_queries, 'sql.active_record') do
+            get "/api/v1/accounts/#{account.id}/contacts/#{contact.id}/conversations", headers: admin.create_new_auth_token
+          end
+
+          expect(response.parsed_body['payload'].pluck('case')).to all(be_present)
+          expect(case_queries).to eq 1
+        end
       end
 
       context 'with user as agent' do

@@ -179,7 +179,11 @@ const selectedModel = computed({
         />
       </div>
 
-      <ReplyCountdown :reply-due-at="chat.reply_due_at" class="flex-shrink-0" />
+      <ReplyCountdown
+        :reply-due-at="chat.reply_due_at"
+        :status="chat.status"
+        class="flex-shrink-0"
+      />
 
       <div v-if="hasSlaPolicyId" class="flex-shrink-0">
         <SLACardLabel ref="slaCardLabel" :chat="chat" />

@@ -552,6 +552,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.index ["enabled"], name: "index_captain_scenarios_on_enabled"
   end
 
+  create_table "cases", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "project_id"
+    t.bigint "team_id"
+    t.integer "display_id", null: false
+    t.string "subject", default: "", null: false
+    t.integer "severity", default: 3, null: false
+    t.bigint "case_category_id"
+    t.bigint "resolved_by_id"
+    t.integer "reopened_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_cases_on_account_id_and_created_at"
+    t.index ["account_id", "display_id"], name: "index_cases_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "project_id"], name: "index_cases_on_account_id_and_project_id"
+    t.index ["account_id", "team_id"], name: "index_cases_on_account_id_and_team_id"
+    t.index ["conversation_id"], name: "index_cases_on_conversation_id", unique: true
+  end
+
   create_table "categories", force: :cascade do |t|
     t.integer "account_id", null: false
     t.integer "portal_id", null: false
@@ -889,9 +909,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.string "ai_assignee_type"
     t.datetime "status_changed_at"
     t.datetime "reply_due_at"
+    t.datetime "missed_at"
+    t.datetime "expired_at"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "expired_at"], name: "index_conversations_on_account_id_and_expired_at", where: "(expired_at IS NOT NULL)"
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
+    t.index ["account_id", "missed_at"], name: "index_conversations_on_account_id_and_missed_at", where: "(missed_at IS NOT NULL)"
     t.index ["account_id", "status", "created_at"], name: "index_conversations_on_account_id_status_created_at"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_conversations_on_assignee_id_and_account_id"
@@ -1225,9 +1249,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.integer "extension_minutes", default: 60, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "waiting_time_minutes", default: 60, null: false
+    t.integer "auto_solve_hours", default: 24, null: false
+    t.integer "auto_close_hours", default: 48, null: false
+    t.bigint "transfer_team_id"
+    t.decimal "assisted_weight", precision: 4, scale: 2, default: "0.5", null: false
+    t.decimal "transfer_penalty", precision: 4, scale: 2, default: "0.2", null: false
     t.index ["account_id", "project_id"], name: "index_live_chat_rules_on_account_id_and_project_id", unique: true
     t.index ["account_id"], name: "index_live_chat_rules_on_account_id"
+    t.index ["account_id"], name: "index_live_chat_rules_on_account_id_default", unique: true, where: "(project_id IS NULL)"
     t.index ["project_id"], name: "index_live_chat_rules_on_project_id"
+    t.index ["transfer_team_id"], name: "index_live_chat_rules_on_transfer_team_id"
   end
 
   create_table "macros", force: :cascade do |t|
@@ -1413,6 +1445,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.string "color"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "code", limit: 10
     t.index ["account_id", "name"], name: "index_projects_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_projects_on_account_id"
   end
@@ -1639,6 +1672,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify
   add_foreign_key "project_teams", "projects", on_delete: :cascade
   add_foreign_key "project_teams", "teams", on_delete: :cascade
   add_foreign_key "user_sessions", "users"

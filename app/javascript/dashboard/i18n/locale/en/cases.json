@@ -1,0 +1,53 @@
+{
+  "CASES": {
+    "HEADER": "Cases",
+    "COUNT": "{n} case | {n} cases",
+    "OPEN_COUNT": "{n} open",
+    "DESCRIPTION": "Every chat an agent takes is one case, opened automatically and linked to its thread. A case's status is its chat's status, and a customer writing back reopens the same case.",
+    "CONTACT_FILTER": "Showing one contact's cases",
+    "CLEAR_FILTER": "Show all cases",
+    "EMPTY_STATE": "No cases here yet. A case opens automatically when an agent takes a chat.",
+    "TABS": {
+      "ALL": "All cases",
+      "MINE": "My Cases"
+    },
+    "MINE_HINT": "Cases you own and cases from chats you replied in, including solved and closed ones.",
+    "TABLE": {
+      "NUMBER": "Number",
+      "PROJECT": "Project",
+      "CONTACT": "Contact",
+      "SUBJECT": "Subject",
+      "SEVERITY": "Severity",
+      "STATUS": "Status",
+      "TEAM": "Team",
+      "OWNER": "Owner",
+      "THREAD": "Thread",
+      "TIME": "Opened"
+    },
+    "NO_PROJECT": "No project",
+    "NO_TEAM": "No team",
+    "UNASSIGNED": "Unassigned",
+    "OPEN_THREAD": "Open thread",
+    "REOPENED": "Reopened ×{count}",
+    "SEVERITY": {
+      "p1": "P1",
+      "p2": "P2",
+      "p3": "P3",
+      "p4": "P4"
+    },
+    "STATUS": {
+      "open": "Open",
+      "pending": "Pending",
+      "snoozed": "On hold",
+      "resolved": "Solved",
+      "closed": "Closed"
+    },
+    "HEADER_CHIP": "Case {display}",
+    "RELATED": {
+      "EMPTY": "No cases yet. One opens automatically when an agent takes this chat."
+    },
+    "API": {
+      "ERROR_MESSAGE": "Could not load the cases, please try again"
+    }
+  }
+}
