@@ -111,7 +111,8 @@ export const mutations = {
 
   [types.default.SET_AGENTS]: MutationHelpers.set,
   [types.default.ADD_AGENT]: MutationHelpers.create,
-  [types.default.EDIT_AGENT]: MutationHelpers.update,
+  // Merge, since the update response lacks the conversation_load that only the list carries.
+  [types.default.EDIT_AGENT]: MutationHelpers.updateAttributes,
   [types.default.DELETE_AGENT]: MutationHelpers.destroy,
   [types.default.UPDATE_AGENTS_PRESENCE]: MutationHelpers.updatePresence,
   [types.default.UPDATE_SINGLE_AGENT_PRESENCE]: (

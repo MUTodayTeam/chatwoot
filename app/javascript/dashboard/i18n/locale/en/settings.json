@@ -424,7 +424,13 @@
     "DOCS": "Read docs",
     "SECURITY": "Security",
     "CAPTAIN_AI": "Captain",
-    "CONVERSATION_WORKFLOW": "Conversation Workflow"
+    "CONVERSATION_WORKFLOW": "Conversation Workflow",
+    "PROJECT_STATUS": {
+      "CURRENT_PROJECT": "Current project",
+      "OPEN": "{n} open",
+      "UNREAD": "{n} unread",
+      "AGENTS_ONLINE": "Agents online"
+    }
   },
   "DATA_IMPORTS": {
     "HEADER": "Data",

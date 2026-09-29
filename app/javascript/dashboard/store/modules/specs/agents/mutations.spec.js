@@ -49,6 +49,19 @@ describe('#mutations', () => {
         { id: 1, name: 'Agent2', email: 'agent2@chatwoot.com' },
       ]);
     });
+
+    it('keeps the conversation load that only the list response carries', () => {
+      const conversationLoad = { assigned_count: 3, limit: 10 };
+      const state = {
+        records: [
+          { id: 1, name: 'Agent1', conversation_load: conversationLoad },
+        ],
+      };
+      mutations[types.default.EDIT_AGENT](state, { id: 1, name: 'Agent2' });
+      expect(state.records).toEqual([
+        { id: 1, name: 'Agent2', conversation_load: conversationLoad },
+      ]);
+    });
   });
 
   describe('#DELETE_AGENT', () => {

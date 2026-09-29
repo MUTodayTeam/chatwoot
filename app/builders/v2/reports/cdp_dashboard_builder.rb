@@ -2,10 +2,8 @@ class V2::Reports::CdpDashboardBuilder
   include DateRangeHelper
   include TimezoneHelper
 
-  DEFAULT_AGENT_CONVERSATION_LIMIT = 10
   TOP_TOPICS_LIMIT = 8
   TOP_TOPIC_FIELDS = %i[id c1 c2 c3 chats contacts].freeze
-  ACTIVE_CONVERSATION_STATUSES = %w[open pending snoozed].freeze
   # Anything from 20:00 to 06:59 counts as outside business hours.
   BUSINESS_HOURS = (7..19)
   CHANNEL_KEYS = { 'Channel::Line' => :line, 'Channel::FacebookPage' => :facebook }.freeze
@@ -204,26 +202,10 @@ class V2::Reports::CdpDashboardBuilder
 
   def agent_load
     agents = account.users.where(id: InboxMember.where(inbox_id: inbox_ids).select(:user_id)).pluck(:id, :name)
-    inbox_limits = agent_inbox_limits(agents.map(&:first))
+    loads = Agents::ConversationLoadService.new(account: account, inbox_ids: inbox_ids, user_ids: agents.map(&:first)).perform
 
-    rows = agents.map do |id, name|
-      limits = inbox_limits[id]
-      # An agent with per-inbox caps is measured only on the capped inboxes, against the sum of those caps.
-      next { id: id, name: name, assigned_count: assigned_count(id, inbox_ids), limit: DEFAULT_AGENT_CONVERSATION_LIMIT } unless limits
-
-      { id: id, name: name, assigned_count: assigned_count(id, limits.keys), limit: limits.values.sum }
-    end
+    rows = agents.map { |id, name| { id: id, name: name, **loads[id] } }
     rows.sort_by { |row| [-row[:assigned_count], row[:name]] }
-  end
-
-  def assigned_count(agent_id, counted_inbox_ids)
-    @active_counts ||= account.conversations.where(inbox_id: inbox_ids, status: ACTIVE_CONVERSATION_STATUSES).group(:assignee_id, :inbox_id).count
-    @active_counts.sum { |(assignee_id, inbox_id), count| assignee_id == agent_id && counted_inbox_ids.include?(inbox_id) ? count : 0 }
-  end
-
-  # { user_id => { inbox_id => limit } } for agents capped per inbox; Enterprise reads advanced assignment capacity policies.
-  def agent_inbox_limits(_user_ids)
-    {}
   end
 
   def started_conversations(period_range)
@@ -260,5 +242,3 @@ class V2::Reports::CdpDashboardBuilder
     @timezone ||= timezone_name_from_offset(params[:timezone_offset])
   end
 end
-
-V2::Reports::CdpDashboardBuilder.prepend_mod_with('V2::Reports::CdpDashboardBuilder')

@@ -27,6 +27,12 @@ import {
   mapTeamIdsByAgent,
   projectsForTeams,
 } from './helpers/agentAccessHelper';
+import {
+  DEFAULT_PRESENCE,
+  PRESENCE_DOT_CLASSES,
+  formatAgentLoad,
+  isAgentAtLimit,
+} from 'dashboard/helper/agentAssignment';
 
 const ROLES = ['administrator', 'agent'];
 
@@ -63,6 +69,7 @@ const projects = useMapGetter('projects/getProjects');
 const teamIdsByAgent = computed(() =>
   mapTeamIdsByAgent(teams.value, teamMembersOf.value)
 );
+const presenceOf = agent => agent.availability_status || DEFAULT_PRESENCE;
 const teamIdsOf = agent => teamIdsByAgent.value[agent.id] ?? [];
 const projectsOf = agent => projectsForTeams(projects.value, teamIdsOf(agent));
 
@@ -116,6 +123,8 @@ const tableHeaders = computed(() => [
   t('AGENT_MGMT.LIST.ROLE'),
   t('AGENT_MGMT.LIST.TEAMS'),
   t('AGENT_MGMT.LIST.PROJECTS'),
+  t('AGENT_MGMT.LIST.PRESENCE'),
+  t('AGENT_MGMT.LIST.CHAT_LIMIT'),
   t('AGENT_MGMT.LIST.STATUS'),
   t('AGENT_MGMT.LIST.ACTIONS'),
 ]);
@@ -338,6 +347,30 @@ const confirmDeletion = () => {
               </BaseTableCell>
               <BaseTableCell>{{ teamNamesOf(agent) }}</BaseTableCell>
               <BaseTableCell>{{ projectNamesOf(agent) }}</BaseTableCell>
+              <BaseTableCell>
+                <span class="inline-flex items-center gap-1.5">
+                  <span
+                    class="rounded-full size-2 flex-shrink-0"
+                    :class="PRESENCE_DOT_CLASSES[presenceOf(agent)]"
+                  />
+                  {{
+                    $t(
+                      `AGENT_MGMT.LIST.PRESENCE_STATUS.${presenceOf(agent).toUpperCase()}`
+                    )
+                  }}
+                </span>
+              </BaseTableCell>
+              <BaseTableCell>
+                <span
+                  v-tooltip.top="$t('AGENT_MGMT.LIST.CHAT_LIMIT_TOOLTIP')"
+                  class="tabular-nums"
+                  :class="{
+                    'text-n-ruby-11': isAgentAtLimit(agent.conversation_load),
+                  }"
+                >
+                  {{ formatAgentLoad(agent.conversation_load) }}
+                </span>
+              </BaseTableCell>
               <BaseTableCell>
                 {{
                   agent.confirmed
