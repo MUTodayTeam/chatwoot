@@ -18,7 +18,8 @@ class Api::V1::Accounts::Contacts::ConversationsController < Api::V1::Accounts::
       :assignee, :contact, :taggings, :contact_inbox
     ).preload(
       inbox: :channel,
-      ai_assignee: { avatar_attachment: [:blob] }
+      ai_assignee: { avatar_attachment: [:blob] },
+      case: :project
     ).where(contact_id: @contact.id)
 
     Conversations::PermissionFilterService.new(

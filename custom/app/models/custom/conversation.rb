@@ -1,6 +1,7 @@
 module Custom::Conversation
   def self.prepended(base)
     base.class_eval do
+      has_one :case, dependent: :delete
       validate :closed_status_transition
     end
   end

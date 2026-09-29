@@ -702,6 +702,13 @@ const menuItems = computed(() => {
         ]
       : []),
     {
+      name: 'Cases',
+      label: t('SIDEBAR.CASES'),
+      icon: 'i-lucide-clipboard-list',
+      to: accountScopedRoute('cases_index'),
+      activeOn: ['cases_index'],
+    },
+    {
       name: 'Contacts',
       label: t('SIDEBAR.CONTACTS'),
       icon: 'i-lucide-contact',

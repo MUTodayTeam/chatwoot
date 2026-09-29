@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useVuelidate } from '@vuelidate/core';
-import { required, minLength } from '@vuelidate/validators';
+import { required, minLength, maxLength, helpers } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { getRandomColor } from 'dashboard/helper/labelColor';
@@ -19,12 +19,17 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
+// Matches Project's code validation: the prefix of a case number, as in CK-858
+const CODE_MAX_LENGTH = 10;
+const CODE_FORMAT = /^[A-Za-z0-9]*$/;
+
 const { t } = useI18n();
 const store = useStore();
 
 const isEditing = computed(() => Boolean(props.project?.id));
 
 const name = ref('');
+const code = ref('');
 const description = ref('');
 const color = ref('#000000');
 const selectedInboxIds = ref([]);
@@ -34,12 +39,23 @@ const logoUrl = ref('');
 const inboxes = useMapGetter('inboxes/getInboxes');
 const uiFlags = useMapGetter('projects/getUIFlags');
 
-const rules = { name: { required, minLength: minLength(1) } };
-const v$ = useVuelidate(rules, { name });
+const rules = {
+  name: { required, minLength: minLength(1) },
+  code: {
+    maxLength: maxLength(CODE_MAX_LENGTH),
+    format: helpers.regex(CODE_FORMAT),
+  },
+};
+const v$ = useVuelidate(rules, { name, code });
 
 const nameErrorMessage = computed(() => {
   if (!v$.value.name.$error) return '';
   return t('PROJECT_MGMT.FORM.NAME.ERROR');
+});
+
+const codeErrorMessage = computed(() => {
+  if (!v$.value.code.$error) return '';
+  return t('PROJECT_MGMT.FORM.CODE.ERROR');
 });
 
 const onLogoUpload = ({ file, url }) => {
@@ -76,6 +92,7 @@ onMounted(() => {
 
   if (isEditing.value) {
     name.value = props.project.name;
+    code.value = props.project.code ?? '';
     description.value = props.project.description ?? '';
     color.value = props.project.color || getRandomColor();
     selectedInboxIds.value = [...(props.project.inboxIds ?? [])];
@@ -88,6 +105,7 @@ onMounted(() => {
 const onSubmit = async () => {
   const payload = {
     name: name.value,
+    code: code.value.trim().toUpperCase(),
     description: description.value,
     color: color.value,
     inboxIds: selectedInboxIds.value,
@@ -134,6 +152,18 @@ const isSaving = computed(
         :error="nameErrorMessage"
         @input="v$.name.$touch"
         @blur="v$.name.$touch"
+      />
+
+      <woot-input
+        v-model="code"
+        :class="{ error: v$.code.$error }"
+        class="w-full"
+        :label="$t('PROJECT_MGMT.FORM.CODE.LABEL')"
+        :placeholder="$t('PROJECT_MGMT.FORM.CODE.PLACEHOLDER')"
+        :help-text="$t('PROJECT_MGMT.FORM.CODE.HELP')"
+        :error="codeErrorMessage"
+        @input="v$.code.$touch"
+        @blur="v$.code.$touch"
       />
 
       <woot-input

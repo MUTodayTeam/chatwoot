@@ -31,11 +31,12 @@ export const getters = {
 // namespaced by hand. An empty inbox selection still has to reach the server,
 // and a form cannot carry an empty array — one blank entry stands in for it.
 const buildProjectForm = (
-  { name, description, color, inboxIds = [] },
+  { name, code, description, color, inboxIds = [] },
   logo
 ) => {
   const form = new FormData();
   form.append('project[name]', name ?? '');
+  form.append('project[code]', code ?? '');
   form.append('project[description]', description ?? '');
   form.append('project[color]', color ?? '');
   if (inboxIds.length) {
