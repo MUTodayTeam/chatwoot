@@ -12,6 +12,8 @@ const props = defineProps({
   channelType: { type: String, default: '' },
   medium: { type: String, default: '' },
   copilot: { type: Object, default: null },
+  // Narrows the canned responses to the inbox's project
+  inboxId: { type: Number, default: null },
 });
 
 const editorKey = computed(() => `editor-${props.channelType}-${props.medium}`);
@@ -80,6 +82,7 @@ const executeCopilotAction = (action, data) => {
           :send-with-signature="sendWithSignature"
           :channel-type="channelType"
           :medium="medium"
+          :inbox-id="inboxId"
           @execute-copilot-action="executeCopilotAction"
         />
       </div>

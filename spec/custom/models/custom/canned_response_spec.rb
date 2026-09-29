@@ -35,6 +35,12 @@ RSpec.describe Custom::CannedResponse do
       expect(canned_response.reload.project_id).to be_nil
     end
 
+    it 'shares the response with every project even when the deletion skips callbacks' do
+      project.delete
+
+      expect(canned_response.reload.project_id).to be_nil
+    end
+
     it 'moves the canned response cache key so browsers refetch the list' do
       expect { travel(1.minute) { project.destroy! } }.to(change { account.cache_keys[:canned_response] })
     end

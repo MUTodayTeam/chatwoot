@@ -1705,6 +1705,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_310000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "canned_responses", "projects", on_delete: :nullify
   add_foreign_key "cases", "case_categories", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify

@@ -153,12 +153,14 @@ const sendAnalyticsEvent = channelType => {
 };
 
 export const actions = {
-  revalidate: async ({ commit }, { newKey }) => {
+  revalidate: async ({ commit, dispatch }, { newKey }) => {
     try {
       const isExistingKeyValid = await InboxesAPI.validateCacheKey(newKey);
       if (!isExistingKeyValid) {
         const response = await InboxesAPI.refetchAndCommit(newKey);
         commit(types.default.SET_INBOXES, response.data.payload);
+        // An inbox moved to another project changes which canned responses its chats offer
+        dispatch('projects/get', null, { root: true });
       }
     } catch (error) {
       // Ignore error
