@@ -6,7 +6,6 @@ import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { emitter } from 'shared/helpers/mitt';
 import EmailTranscriptModal from './EmailTranscriptModal.vue';
-import ResolveAction from '../../buttons/ResolveAction.vue';
 import ButtonV4 from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
@@ -92,10 +91,6 @@ onUnmounted(() => {
 
 <template>
   <div class="relative flex items-center gap-2 actions--container">
-    <ResolveAction
-      :conversation-id="currentChat.id"
-      :status="currentChat.status"
-    />
     <div
       v-on-clickaway="() => toggleDropdown(false)"
       class="relative flex items-center group"

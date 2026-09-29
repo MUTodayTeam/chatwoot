@@ -588,6 +588,26 @@ describe('#actions', () => {
         ],
       ]);
     });
+
+    it('throws the server reason and leaves the status alone when the change is refused', async () => {
+      axios.post.mockRejectedValue({
+        response: {
+          data: {
+            message:
+              'Status can only be closed after the conversation is resolved',
+          },
+        },
+      });
+      await expect(
+        actions.toggleStatus(
+          { commit },
+          { conversationId: 1, status: 'closed' }
+        )
+      ).rejects.toThrow(
+        'Status can only be closed after the conversation is resolved'
+      );
+      expect(commit).not.toHaveBeenCalled();
+    });
   });
 
   describe('#assignTeam', () => {

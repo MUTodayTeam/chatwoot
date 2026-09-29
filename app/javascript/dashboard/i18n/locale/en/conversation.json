@@ -179,6 +179,19 @@
         "NEXT_WEEK": "Next week"
       }
     },
+    "STATUS_DROPDOWN": {
+      "TOOLTIP": "Change status",
+      "SNOOZE_UNTIL": "Snooze until…",
+      "STATUSES": {
+        "bot": "Bot",
+        "open": "Open",
+        "pending": "Pending",
+        "on_hold": "On Hold",
+        "snoozed": "Snoozed",
+        "solved": "Solved",
+        "closed": "Closed"
+      }
+    },
     "MENTION": {
       "AGENTS": "Agents",
       "TEAMS": "Teams"

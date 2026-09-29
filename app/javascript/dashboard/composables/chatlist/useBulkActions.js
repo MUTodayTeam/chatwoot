@@ -159,12 +159,24 @@ export function useBulkActions() {
   async function onUpdateConversations(status, snoozedUntil) {
     if (selectedConversations.value.length === 0) return;
 
-    let conversationIds = selectedConversations.value;
+    // A closed conversation can only be reopened, so every other change skips it.
+    const closedIds =
+      status === wootConstants.STATUS_TYPE.OPEN
+        ? []
+        : selectedConversations.value.filter(
+            id =>
+              store.getters.getConversationById(id)?.status ===
+              wootConstants.STATUS_TYPE.CLOSED
+          );
+    const closedCount = closedIds.length;
+    let conversationIds = selectedConversations.value.filter(
+      id => !closedIds.includes(id)
+    );
     let skippedCount = 0;
 
     // If resolving, check for required attributes
     if (status === wootConstants.STATUS_TYPE.RESOLVED) {
-      const { validIds, skippedIds } = selectedConversations.value.reduce(
+      const { validIds, skippedIds } = conversationIds.reduce(
         (acc, id) => {
           const conversation = store.getters.getConversationById(id);
           const currentCustomAttributes = conversation?.custom_attributes || {};
@@ -185,7 +197,7 @@ export function useBulkActions() {
       conversationIds = validIds;
       skippedCount = skippedIds.length;
 
-      if (skippedCount > 0 && validIds.length === 0) {
+      if (skippedCount > 0 && validIds.length === 0 && closedCount === 0) {
         // All conversations have missing attributes
         useAlert(
           t('BULK_ACTION.RESOLVE.ALL_MISSING_ATTRIBUTES') ||
@@ -209,9 +221,18 @@ export function useBulkActions() {
 
       store.dispatch('bulkActions/clearSelectedConversationIds');
 
+      if (closedCount > 0) {
+        useAlert(
+          t(
+            'BULK_ACTION.UPDATE.CLOSED_SKIPPED',
+            { n: closedCount },
+            closedCount
+          )
+        );
+      }
       if (skippedCount > 0) {
         useAlert(t('BULK_ACTION.RESOLVE.PARTIAL_SUCCESS'));
-      } else {
+      } else if (closedCount === 0) {
         useAlert(t('BULK_ACTION.UPDATE.UPDATE_SUCCESFUL'));
       }
     } catch (err) {

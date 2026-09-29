@@ -19,7 +19,8 @@
       "CHANGE_STATUS": "Change status",
       "SNOOZE_UNTIL": "Snooze",
       "UPDATE_SUCCESFUL": "Conversation status updated successfully.",
-      "UPDATE_FAILED": "Failed to update conversations. Please try again."
+      "UPDATE_FAILED": "Failed to update conversations. Please try again.",
+      "CLOSED_SKIPPED": "Skipped {n} closed conversation, which can only be reopened | Skipped {n} closed conversations, which can only be reopened"
     },
     "RESOLVE": {
       "ALL_MISSING_ATTRIBUTES": "Cannot resolve conversations due to missing required attributes",
