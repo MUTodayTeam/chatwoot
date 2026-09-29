@@ -51,6 +51,11 @@ const filteredRecords = computed(() => {
   ]);
 });
 const uiFlags = computed(() => getters.getUIFlags.value);
+const projects = computed(() => getters['projects/getProjects'].value);
+
+const projectName = projectId =>
+  projects.value.find(project => project.id === projectId)?.name ??
+  t('CANNED_MGMT.PROJECT.ALL');
 
 const deleteConfirmText = computed(
   () =>
@@ -80,6 +85,7 @@ const fetchCannedResponses = async () => {
 
 onMounted(() => {
   fetchCannedResponses();
+  store.dispatch('projects/get');
 });
 
 const showAlertMessage = message => {
@@ -133,6 +139,7 @@ const confirmDeletion = () => {
 const tableHeaders = computed(() => {
   return [
     t('CANNED_MGMT.LIST.TABLE_HEADER.SHORT_CODE'),
+    t('CANNED_MGMT.PROJECT.LABEL'),
     t('CANNED_MGMT.LIST.TABLE_HEADER.ACTIONS'),
   ];
 });
@@ -199,9 +206,6 @@ const tableHeaders = computed(() => {
             />
           </button>
         </template>
-        <template #header-1>
-          {{ tableHeaders[1] }}
-        </template>
 
         <template #row="{ items }">
           <BaseTableRow
@@ -219,6 +223,12 @@ const tableHeaders = computed(() => {
                     {{ getPlainText(cannedItem.content) }}
                   </p>
                 </div>
+              </BaseTableCell>
+
+              <BaseTableCell class="w-40">
+                <span class="text-body-main text-n-slate-11">
+                  {{ projectName(cannedItem.project_id) }}
+                </span>
               </BaseTableCell>
 
               <BaseTableCell align="end" class="w-24">
@@ -256,6 +266,7 @@ const tableHeaders = computed(() => {
         :id="activeResponse.id"
         :edshort-code="activeResponse.short_code"
         :edcontent="activeResponse.content"
+        :edproject-id="activeResponse.project_id"
         :on-close="hideEditPopup"
       />
     </woot-modal>

@@ -26,6 +26,8 @@ const props = defineProps({
   sendWithSignature: { type: Boolean, default: false },
   channelType: { type: String, default: '' },
   medium: { type: String, default: '' },
+  // Narrows the canned responses to the inbox's project
+  inboxId: { type: Number, default: null },
 });
 
 const emit = defineEmits(['update:modelValue', 'executeCopilotAction']);
@@ -110,6 +112,7 @@ watch(
         :send-with-signature="sendWithSignature"
         :channel-type="channelType"
         :medium="medium"
+        :inbox-id="inboxId"
         @input="handleInput"
         @focus="handleFocus"
         @blur="handleBlur"

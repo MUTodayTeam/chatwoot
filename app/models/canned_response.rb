@@ -8,6 +8,11 @@
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  account_id :integer          not null
+#  project_id :bigint
+#
+# Indexes
+#
+#  index_canned_responses_on_project_id  (project_id)
 #
 
 class CannedResponse < ApplicationRecord
@@ -30,3 +35,4 @@ class CannedResponse < ApplicationRecord
     order(Arel.sql(order_clause) => :desc)
   }
 end
+CannedResponse.prepend_mod_with('CannedResponse')

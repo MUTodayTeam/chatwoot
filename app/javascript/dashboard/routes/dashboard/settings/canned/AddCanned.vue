@@ -1,6 +1,7 @@
 <script>
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength } from '@vuelidate/validators';
+import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -31,6 +32,7 @@ export default {
     return {
       shortCode: '',
       content: this.responseContent || '',
+      projectId: '',
       addCanned: {
         showLoading: false,
         message: '',
@@ -47,10 +49,14 @@ export default {
       required,
     },
   },
+  computed: {
+    ...mapGetters({ projects: 'projects/getProjects' }),
+  },
   methods: {
     resetForm() {
       this.shortCode = '';
       this.content = '';
+      this.projectId = '';
       this.v$.shortCode.$reset();
       this.v$.content.$reset();
     },
@@ -62,6 +68,7 @@ export default {
         .dispatch('createCannedResponse', {
           short_code: this.shortCode,
           content: this.content,
+          project_id: this.projectId || null,
         })
         .then(() => {
           // Reset Form, Show success message
@@ -99,6 +106,27 @@ export default {
               @blur="v$.shortCode.$touch"
             />
           </label>
+        </div>
+
+        <div v-if="projects.length" class="w-full">
+          <label for="canned-project">
+            {{ $t('CANNED_MGMT.PROJECT.LABEL') }}
+            <select id="canned-project" v-model="projectId">
+              <option value="">
+                {{ $t('CANNED_MGMT.PROJECT.ALL') }}
+              </option>
+              <option
+                v-for="project in projects"
+                :key="project.id"
+                :value="project.id"
+              >
+                {{ project.name }}
+              </option>
+            </select>
+          </label>
+          <p class="mt-0 text-sm text-n-slate-11">
+            {{ $t('CANNED_MGMT.PROJECT.HELP') }}
+          </p>
         </div>
 
         <div class="w-full">
