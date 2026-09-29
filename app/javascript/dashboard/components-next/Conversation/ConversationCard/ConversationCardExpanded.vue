@@ -130,7 +130,6 @@ const selectedModel = computed({
         :selected="false"
         :enable-selection="false"
         :hide-thumbnail="false"
-        :chat="chat"
       />
 
       <h4

@@ -43,7 +43,6 @@ const mountCard = (chat, props = {}) =>
       directives: { tooltip: {} },
       stubs: {
         CardAvatar: false,
-        CardChannelBadge: false,
         CardTagRow: false,
         AutoTransitionCountdown: false,
       },
@@ -58,12 +57,6 @@ describe('ConversationCardExpanded', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-  });
-
-  it('puts the channel badge on the avatar', () => {
-    expect(mountCard().findComponent({ name: 'CardChannelBadge' }).text()).toBe(
-      'FB'
-    );
   });
 
   it('shows the project, status and unassigned fallback', () => {
@@ -87,16 +80,6 @@ describe('ConversationCardExpanded', () => {
 
     expect(avatarNames).not.toContain('Toon');
     expect(icons).not.toContain('i-woot-empty-assignee');
-  });
-
-  it('marks an Instagram conversation from a Facebook Page inbox IG', () => {
-    const wrapper = mountCard({
-      additional_attributes: { type: 'instagram_direct_message' },
-    });
-
-    expect(wrapper.findComponent({ name: 'CardChannelBadge' }).text()).toBe(
-      'IG'
-    );
   });
 
   it('counts a solved conversation down to Closed', () => {

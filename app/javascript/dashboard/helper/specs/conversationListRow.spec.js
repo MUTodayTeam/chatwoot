@@ -5,7 +5,6 @@ import {
   formatCountdown,
   formatListRowTime,
   getAutoTransition,
-  getChannelBadge,
   getStatusChipClass,
 } from '../conversationListRow';
 
@@ -33,32 +32,6 @@ const projectRule = {
   autoSolveHours: 2,
   autoCloseHours: 4,
 };
-
-describe('getChannelBadge', () => {
-  it.each([
-    ['Channel::Line', 'LN'],
-    ['Channel::FacebookPage', 'FB'],
-    ['Channel::WebWidget', 'WB'],
-    ['Channel::Instagram', 'IG'],
-    ['Channel::Tiktok', 'TT'],
-    ['Channel::Email', 'EM'],
-  ])('maps %s to %s', (channelType, badge) => {
-    expect(getChannelBadge(channelType)).toBe(badge);
-  });
-
-  it('marks an Instagram conversation from a Facebook Page inbox IG', () => {
-    expect(
-      getChannelBadge('Channel::FacebookPage', {
-        type: 'instagram_direct_message',
-      })
-    ).toBe('IG');
-  });
-
-  it('has no badge for a channel outside the spec', () => {
-    expect(getChannelBadge('Channel::Api')).toBe('');
-    expect(getChannelBadge(undefined)).toBe('');
-  });
-});
 
 describe('getStatusChipClass', () => {
   it('gives every lifecycle status its own solid chip', () => {

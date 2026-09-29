@@ -6,7 +6,6 @@ import MessagePreview from './MessagePreview.vue';
 import InboxName from '../InboxName.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
 import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
-import CardChannelBadge from 'dashboard/components-next/Conversation/ConversationCard/CardChannelBadge.vue';
 import CardTagRow from 'dashboard/components-next/Conversation/ConversationCard/CardTagRow.vue';
 import ListRowTime from 'dashboard/components-next/Conversation/ConversationCard/ListRowTime.vue';
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
@@ -119,31 +118,26 @@ watch(
       @mouseenter="onThumbnailHover"
       @mouseleave="onThumbnailLeave"
     >
-      <div
+      <Avatar
         v-if="!hideThumbnail"
-        class="relative w-fit"
+        :name="currentContact.name"
+        :src="currentContact.thumbnail"
+        :size="32"
+        :status="currentContact.availability_status"
         :class="!showInboxName ? 'mt-4' : 'mt-8'"
+        hide-offline-status
       >
-        <Avatar
-          :name="currentContact.name"
-          :src="currentContact.thumbnail"
-          :size="32"
-          :status="currentContact.availability_status"
-          hide-offline-status
-        >
-          <template #overlay="{ size }">
-            <label
-              v-if="hovered || selected"
-              class="flex items-center justify-center rounded-full cursor-pointer absolute inset-0 z-10 backdrop-blur-[2px]"
-              :style="{ width: `${size}px`, height: `${size}px` }"
-              @click.stop
-            >
-              <Checkbox v-model="selectedModel" />
-            </label>
-          </template>
-        </Avatar>
-        <CardChannelBadge :chat="chat" class="absolute -bottom-1 -end-1 z-20" />
-      </div>
+        <template #overlay="{ size }">
+          <label
+            v-if="hovered || selected"
+            class="flex items-center justify-center rounded-full cursor-pointer absolute inset-0 z-10 backdrop-blur-[2px]"
+            :style="{ width: `${size}px`, height: `${size}px` }"
+            @click.stop
+          >
+            <Checkbox v-model="selectedModel" />
+          </label>
+        </template>
+      </Avatar>
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
       <div

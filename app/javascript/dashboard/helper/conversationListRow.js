@@ -1,30 +1,8 @@
 import { format, fromUnixTime, isSameDay } from 'date-fns';
-import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import {
   LIFECYCLE_STATUS,
   getLifecycleStatus,
 } from 'dashboard/helper/conversationLifecycle';
-
-// The two-letter channel code the list row puts on the contact avatar (CDP spec §4).
-export const CHANNEL_BADGES = Object.freeze({
-  [INBOX_TYPES.LINE]: 'LN',
-  [INBOX_TYPES.FB]: 'FB',
-  [INBOX_TYPES.WEB]: 'WB',
-  [INBOX_TYPES.INSTAGRAM]: 'IG',
-  [INBOX_TYPES.TIKTOK]: 'TT',
-  [INBOX_TYPES.EMAIL]: 'EM',
-});
-
-// Instagram messages that arrive through a Facebook Page inbox are marked on the
-// conversation, as MessagesView and ReplyBottomPanel read them.
-const INSTAGRAM_DIRECT_MESSAGE = 'instagram_direct_message';
-
-export const getChannelBadge = (channelType, additionalAttributes) => {
-  if (additionalAttributes?.type === INSTAGRAM_DIRECT_MESSAGE) {
-    return CHANNEL_BADGES[INBOX_TYPES.INSTAGRAM];
-  }
-  return CHANNEL_BADGES[channelType] || '';
-};
 
 // A solid chip per lifecycle status, in the spec's order of weight: Open is the darkest,
 // On Hold carries the accent, Solved and Closed fade out.
