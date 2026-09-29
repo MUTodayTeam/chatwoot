@@ -95,6 +95,8 @@ const props = defineProps({
   allowSignature: { type: Boolean, default: false },
   channelType: { type: String, default: '' },
   conversationId: { type: Number, default: null },
+  // Narrows the canned responses to the inbox's project
+  inboxId: { type: Number, default: null },
   medium: { type: String, default: '' },
   focusOnMount: { type: Boolean, default: true },
   // Global INSERT_INTO_RICH_EDITOR bus events (Copilot "Use this", article
@@ -968,6 +970,7 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, content => {
       :search-key="cannedSearchKey"
       :variables="variables"
       :schema="editorSchema"
+      :inbox-id="inboxId"
       @close="dismissCannedResponses"
       @remove-trigger="removeSuggestionTrigger"
       @replace="content => insertSpecialContent('cannedResponse', content)"

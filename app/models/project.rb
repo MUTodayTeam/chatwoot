@@ -25,6 +25,12 @@ class Project < ApplicationRecord
   has_many :project_teams, dependent: :delete_all
   has_many :teams, through: :project_teams
   has_many :cases, dependent: :nullify
+  has_many :canned_responses, dependent: :nullify
+
+  # :nullify skips the canned responses' callbacks, so the cache key browsers compare
+  # against has to move here, or they keep listing replies under the deleted project.
+  # The account is already gone when its own deletion removes the projects.
+  after_destroy_commit -> { account.update_cache_key('canned_response') }, if: :account
 
   # The case number prefix, as in CK-858
   normalizes :code, with: ->(code) { code.strip.upcase.presence }

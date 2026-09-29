@@ -8,6 +8,8 @@ import {
   stripUnsupportedFormatting,
 } from 'dashboard/helper/editorHelper';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { useInboxProject } from 'dashboard/composables/useInboxProject';
+import { cannedResponsesForProject } from 'dashboard/helper/cannedResponseHelper';
 import CaretAnchoredPicker from 'dashboard/components-next/preview-picker/CaretAnchoredPicker.vue';
 
 const props = defineProps({
@@ -27,6 +29,11 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // The conversation's inbox; editors outside a conversation leave it out and list every response
+  inboxId: {
+    type: Number,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['replace', 'close', 'removeTrigger']);
@@ -41,6 +48,17 @@ const { getPlainText, formatMessage, highlightContent } = useMessageFormatter();
 
 const cannedResponses = useMapGetter('getCannedResponses');
 const uiFlags = useMapGetter('getUIFlags');
+const inboxProject = useInboxProject(computed(() => props.inboxId));
+
+const availableResponses = computed(() => {
+  if (!props.inboxId) return cannedResponses.value;
+
+  return cannedResponsesForProject(
+    cannedResponses.value,
+    inboxProject.value?.id ?? null
+  );
+});
+
 // The trigger can already be followed by text, from a draft or a caret moved back onto it
 const searchQuery = ref(props.searchKey);
 
@@ -73,7 +91,7 @@ const resolveContent = message =>
   );
 
 const records = computed(() =>
-  cannedResponses.value.map(({ id, short_code: shortCode, content }) => {
+  availableResponses.value.map(({ id, short_code: shortCode, content }) => {
     const resolved = resolveContent(content);
     return {
       id,

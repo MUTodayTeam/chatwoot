@@ -2,6 +2,7 @@
 /* eslint no-console: 0 */
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength } from '@vuelidate/validators';
+import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -17,6 +18,7 @@ export default {
     id: { type: Number, default: null },
     edcontent: { type: String, default: '' },
     edshortCode: { type: String, default: '' },
+    edprojectId: { type: Number, default: null },
     onClose: { type: Function, default: () => {} },
   },
   setup() {
@@ -30,6 +32,7 @@ export default {
       },
       shortCode: this.edshortCode,
       content: this.edcontent,
+      projectId: this.edprojectId ?? '',
       show: true,
     };
   },
@@ -43,6 +46,7 @@ export default {
     },
   },
   computed: {
+    ...mapGetters({ projects: 'projects/getProjects' }),
     pageTitle() {
       return `${this.$t('CANNED_MGMT.EDIT.TITLE')} - ${this.edshortCode}`;
     },
@@ -67,6 +71,7 @@ export default {
           id: this.id,
           short_code: this.shortCode,
           content: this.content,
+          project_id: this.projectId || null,
         })
         .then(() => {
           // Reset Form, Show success message
@@ -103,6 +108,27 @@ export default {
               @input="v$.shortCode.$touch"
             />
           </label>
+        </div>
+
+        <div v-if="projects.length" class="w-full">
+          <label for="canned-project">
+            {{ $t('CANNED_MGMT.PROJECT.LABEL') }}
+            <select id="canned-project" v-model="projectId">
+              <option value="">
+                {{ $t('CANNED_MGMT.PROJECT.ALL') }}
+              </option>
+              <option
+                v-for="project in projects"
+                :key="project.id"
+                :value="project.id"
+              >
+                {{ project.name }}
+              </option>
+            </select>
+          </label>
+          <p class="mt-0 text-sm text-n-slate-11">
+            {{ $t('CANNED_MGMT.PROJECT.HELP') }}
+          </p>
         </div>
 
         <div class="w-full">

@@ -127,6 +127,8 @@ en:
         feature_not_enabled: Conversation unread counts feature not enabled for this account
     projects:
       team_account_mismatch: must belong to the same account as the project
+    canned_responses:
+      project_account_mismatch: must belong to the same account as the canned response
     case_categories:
       file_required: Attach a CSV file to import
       unreadable_csv: 'The file could not be read as CSV: %{error}'
