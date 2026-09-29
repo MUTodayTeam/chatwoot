@@ -21,6 +21,8 @@ import ChannelLeaf from './ChannelLeaf.vue';
 import ChannelIcon from 'next/icon/ChannelIcon.vue';
 import EmojiIcon from 'next/emoji-icon-picker/EmojiIcon.vue';
 import SidebarAccountSwitcher from './SidebarAccountSwitcher.vue';
+import SidebarProjectStatus from './SidebarProjectStatus.vue';
+import { getProjectUnreadCount as projectUnreadCount } from 'dashboard/helper/sidebarProjectStatus';
 import Logo from 'next/icon/Logo.vue';
 import ComposeConversation from 'dashboard/components-next/NewConversation/ComposeConversation.vue';
 import {
@@ -308,12 +310,9 @@ const sortedFolders = computed(() =>
 // A project groups several inboxes, so its badge is the sum of its inboxes'
 // unread counts. Only inboxes the user can see are present in that map, which
 // keeps the badge consistent with what the conversation list will actually show.
-const getProjectUnreadCount = computed(() => project => {
-  return (project.inboxIds || []).reduce(
-    (total, inboxId) => total + (getInboxUnreadCount.value(inboxId) || 0),
-    0
-  );
-});
+const getProjectUnreadCount = computed(
+  () => project => projectUnreadCount(project, getInboxUnreadCount.value)
+);
 
 const sortedTeams = computed(() =>
   sortSidebarItems(teams.value, {
@@ -1179,6 +1178,7 @@ const menuItems = computed(() => {
           </template>
         </ComposeConversation>
       </div>
+      <SidebarProjectStatus v-if="!isEffectivelyCollapsed" />
     </section>
     <nav
       class="grid overflow-y-scroll flex-grow gap-2 pb-5 no-scrollbar min-w-0"

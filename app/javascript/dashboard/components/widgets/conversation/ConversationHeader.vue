@@ -4,18 +4,23 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useElementSize } from '@vueuse/core';
 import BackButton from '../BackButton.vue';
-import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDeadlineControl.vue';
 import StatusDropdown from 'dashboard/components-next/Conversation/StatusDropdown.vue';
 import TransferDialog from 'dashboard/components-next/Conversation/TransferDialog.vue';
+import AssignDialog from 'dashboard/components-next/Conversation/AssignDialog.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
+import { findProjectForInbox } from 'dashboard/helper/conversationListRow';
+import {
+  getAssigneeName,
+  getHeaderTags,
+} from 'dashboard/helper/conversationHeader';
 import { useInbox } from 'dashboard/composables/useInbox';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
@@ -89,6 +94,7 @@ const isFinished = computed(() =>
 );
 
 const transferDialogRef = ref(null);
+const assignDialogRef = ref(null);
 const isReopening = ref(false);
 
 const reopenConversation = async () => {
@@ -122,9 +128,18 @@ const inbox = computed(() => {
   return store.getters['inboxes/getInbox'](inboxId);
 });
 
-const hasMultipleInboxes = computed(
-  () => store.getters['inboxes/getInboxes'].length > 1
+const project = computed(() =>
+  findProjectForInbox(
+    store.getters['projects/getProjects'],
+    props.chat.inbox_id
+  )
 );
+
+const headerTags = computed(() =>
+  getHeaderTags({ inbox: inbox.value, project: project.value })
+);
+
+const assigneeName = computed(() => getAssigneeName(props.chat.meta?.assignee));
 
 const hasSlaPolicyId = computed(
   () => props.chat?.applied_sla?.id && !currentContact.value?.blocked
@@ -196,6 +211,14 @@ const copyConversationId = async () => {
             class="text-n-amber-10 my-0 mx-0 min-w-[14px] flex-shrink-0"
             icon="warning"
           />
+          <!-- 1320px is the spec's breakpoint for folding chips (§16.1) -->
+          <span
+            v-for="tag in headerTags"
+            :key="tag.key"
+            class="hidden min-[1320px]:inline-block px-1.5 border border-n-weak rounded-sm text-label-small text-n-slate-11 truncate max-w-32 flex-shrink-0"
+          >
+            {{ tag.label }}
+          </span>
         </div>
 
         <div
@@ -214,8 +237,18 @@ const copyConversationId = async () => {
               {{ $t('CASES.HEADER_CHIP', { display: chat.case.display }) }}
             </span>
           </template>
-          <span v-if="hasMultipleInboxes">•</span>
-          <InboxName v-if="hasMultipleInboxes" :inbox="inbox" class="!mx-0" />
+          <template v-for="tag in headerTags" :key="tag.key">
+            <span class="min-[1320px]:hidden">•</span>
+            <span class="truncate min-[1320px]:hidden">{{ tag.label }}</span>
+          </template>
+          <span>•</span>
+          <span class="truncate">
+            {{
+              assigneeName
+                ? $t('CONVERSATION.HEADER.ASSIGNEE', { name: assigneeName })
+                : $t('CONVERSATION.HEADER.NO_ASSIGNEE')
+            }}
+          </span>
           <span v-if="isSnoozed">•</span>
           <span v-if="isSnoozed" class="font-medium text-n-amber-10">
             {{ snoozedDisplayText }}
@@ -247,6 +280,20 @@ const copyConversationId = async () => {
         @click="reopenConversation"
       />
       <template v-else>
+        <Button
+          v-tooltip.top="$t('CONVERSATION.ASSIGN_DIALOG.TOOLTIP')"
+          :label="$t('CONVERSATION.ASSIGN_DIALOG.BUTTON')"
+          icon="i-lucide-user-round-plus"
+          variant="faded"
+          color="slate"
+          size="sm"
+          @click="assignDialogRef?.open()"
+        />
+        <AssignDialog
+          ref="assignDialogRef"
+          :conversation-id="currentChat.id"
+          :inbox-id="currentChat.inbox_id"
+        />
         <Button
           v-tooltip.top="$t('CONVERSATION.TRANSFER.TOOLTIP')"
           :label="$t('CONVERSATION.TRANSFER.BUTTON')"

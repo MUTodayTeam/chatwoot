@@ -181,7 +181,9 @@
         "RT": "RT {status}",
         "MISSED": "missed",
         "DUE": "due"
-      }
+      },
+      "ASSIGNEE": "Assignee: {name}",
+      "NO_ASSIGNEE": "No assignee"
     },
     "RESOLVE_DROPDOWN": {
       "MARK_PENDING": "Mark as pending",
@@ -453,6 +455,23 @@
       "EXTEND_TOOLTIP": "Give this conversation {n} more minute | Give this conversation {n} more minutes",
       "EXTENDED": "Added {n} minute to the reply deadline | Added {n} minutes to the reply deadline",
       "EXTEND_ERROR": "Could not extend the reply deadline, please try again"
+    },
+    "ASSIGN_DIALOG": {
+      "BUTTON": "Assign",
+      "TOOLTIP": "Assign to an agent on this project",
+      "TITLE": "Assign the conversation",
+      "DESCRIPTION": "Agents who can take chats in this project. Picking one assigns it straight away.",
+      "SEARCH_PLACEHOLDER": "Search agents",
+      "NO_AGENTS": "No agent can take chats in this project yet",
+      "NO_RESULTS": "No agent matches your search",
+      "FETCH_ERROR": "Couldn't load the agents, please try again",
+      "LOAD_TOOLTIP": "Open, pending and snoozed chats in this project / chat limit",
+      "CANCEL": "Cancel",
+      "PRESENCE": {
+        "ONLINE": "Online",
+        "BUSY": "Busy",
+        "OFFLINE": "Offline"
+      }
     },
     "TRANSFER": {
       "BUTTON": "Transfer",
