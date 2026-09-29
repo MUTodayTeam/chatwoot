@@ -2,7 +2,10 @@ module Custom::Conversation
   def self.prepended(base)
     base.class_eval do
       has_one :case, dependent: :delete
+      has_many :handlers, class_name: 'ConversationHandler', dependent: :delete_all
       validate :closed_status_transition
+      # Set by Conversations::TransferService so the assignment activity names the transfer
+      attr_accessor :transfer_reason
     end
   end
 

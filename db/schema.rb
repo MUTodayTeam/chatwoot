@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_29_200000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -850,6 +850,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
     t.index ["identifier", "account_id"], name: "uniq_identifier_per_account_contact", unique: true
     t.index ["name", "email", "phone_number", "identifier"], name: "index_contacts_on_name_email_phone_number_identifier", opclass: :gin_trgm_ops, using: :gin
     t.index ["phone_number", "account_id"], name: "index_contacts_on_phone_number_and_account_id"
+  end
+
+  create_table "conversation_handlers", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at"
+    t.integer "end_reason"
+    t.text "note"
+    t.bigint "ended_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "user_id", "ended_at"], name: "index_conversation_handlers_on_account_user_ended_at"
+    t.index ["conversation_id"], name: "index_conversation_handlers_on_conversation_id"
+    t.index ["conversation_id"], name: "index_conversation_handlers_open_per_conversation", unique: true, where: "(ended_at IS NULL)"
   end
 
   create_table "conversation_outcomes", force: :cascade do |t|

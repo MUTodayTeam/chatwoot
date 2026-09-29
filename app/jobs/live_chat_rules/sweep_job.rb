@@ -50,7 +50,10 @@ class LiveChatRules::SweepJob < ApplicationJob
     flag_missed(conversations, rule)
     # The activity messages name the rule, so they read as automatic.
     Current.executed_by = rule
-    transition(auto_solvable(conversations, inboxes, rule), :resolved)
+    # The assignee's turn ends as auto-solved, so they get the Resolved credit (spec 10)
+    transition(auto_solvable(conversations, inboxes, rule), :resolved) do |conversation|
+      ConversationHandler.close_open!(conversation, reason: :auto_solved)
+    end
     transition(conversations.resolved.where("#{STATUS_CLOCK} < ?", rule.auto_close_hours.hours.ago), :closed)
   ensure
     Current.executed_by = nil
@@ -84,11 +87,16 @@ class LiveChatRules::SweepJob < ApplicationJob
   # is left alone. Orphans whose contact is being deleted fail validation, so they are
   # skipped as in Conversations::ResolutionJob; any other failure is reported and the
   # rest of the batch still moves.
+  # A block runs on each locked conversation just before it moves, in the same transaction.
   def transition(scope, status)
     scope = scope.where.not(contact_id: nil)
     scope.order(Arel.sql(STATUS_CLOCK)).limit(Limits::BULK_ACTIONS_LIMIT).ids.each do |id|
       Conversation.transaction do
-        scope.lock.find_by(id: id)&.update!(status: status)
+        conversation = scope.lock.find_by(id: id)
+        next unless conversation
+
+        yield conversation if block_given?
+        conversation.update!(status: status)
       end
     rescue ActiveRecord::RecordInvalid => e
       ChatwootExceptionTracker.new(e, account: e.record.account).capture_exception
