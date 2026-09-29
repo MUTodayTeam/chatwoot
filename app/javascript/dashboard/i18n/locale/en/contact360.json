@@ -18,7 +18,8 @@
     },
     "CASES": {
       "TITLE": "Cases ({n})",
-      "EMPTY": "No cases"
+      "EMPTY": "No cases",
+      "VIEW_ALL": "View all {n} cases"
     },
     "PROJECT_FILTER": {
       "ALL": "All projects"

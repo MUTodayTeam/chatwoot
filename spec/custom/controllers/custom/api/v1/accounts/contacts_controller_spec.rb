@@ -44,6 +44,17 @@ RSpec.describe 'Contacts filtered by project', type: :request do
     expect(response.parsed_body['payload'].pluck('id')).to contain_exactly(hotel.id, guest.id)
   end
 
+  it "lists for an agent only the contacts whose project conversation is in the agent's inboxes" do
+    agent = create(:user, account: account, role: :agent)
+
+    get "/api/v1/accounts/#{account.id}/contacts", params: { project_id: project.id }, headers: agent.create_new_auth_token
+    expect(response.parsed_body['payload']).to be_empty
+
+    create(:inbox_member, inbox: project_inbox, user: agent)
+    get "/api/v1/accounts/#{account.id}/contacts", params: { project_id: project.id }, headers: agent.create_new_auth_token
+    expect(response.parsed_body['payload'].pluck('id')).to eq([hotel.id])
+  end
+
   it "ignores another account's project" do
     other_project = create(:account).projects.create!(name: 'Elsewhere')
 

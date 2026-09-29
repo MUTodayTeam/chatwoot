@@ -58,6 +58,40 @@ RSpec.describe 'Contact overview API', type: :request do
     )
   end
 
+  it 'sends the medium of a Twilio inbox' do
+    whatsapp_inbox = create(:channel_twilio_sms, :whatsapp, account: account).inbox
+    create(:conversation, account: account, inbox: whatsapp_inbox, contact: contact, created_at: 1.hour.ago).resolved!
+
+    get path, headers: admin.create_new_auth_token, as: :json
+
+    expect(response.parsed_body['history'].pluck('medium')).to eq(['whatsapp', nil, nil])
+  end
+
+  it 'loads the topics and projects of every chat in a fixed number of queries' do
+    3.times do |i|
+      create(:conversation, account: account, inbox: inbox, contact: contact, created_at: (i + 4).days.ago).tap do |conversation|
+        create(:message, conversation: conversation, message_type: :incoming, content: "Question #{i}")
+        conversation.resolved!
+      end
+      create(:conversation, account: account, inbox: inbox, contact: contact, created_at: (i + 8).days.ago).tap do |conversation|
+        create(:case, conversation: conversation, project: project, display_id: 900 + i)
+        conversation.resolved!
+      end
+    end
+    queries = []
+    record = ->(*, payload) { queries << payload[:sql] }
+
+    ActiveSupport::Notifications.subscribed(record, 'sql.active_record') do
+      get path, headers: admin.create_new_auth_token, as: :json
+    end
+
+    expect(response.parsed_body['history'].size).to eq(6)
+    expect(response.parsed_body['history'].pluck('topic')).to include('Where is my booking?', 'Question 0', 'Question 2')
+    expect(queries.grep(/FROM "messages"/).size).to eq(1)
+    # One for the inboxes' projects, one for the cases' projects
+    expect(queries.grep(/FROM "projects"/).size).to eq(2)
+  end
+
   it 'credits whoever solved the case over the assignee' do
     solver = create(:user, account: account, role: :administrator)
     solved.case.update!(resolved_by: solver)

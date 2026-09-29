@@ -15,10 +15,11 @@ json.history @history do |conversation|
   json.id conversation.display_id
   json.status conversation.status
   json.created_at conversation.created_at.to_i
-  json.topic kase ? kase.subject : Case.subject_from(conversation.messages.incoming.reorder(:created_at, :id).first)
+  json.topic kase ? kase.subject : Case.subject_from(@first_messages[conversation.id])
   json.case kase&.push_event_data
   json.project conversation.inbox.project&.slice(:id, :name, :color, :code)
   json.channel conversation.inbox.channel_type
+  json.medium conversation.inbox.channel.try(:medium)
   json.agent agent ? { id: agent.id, name: agent.available_name } : nil
   json.bot conversation.assignee_agent_bot_id.present?
   json.missed conversation.missed_at.present?

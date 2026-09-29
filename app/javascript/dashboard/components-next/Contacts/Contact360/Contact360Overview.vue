@@ -167,7 +167,7 @@ watch(
           :key="entry.id"
           type="button"
           class="flex flex-col w-full gap-1 px-3 py-2 border rounded-lg text-start border-n-weak hover:bg-n-alpha-1"
-          @click="openConversationThread(entry)"
+          @click="openConversationThread(entry, { readOnly: true })"
         >
           <span class="flex items-center w-full min-w-0 gap-2">
             <span
@@ -189,7 +189,7 @@ watch(
             />
             <span v-else>{{ t('CONTACT_360.HISTORY.NO_PROJECT') }}</span>
             <span class="rounded-full size-1 bg-n-slate-8" />
-            <ChannelName :channel-type="entry.channel" />
+            <ChannelName :channel-type="entry.channel" :medium="entry.medium" />
             <span class="rounded-full size-1 bg-n-slate-8" />
             <span>{{ handlerLabel(entry) }}</span>
             <CaseStatusLabel :status="entry.status" class="ms-auto" />
@@ -225,6 +225,15 @@ watch(
           <CaseSeverityLabel :severity="kase.severity" />
           <CaseStatusLabel :status="kase.status" />
         </button>
+        <Button
+          v-if="casesCount > cases.length"
+          :label="t('CONTACT_360.CASES.VIEW_ALL', { n: casesCount })"
+          size="sm"
+          color="slate"
+          variant="link"
+          class="self-start"
+          @click="openCases"
+        />
       </section>
     </div>
   </div>
