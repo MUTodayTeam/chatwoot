@@ -6,6 +6,7 @@ import ConversationIntervalContainer from './components/interval/ConversationInt
 import ResolutionHeatmapContainer from './components/heatmaps/ResolutionHeatmapContainer.vue';
 import AgentRankingContainer from './components/productivity/AgentRankingContainer.vue';
 import AgentDailyContainer from './components/productivity/AgentDailyContainer.vue';
+import AgentProductivityContainer from './components/productivity/AgentProductivityContainer.vue';
 import AgentLiveReportContainer from './components/AgentLiveReportContainer.vue';
 import TeamLiveReportContainer from './components/TeamLiveReportContainer.vue';
 import StatsLiveReportsContainer from './components/StatsLiveReportsContainer.vue';
@@ -21,6 +22,7 @@ import StatsLiveReportsContainer from './components/StatsLiveReportsContainer.vu
     <ResolutionHeatmapContainer />
     <AgentRankingContainer />
     <AgentDailyContainer />
+    <AgentProductivityContainer />
     <AgentLiveReportContainer />
     <TeamLiveReportContainer />
   </div>

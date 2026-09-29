@@ -645,6 +645,26 @@
       "TOTAL": "Total",
       "NO_AGENTS": "No agent activity in this range"
     },
+    "AGENT_PRODUCTIVITY": {
+      "HEADER": "Agent productivity",
+      "LOADING_MESSAGE": "Loading agent productivity...",
+      "ARIA_LABEL": "Touch-based productivity by agent",
+      "SCORE_NOTE": "Every agent who handled a solved conversation gets credit. Score = Resolved × 1 + Assisted × {assisted} − General handovers × {penalty}. Only conversations solved in this range count.",
+      "COLUMNS": {
+        "AGENT": "Agent",
+        "RESOLVED": "Resolved",
+        "ASSISTED": "Assisted",
+        "TRANSFER_OUT": "Transfer out",
+        "TRANSFER_IN": "Transfer in",
+        "CONTRIBUTION": "Resolved : Assisted",
+        "HANDLE_TIME": "Avg handle time",
+        "FIRST_RESPONSE": "Avg first response",
+        "SCORE": "Score"
+      },
+      "PENALTY": "(−{penalty})",
+      "CONTRIBUTION_LABEL": "{resolved}% resolved, {assisted}% assisted",
+      "NO_AGENTS": "No conversations were solved in this range"
+    },
     "AGENT_CONVERSATIONS": {
       "HEADER": "Conversations by agents",
       "LOADING_MESSAGE": "Loading agent metrics...",

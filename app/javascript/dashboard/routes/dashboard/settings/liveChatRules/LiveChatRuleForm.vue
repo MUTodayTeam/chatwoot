@@ -5,6 +5,7 @@ import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
 
 const props = defineProps({
   rule: {
@@ -21,6 +22,11 @@ const store = useStore();
 const projects = useMapGetter('projects/getProjects');
 const rules = useMapGetter('liveChatRules/getLiveChatRules');
 const uiFlags = useMapGetter('liveChatRules/getUIFlags');
+const teams = useMapGetter('teams/getTeams');
+
+const DEFAULT_ASSISTED_WEIGHT = 0.5;
+const DEFAULT_TRANSFER_PENALTY = 0.2;
+const WEIGHT_STEP = '0.01';
 
 const projectId = ref(null);
 const replyTimeoutMinutes = ref(60);
@@ -28,6 +34,9 @@ const extensionMinutes = ref(60);
 const waitingTimeMinutes = ref(60);
 const autoSolveHours = ref(24);
 const autoCloseHours = ref(48);
+const transferTeamId = ref(null);
+const assistedWeight = ref(DEFAULT_ASSISTED_WEIGHT);
+const transferPenalty = ref(DEFAULT_TRANSFER_PENALTY);
 
 // The scope of a saved rule is fixed: moving it would silently retarget which
 // conversations it governs. Only a brand new rule lets you choose.
@@ -55,6 +64,12 @@ const scopeName = computed(() => {
   return project?.name ?? t('LIVE_CHAT_RULES.SCOPE.ACCOUNT');
 });
 
+// Productivity reads its weights from the account default only, so a project
+// override does not show them.
+const isAccountScope = computed(() => !projectId.value);
+
+const isValidWeight = value => value !== '' && Number(value) >= 0;
+
 // Every scope can hold one rule, so a new rule needs a scope that is still free.
 const hasSelectableScope = computed(
   () =>
@@ -68,6 +83,9 @@ const isValid = computed(
     waitingTimeMinutes.value > 0 &&
     autoSolveHours.value > 0 &&
     autoCloseHours.value > 0 &&
+    (!isAccountScope.value ||
+      (isValidWeight(assistedWeight.value) &&
+        isValidWeight(transferPenalty.value))) &&
     hasSelectableScope.value
 );
 
@@ -77,6 +95,11 @@ onMounted(() => {
   waitingTimeMinutes.value = props.rule.waitingTimeMinutes ?? 60;
   autoSolveHours.value = props.rule.autoSolveHours ?? 24;
   autoCloseHours.value = props.rule.autoCloseHours ?? 48;
+  transferTeamId.value = props.rule.transferTeamId ?? null;
+  assistedWeight.value = props.rule.assistedWeight ?? DEFAULT_ASSISTED_WEIGHT;
+  transferPenalty.value =
+    props.rule.transferPenalty ?? DEFAULT_TRANSFER_PENALTY;
+  if (!teams.value.length) store.dispatch('teams/get');
 
   if (props.rule.projectId) {
     projectId.value = props.rule.projectId;
@@ -96,6 +119,11 @@ const onSubmit = async () => {
     waitingTimeMinutes: Number(waitingTimeMinutes.value),
     autoSolveHours: Number(autoSolveHours.value),
     autoCloseHours: Number(autoCloseHours.value),
+    transferTeamId: transferTeamId.value || null,
+    ...(isAccountScope.value && {
+      assistedWeight: Number(assistedWeight.value),
+      transferPenalty: Number(transferPenalty.value),
+    }),
   };
 
   try {
@@ -189,6 +217,46 @@ const isSaving = computed(
         :label="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.LABEL')"
         :help-text="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.HELP')"
       />
+
+      <div class="w-full">
+        <label>
+          {{ $t('LIVE_CHAT_RULES.FORM.TRANSFER_TEAM.LABEL') }}
+          <select v-model="transferTeamId">
+            <option :value="null">
+              {{
+                isAccountScope
+                  ? $t('LIVE_CHAT_RULES.FORM.TRANSFER_TEAM.NONE')
+                  : $t('LIVE_CHAT_RULES.FORM.TRANSFER_TEAM.ACCOUNT_DEFAULT')
+              }}
+            </option>
+            <option v-for="team in teams" :key="team.id" :value="team.id">
+              {{ team.name }}
+            </option>
+          </select>
+        </label>
+        <p class="mt-1 mb-0 text-label-small text-n-slate-11">
+          {{ $t('LIVE_CHAT_RULES.FORM.TRANSFER_TEAM.HELP') }}
+        </p>
+      </div>
+
+      <div v-if="isAccountScope" class="flex flex-col w-full gap-4 mt-4">
+        <Input
+          v-model="assistedWeight"
+          type="number"
+          min="0"
+          :step="WEIGHT_STEP"
+          :label="$t('LIVE_CHAT_RULES.FORM.ASSISTED_WEIGHT.LABEL')"
+          :message="$t('LIVE_CHAT_RULES.FORM.ASSISTED_WEIGHT.HELP')"
+        />
+        <Input
+          v-model="transferPenalty"
+          type="number"
+          min="0"
+          :step="WEIGHT_STEP"
+          :label="$t('LIVE_CHAT_RULES.FORM.TRANSFER_PENALTY.LABEL')"
+          :message="$t('LIVE_CHAT_RULES.FORM.TRANSFER_PENALTY.HELP')"
+        />
+      </div>
 
       <div class="flex items-center justify-end w-full gap-2 px-0 py-2">
         <NextButton

@@ -48,6 +48,20 @@
         "LABEL": "Close resolved after (hours)",
         "HELP": "A resolved conversation is closed after this time and can no longer be replied to."
       },
+      "TRANSFER_TEAM": {
+        "LABEL": "Transfer team",
+        "NONE": "No transfer team",
+        "ACCOUNT_DEFAULT": "Same as the account default",
+        "HELP": "Agents can transfer a conversation, with a reason, to a member of this team."
+      },
+      "ASSISTED_WEIGHT": {
+        "LABEL": "Assisted weight",
+        "HELP": "Points an agent earns in Agent productivity for each conversation they handled but someone else solved. A solve is worth 1."
+      },
+      "TRANSFER_PENALTY": {
+        "LABEL": "General handover penalty",
+        "HELP": "Points taken off for each transfer with the reason General handover. Other reasons cost nothing."
+      },
       "EDIT": "Edit",
       "DELETE": "Delete",
       "CANCEL": "Cancel",

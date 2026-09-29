@@ -432,6 +432,40 @@ const actions = {
     }
   },
 
+  transferConversation: async (
+    { dispatch },
+    { conversationId, assigneeId, reason, note }
+  ) => {
+    try {
+      const {
+        data: { assignee },
+      } = await ConversationApi.transfer({
+        conversationId,
+        assigneeId,
+        reason,
+        note,
+      });
+      dispatch('setCurrentChatAssignee', { conversationId, assignee });
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
+
+  reopenConversation: async ({ commit }, { conversationId }) => {
+    try {
+      const {
+        data: { current_status: status },
+      } = await ConversationApi.reopen(conversationId);
+      commit(types.CHANGE_CONVERSATION_STATUS, {
+        conversationId,
+        status,
+        snoozedUntil: null,
+      });
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
+
   extendReplyDeadline: async ({ commit }, { conversationId }) => {
     const {
       data: { reply_due_at: replyDueAt },
