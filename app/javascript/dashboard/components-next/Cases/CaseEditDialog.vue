@@ -10,12 +10,12 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
+const emit = defineEmits(['updated']);
+
 // Edit case: the subject, severity and team an agent can correct after the case opened itself.
 // Status and owner stay the conversation's, so they are not here.
 const SEVERITIES = ['p1', 'p2', 'p3', 'p4'];
 const SUBJECT_LENGTH = 255;
-
-const emit = defineEmits(['updated']);
 
 const { t } = useI18n();
 const teams = useMapGetter('teams/getTeams');
