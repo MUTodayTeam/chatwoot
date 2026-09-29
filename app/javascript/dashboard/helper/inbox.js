@@ -113,12 +113,12 @@ const DEFAULT_ICON_LINE = 'i-ri-chat-1-line';
 
 // Facebook, Instagram, TikTok, and X initialize the editable inbox name from
 // the provider account name; their opaque routing IDs should not be displayed.
+// LINE's channel ID is the same kind of opaque number, so it is left out too.
 const INBOX_IDENTIFIER_RESOLVERS = {
   [INBOX_TYPES.WEB]: inbox => inbox.website_url,
   [INBOX_TYPES.EMAIL]: inbox => inbox.email,
   [INBOX_TYPES.WHATSAPP]: inbox => inbox.phone_number,
   [INBOX_TYPES.SMS]: inbox => inbox.phone_number,
-  [INBOX_TYPES.LINE]: inbox => inbox.line_channel_id,
   [INBOX_TYPES.API]: inbox => inbox.inbox_identifier,
   [INBOX_TYPES.TWILIO]: inbox =>
     inbox.phone_number?.replace(/^whatsapp:/, '') ||
