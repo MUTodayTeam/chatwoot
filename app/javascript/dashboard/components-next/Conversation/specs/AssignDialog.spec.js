@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { useAlert } from 'dashboard/composables';
 import AssignDialog from '../AssignDialog.vue';
@@ -94,6 +94,25 @@ describe('AssignDialog', () => {
       'CONVERSATION.ASSIGN_DIALOG.PRESENCE.OFFLINE'
     );
     expect(rows[1].find('.text-n-ruby-11').text()).toBe('10/10');
+  });
+
+  it('hides the previous load while it refetches on reopen', async () => {
+    const wrapper = await mountDialog();
+    const pendingFetches = [];
+    dispatch.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          pendingFetches.push(resolve);
+        })
+    );
+
+    wrapper.vm.open();
+    await nextTick();
+    expect(agentRows(wrapper)).toHaveLength(0);
+
+    pendingFetches.forEach(resolve => resolve());
+    await flushPromises();
+    expect(agentRows(wrapper)).toHaveLength(2);
   });
 
   it('narrows the list with the search box', async () => {

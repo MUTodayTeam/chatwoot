@@ -129,7 +129,8 @@ const assignTo = async agent => {
       />
 
       <div class="flex flex-col overflow-y-auto max-h-[50vh] min-h-24">
-        <div v-if="isFetching && !rows.length" class="flex justify-center py-6">
+        <!-- The cached rows hold the previous load, so they stay hidden until the refetch lands -->
+        <div v-if="isFetching" class="flex justify-center py-6">
           <Spinner />
         </div>
         <p

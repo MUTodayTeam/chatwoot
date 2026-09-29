@@ -287,9 +287,11 @@ const copyConversationId = async () => {
           variant="faded"
           color="slate"
           size="sm"
+          class="max-[1319px]:w-8 max-[1319px]:px-0"
           @click="assignDialogRef?.open()"
         >
-          <!-- Below 1320px the toolbar keeps only the icon and its tooltip (spec §5) -->
+          <!-- Below 1320px the toolbar keeps only the icon and its tooltip (spec §5); the class above squares the button,
+               since the slot keeps Button from switching to its icon-only size -->
           <span class="hidden min-[1320px]:inline min-w-0 truncate">
             {{ $t('CONVERSATION.ASSIGN_DIALOG.BUTTON') }}
           </span>
@@ -306,6 +308,7 @@ const copyConversationId = async () => {
           variant="faded"
           color="slate"
           size="sm"
+          class="max-[1319px]:w-8 max-[1319px]:px-0"
           @click="transferDialogRef?.open()"
         >
           <span class="hidden min-[1320px]:inline min-w-0 truncate">
