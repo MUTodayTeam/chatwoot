@@ -1,7 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { applyRoleFilter } from '../helpers';
+import { applyRoleFilter, filterByStatus } from '../helpers';
 
 describe('Conversation Helpers', () => {
+  describe('#filterByStatus', () => {
+    it('matches open, pending and snoozed for active', () => {
+      expect(
+        ['open', 'pending', 'snoozed', 'resolved', 'closed'].filter(status =>
+          filterByStatus(status, 'active')
+        )
+      ).toEqual(['open', 'pending', 'snoozed']);
+    });
+
+    it('matches the exact status otherwise', () => {
+      expect(filterByStatus('closed', 'closed')).toBe(true);
+      expect(filterByStatus('resolved', 'closed')).toBe(false);
+      expect(filterByStatus('closed', 'all')).toBe(true);
+    });
+  });
+
   describe('#applyRoleFilter', () => {
     // Test data for conversations
     const conversationWithAssignee = {

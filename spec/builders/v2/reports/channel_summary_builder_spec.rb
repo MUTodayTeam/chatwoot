@@ -23,6 +23,7 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
         create(:conversation, account: account, inbox: web_widget_inbox, status: :resolved, created_at: 2.days.ago)
         create(:conversation, account: account, inbox: web_widget_inbox, status: :pending, created_at: 1.day.ago)
         create(:conversation, account: account, inbox: web_widget_inbox, status: :snoozed, created_at: 1.day.ago)
+        create(:conversation, account: account, inbox: web_widget_inbox, status: :resolved, created_at: 1.day.ago).tap(&:closed!)
 
         # Email conversations
         create(:conversation, account: account, inbox: email_inbox, status: :open, created_at: 2.days.ago)
@@ -36,7 +37,8 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
           resolved: 1,
           pending: 1,
           snoozed: 1,
-          total: 5
+          closed: 1,
+          total: 6
         )
 
         expect(report['Channel::Email']).to eq(
@@ -44,6 +46,7 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
           resolved: 2,
           pending: 0,
           snoozed: 0,
+          closed: 0,
           total: 3
         )
       end
@@ -61,6 +64,7 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
           resolved: 0,
           pending: 0,
           snoozed: 0,
+          closed: 0,
           total: 1
         )
       end
@@ -84,6 +88,7 @@ RSpec.describe V2::Reports::ChannelSummaryBuilder do
           resolved: 2,
           pending: 0,
           snoozed: 0,
+          closed: 0,
           total: 2
         )
       end

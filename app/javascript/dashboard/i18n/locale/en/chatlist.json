@@ -33,6 +33,12 @@
       "snoozed": {
         "TEXT": "Snoozed"
       },
+      "closed": {
+        "TEXT": "Closed"
+      },
+      "active": {
+        "TEXT": "Active"
+      },
       "all": {
         "TEXT": "All"
       }

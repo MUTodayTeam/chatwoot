@@ -111,6 +111,9 @@ export default {
     isOpen() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.OPEN;
     },
+    isClosed() {
+      return this.currentChat?.status === wootConstants.STATUS_TYPE.CLOSED;
+    },
     shouldShowLabelSuggestions() {
       return (
         this.isOpen &&
@@ -570,6 +573,7 @@ export default {
         </div>
       </div>
       <ResizableEditorWrapper
+        v-if="!isClosed"
         ref="resizableEditorWrapperRef"
         :container-height="Math.max(0, containerHeight - topBannerHeight)"
       >

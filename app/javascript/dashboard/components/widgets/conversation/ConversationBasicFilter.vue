@@ -60,6 +60,10 @@ const chatStatusOptions = computed(() => [
     value: 'snoozed',
   },
   {
+    label: t('CHAT_LIST.CHAT_STATUS_FILTER_ITEMS.closed.TEXT'),
+    value: 'closed',
+  },
+  {
     label: t('CHAT_LIST.CHAT_STATUS_FILTER_ITEMS.all.TEXT'),
     value: 'all',
   },

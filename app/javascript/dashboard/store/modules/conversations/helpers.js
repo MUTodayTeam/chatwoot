@@ -7,8 +7,14 @@ export const findPendingMessageIndex = (chat, message) => {
   );
 };
 
-export const filterByStatus = (chatStatus, filterStatus) =>
-  filterStatus === 'all' ? true : chatStatus === filterStatus;
+// "active" is every conversation still being worked on, as the API returns for status=active.
+const ACTIVE_STATUSES = ['open', 'pending', 'snoozed'];
+
+export const filterByStatus = (chatStatus, filterStatus) => {
+  if (filterStatus === 'all') return true;
+  if (filterStatus === 'active') return ACTIVE_STATUSES.includes(chatStatus);
+  return chatStatus === filterStatus;
+};
 
 export const filterByInbox = (shouldFilter, inboxId, chatInboxId) => {
   const isOnInbox = Number(inboxId) === chatInboxId;

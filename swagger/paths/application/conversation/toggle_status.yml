@@ -8,7 +8,8 @@ description: |-
   conversation until a specific time. If `snoozed_until` is omitted, the
   conversation is snoozed until the next reply from the contact. Regardless
   of the value provided, snoozed conversations always reopen on the next
-  reply from the contact.
+  reply from the contact. Only a `resolved` conversation can be `closed`. A
+  `closed` conversation is read-only and can only be changed back to `open`.
 security:
   - userApiKey: []
   - agentBotApiKey: []
@@ -23,7 +24,7 @@ requestBody:
         properties:
           status:
             type: string
-            enum: ['open', 'resolved', 'pending', 'snoozed']
+            enum: ['open', 'resolved', 'pending', 'snoozed', 'closed']
             description: The status of the conversation
             example: open
           snoozed_until:
@@ -50,7 +51,7 @@ responses:
                   type: boolean
                 current_status:
                   type: string
-                  enum: ['open', 'resolved', 'pending', 'snoozed']
+                  enum: ['open', 'resolved', 'pending', 'snoozed', 'closed']
                 conversation_id:
                   type: number
   '404':

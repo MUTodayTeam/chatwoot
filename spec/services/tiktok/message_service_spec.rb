@@ -174,6 +174,17 @@ RSpec.describe Tiktok::MessageService do
         expect(inbox.conversations.count).to eq(1)
         expect(resolved_conversation.reload.messages.last.content).to eq('Hello from TikTok')
       end
+
+      it 'creates a new conversation if the last one is closed' do
+        inbox.update!(lock_to_single_conversation: true)
+        closed_conversation = create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved).tap(&:closed!)
+
+        perform_text_message
+
+        expect(inbox.conversations.count).to eq(2)
+        expect(closed_conversation.reload.messages.incoming).to be_empty
+        expect(inbox.conversations.last.messages.last.content).to eq('Hello from TikTok')
+      end
     end
 
     context 'when lock_to_single_conversation is disabled' do
@@ -182,6 +193,16 @@ RSpec.describe Tiktok::MessageService do
       it 'creates a new conversation if the previous one is resolved' do
         inbox.update!(lock_to_single_conversation: false)
         create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
+
+        perform_text_message
+
+        expect(inbox.conversations.count).to eq(2)
+        expect(inbox.conversations.last.messages.last.content).to eq('Hello from TikTok')
+      end
+
+      it 'creates a new conversation if the previous one is closed' do
+        inbox.update!(lock_to_single_conversation: false)
+        create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved).tap(&:closed!)
 
         perform_text_message
 

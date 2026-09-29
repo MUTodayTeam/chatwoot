@@ -47,13 +47,17 @@ const isResolved = computed(
 const isSnoozed = computed(
   () => currentChat.value.status === wootConstants.STATUS_TYPE.SNOOZED
 );
+const isClosed = computed(
+  () => currentChat.value.status === wootConstants.STATUS_TYPE.CLOSED
+);
 
+// A closed conversation can only be reopened.
 const showAdditionalActions = computed(
-  () => !isPending.value && !isSnoozed.value
+  () => !isPending.value && !isSnoozed.value && !isClosed.value
 );
 
 const showOpenButton = computed(() => {
-  return isPending.value || isSnoozed.value;
+  return isPending.value || isSnoozed.value || isClosed.value;
 });
 
 const getConversationParams = () => {
@@ -118,6 +122,8 @@ const onCmdOpenConversation = () => {
 };
 
 const onCmdResolveConversation = () => {
+  if (isClosed.value) return;
+
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
   const { hasMissing, missing } = checkMissingAttributes(
     currentCustomAttributes
