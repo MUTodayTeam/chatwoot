@@ -1,0 +1,30 @@
+{
+  "CONTACT_360": {
+    "OPEN_LINK": "Open Contact 360 →",
+    "PARTNER_ID": "ID {id}",
+    "FIRST_CONTACT": "First contact {date}",
+    "CONVERSATIONS": "{n} conversation | {n} conversations",
+    "OPEN_CHAT": "Open chat",
+    "CREATE_CASE": "+ Create case",
+    "CREATE_CASE_HINT": "Opens the latest chat. A case opens on its own when an agent takes it.",
+    "HISTORY": {
+      "TITLE": "Chat history across projects",
+      "EMPTY": "No solved or closed chats yet",
+      "NO_TOPIC": "No topic",
+      "NO_PROJECT": "No project",
+      "BOT": "Bot",
+      "MISSED": "Missed",
+      "UNASSIGNED": "Unassigned"
+    },
+    "CASES": {
+      "TITLE": "Cases ({n})",
+      "EMPTY": "No cases"
+    },
+    "PROJECT_FILTER": {
+      "ALL": "All projects"
+    },
+    "API": {
+      "ERROR_MESSAGE": "Could not load Contact 360, please try again"
+    }
+  }
+}

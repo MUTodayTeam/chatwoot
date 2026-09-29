@@ -1,12 +1,20 @@
 /* global axios */
 import ApiClient from './ApiClient';
 
-export const buildContactParams = (page, sortAttr, label, search) => ({
+// projectId keeps contacts with a conversation in that project
+export const buildContactParams = (
+  page,
+  sortAttr,
+  label,
+  search,
+  projectId
+) => ({
   include_contact_inboxes: false,
   page,
   sort: sortAttr,
   ...(search ? { q: search } : {}),
   ...(label ? { labels: [label] } : {}),
+  ...(projectId ? { project_id: projectId } : {}),
 });
 
 class ContactAPI extends ApiClient {
@@ -14,9 +22,9 @@ class ContactAPI extends ApiClient {
     super('contacts', { accountScoped: true });
   }
 
-  get(page, sortAttr = 'name', label = '') {
+  get(page, sortAttr = 'name', label = '', projectId = null) {
     return axios.get(this.url, {
-      params: buildContactParams(page, sortAttr, label, ''),
+      params: buildContactParams(page, sortAttr, label, '', projectId),
     });
   }
 
@@ -33,6 +41,11 @@ class ContactAPI extends ApiClient {
     if (inboxId) params.inbox_id = inboxId;
     if (conversationId) params.conversation_id = conversationId;
     return axios.get(`${this.url}/${contactId}/conversations`, { params });
+  }
+
+  // Contact 360: conversation count, first contact and the latest Solved/Closed chats
+  getOverview(contactId, { signal } = {}) {
+    return axios.get(`${this.url}/${contactId}/overview`, { signal });
   }
 
   getAttachments(contactId, page = 1) {
@@ -62,7 +75,13 @@ class ContactAPI extends ApiClient {
 
   search(search = '', page = 1, sortAttr = 'name', label = '', options = {}) {
     return axios.get(`${this.url}/search`, {
-      params: buildContactParams(page, sortAttr, label, search),
+      params: buildContactParams(
+        page,
+        sortAttr,
+        label,
+        search,
+        options.projectId
+      ),
       signal: options.signal,
     });
   }
