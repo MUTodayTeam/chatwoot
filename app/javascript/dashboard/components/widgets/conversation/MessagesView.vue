@@ -1,10 +1,12 @@
 <script>
-import { ref, provide, useTemplateRef } from 'vue';
+import { computed, ref, provide, useTemplateRef } from 'vue';
 import { useElementSize } from '@vueuse/core';
 // composable
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import { useContactConversationNavigation } from 'dashboard/composables/useContactConversationNavigation';
+import { useInboxProject } from 'dashboard/composables/useInboxProject';
+import { useMapGetter } from 'dashboard/composables/store';
 
 // components
 import ReplyBox from './ReplyBox.vue';
@@ -15,6 +17,7 @@ import Banner from 'dashboard/components/ui/Banner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ResizableEditorWrapper from './ResizableEditorWrapper.vue';
 import ReferralBubble from 'dashboard/components-next/Conversation/ReferralBubble.vue';
+import ConversationEndBar from 'dashboard/components-next/Conversation/ConversationEndBar.vue';
 
 // stores and apis
 import { mapGetters } from 'vuex';
@@ -32,6 +35,7 @@ import {
   getReadMessages,
   getUnreadMessages,
 } from 'dashboard/helper/conversationHelper';
+import { showsEndBar } from 'dashboard/helper/conversationEndBar';
 
 // constants
 import { BUS_EVENTS } from 'shared/constants/busEvents';
@@ -41,6 +45,8 @@ import wootConstants, {
 } from 'dashboard/constants/globals';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
+import { CASE_FINISHED_STATUSES } from 'dashboard/helper/caseHelper';
+import { READ_ONLY_QUERY } from 'dashboard/composables/useOpenConversationThread';
 
 export default {
   components: {
@@ -52,6 +58,7 @@ export default {
     Spinner,
     ResizableEditorWrapper,
     ReferralBubble,
+    ConversationEndBar,
   },
   mixins: [inboxMixin],
   setup() {
@@ -73,6 +80,11 @@ export default {
 
     provide('contextMenuElementTarget', conversationPanelRef);
 
+    const selectedChat = useMapGetter('getSelectedChat');
+    const project = useInboxProject(
+      computed(() => selectedChat.value?.inbox_id)
+    );
+
     return {
       captainTasksEnabled,
       getLabelSuggestions,
@@ -86,6 +98,7 @@ export default {
       topBannerRef,
       containerHeight,
       topBannerHeight,
+      project,
     };
   },
   data() {
@@ -113,6 +126,21 @@ export default {
     },
     isClosed() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.CLOSED;
+    },
+    isChatEnded() {
+      return showsEndBar(this.currentChat);
+    },
+    // Spec §5: every day of the thread opens with "Today / date · project · channel"
+    dayDividerParts() {
+      return [this.project?.name, this.inbox.name];
+    },
+    // Closed is always read-only; a thread opened from Contact 360's history stays read-only until it is reopened
+    isReadOnly() {
+      return (
+        this.isClosed ||
+        (this.$route?.query[READ_ONLY_QUERY] === 'true' &&
+          CASE_FINISHED_STATUSES.includes(this.currentChat?.status))
+      );
     },
     shouldShowLabelSuggestions() {
       return (
@@ -510,6 +538,7 @@ export default {
       :is-an-email-channel="isAnEmailChannel"
       :inbox-supports-reply-to="inboxSupportsReplyTo"
       :messages="getMessages"
+      :day-divider-parts="dayDividerParts"
       @retry="handleMessageRetry"
     >
       <template #beforeAll>
@@ -572,8 +601,9 @@ export default {
           />
         </div>
       </div>
+      <ConversationEndBar v-if="isChatEnded" :chat="currentChat" />
       <ResizableEditorWrapper
-        v-if="!isClosed"
+        v-if="!isReadOnly"
         ref="resizableEditorWrapperRef"
         :container-height="Math.max(0, containerHeight - topBannerHeight)"
       >

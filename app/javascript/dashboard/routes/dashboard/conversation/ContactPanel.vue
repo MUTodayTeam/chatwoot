@@ -12,6 +12,7 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
 import RelatedCases from './RelatedCases.vue';
+import ConversationTimeline from './ConversationTimeline.vue';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
@@ -244,6 +245,21 @@ onMounted(() => {
                 :contact-id="contact.id"
                 :case-id="currentChat.case?.id"
               />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'conversation_timeline'">
+            <AccordionItem
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.TIMELINE')"
+              :is-open="
+                isContactSidebarItemOpen('is_conversation_timeline_open')
+              "
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_conversation_timeline_open', value)
+              "
+            >
+              <ConversationTimeline :chat="currentChat" />
             </AccordionItem>
           </div>
           <div

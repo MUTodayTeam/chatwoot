@@ -110,7 +110,8 @@ class Case < ApplicationRecord
       account_id: account_id,
       inbox_id: conversation.inbox_id,
       message_type: :activity,
-      content: opened_activity_content
+      content: opened_activity_content,
+      content_attributes: { activity: { type: 'case_opened' } }
     )
     # The header shows the case, so agents already looking at the conversation need to hear about it.
     # Only their screens: the assignment that opened the case already dispatched conversation_updated,

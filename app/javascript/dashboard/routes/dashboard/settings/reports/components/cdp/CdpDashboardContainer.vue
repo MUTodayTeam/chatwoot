@@ -19,6 +19,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
 import HeatmapDateRangeSelector from '../heatmaps/HeatmapDateRangeSelector.vue';
+import IntervalTable from '../interval/IntervalTable.vue';
 import MetricCard from '../overview/MetricCard.vue';
 import {
   DELTA_TONES,
@@ -46,6 +47,14 @@ const KPIS = [
   {
     key: 'outgoingMessages',
     label: 'OVERVIEW_REPORTS.CDP_DASHBOARD.KPIS.OUTGOING_MESSAGES',
+  },
+  {
+    key: 'missedChats',
+    label: 'OVERVIEW_REPORTS.CDP_DASHBOARD.KPIS.MISSED_CHATS',
+  },
+  {
+    key: 'expiredChats',
+    label: 'OVERVIEW_REPORTS.CDP_DASHBOARD.KPIS.EXPIRED_CHATS',
   },
   {
     key: 'firstResponseTime',
@@ -329,7 +338,7 @@ onMounted(() => {
       <div v-if="dashboard" class="flex flex-col w-full min-w-0 gap-6">
         <p class="mb-0 text-body-main text-n-slate-11">{{ comparedWith }}</p>
 
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <div
             v-for="card in kpiCards"
             :key="card.key"
@@ -455,6 +464,13 @@ onMounted(() => {
         <span v-else class="text-body-main text-n-slate-10">
           {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.INTERVAL_SUMMARY.NO_DATA') }}
         </span>
+
+        <div class="flex flex-col min-w-0 gap-3">
+          <h6 class="mb-0 text-heading-3 text-n-slate-12">
+            {{ t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.HEADER') }}
+          </h6>
+          <IntervalTable :interval-data="dashboard.intervalHeatmap" />
+        </div>
       </div>
     </MetricCard>
   </div>

@@ -156,7 +156,8 @@ RSpec.describe 'Conversation Assignment API', type: :request do
         expect(Conversations::ActivityMessageJob)
           .to(have_been_enqueued.at_least(:once)
         .with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id, message_type: :activity,
-                              content: "Conversation unassigned by #{agent.name}" }))
+                              content: "Conversation unassigned by #{agent.name}",
+                              content_attributes: { activity: { type: 'assignee_changed' } } }))
       end
     end
 

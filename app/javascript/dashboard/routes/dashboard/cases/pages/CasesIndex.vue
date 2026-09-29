@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
-import { useUISettings } from 'dashboard/composables/useUISettings';
+import { useOpenConversationThread } from 'dashboard/composables/useOpenConversationThread';
 import CasesAPI from 'dashboard/api/cases';
 import {
   buildCaseTabs,
@@ -14,7 +14,6 @@ import {
   CASE_FINISHED_STATUSES,
 } from 'dashboard/helper/caseHelper';
 import { categoryPath } from 'dashboard/helper/caseCategoryHelper';
-import { conversationUrl, frontendURL } from 'dashboard/helper/URLHelper';
 import { dynamicTime } from 'shared/helpers/timeHelper';
 
 import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
@@ -40,9 +39,8 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 const { run, isPending } = useAbortableRequest();
-const { uiSettings, updateUISettings } = useUISettings();
+const openConversationThread = useOpenConversationThread();
 
-const accountId = useMapGetter('getCurrentAccountId');
 const teams = useMapGetter('teams/getTeams');
 const inboxGetter = useMapGetter('inboxes/getInbox');
 
@@ -151,22 +149,8 @@ const onPageChange = page => {
   fetchCases();
 };
 
-// A Solved or Closed thread is not in the default list, so the list opens on its status
-const openThread = kase => {
-  if (CASE_FINISHED_STATUSES.includes(kase.status)) {
-    updateUISettings({
-      conversations_filter_by: {
-        ...uiSettings.value.conversations_filter_by,
-        status: kase.status,
-      },
-    });
-  }
-  router.push(
-    frontendURL(
-      conversationUrl({ accountId: accountId.value, id: kase.conversation.id })
-    )
-  );
-};
+const openThread = kase =>
+  openConversationThread({ id: kase.conversation.id, status: kase.status });
 
 onMounted(() => {
   store.dispatch('teams/get');
