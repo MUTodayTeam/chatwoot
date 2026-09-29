@@ -19,9 +19,13 @@ describe('cdpDashboardHelper', () => {
       expect(getDeltaTone('incomingMessages', -3)).toBe(DELTA_TONES.WORSE);
     });
 
-    it('treats a shorter first response as better', () => {
+    it('treats fewer missed or expired chats and a shorter first response as better', () => {
       expect(getDeltaTone('firstResponseTime', -20)).toBe(DELTA_TONES.BETTER);
       expect(getDeltaTone('firstResponseTime', 20)).toBe(DELTA_TONES.WORSE);
+      expect(getDeltaTone('missedChats', -20)).toBe(DELTA_TONES.BETTER);
+      expect(getDeltaTone('missedChats', 20)).toBe(DELTA_TONES.WORSE);
+      expect(getDeltaTone('expiredChats', -20)).toBe(DELTA_TONES.BETTER);
+      expect(getDeltaTone('expiredChats', 20)).toBe(DELTA_TONES.WORSE);
     });
 
     it('stays neutral without a change or without a delta', () => {

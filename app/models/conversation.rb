@@ -162,14 +162,24 @@ class Conversation < ApplicationRecord
     @live_chat_rule ||= LiveChatRule.for_project(account, inbox.project)
   end
 
-  # Grants the conversation more time before it counts as overdue. Extending a
-  # conversation nobody is waiting on would create a deadline out of nothing.
+  # Grants the conversation more time before it counts as overdue. The time is added in SQL, so
+  # a deadline that restart_reply_deadline moved after this object was loaded gets the extension
+  # instead of being overwritten by a stale one. Extending a conversation nobody is waiting on
+  # would create a deadline out of nothing. Like the restart, only agents' countdowns hear about it.
   def extend_reply_deadline!
-    return false if reply_due_at.blank?
-
     minutes = live_chat_rule.extension_minutes
-    update!(reply_due_at: reply_due_at + minutes.minutes)
+    now = Time.current
+    # rubocop:disable Rails/SkipsModelValidations
+    extended = Conversation.where(id: id).where.not(reply_due_at: nil)
+                           .update_all(["reply_due_at = reply_due_at + (? * INTERVAL '1 minute'), updated_at = ?", minutes, now])
+    # rubocop:enable Rails/SkipsModelValidations
+    return false if extended.zero?
+
+    self.reply_due_at = Conversation.where(id: id).pick(:reply_due_at)
+    self.updated_at = now
+    clear_attribute_changes(%w[reply_due_at updated_at])
     create_reply_deadline_extended_message(minutes)
+    Rails.configuration.dispatcher.dispatch(CONVERSATION_REPLY_DEADLINE_CHANGED, now, conversation: self)
     true
   end
 

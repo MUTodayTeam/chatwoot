@@ -48,7 +48,8 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def build
-    { period: period, kpis: kpis, daily_channels: daily_channels, interval_summary: interval_summary, agent_load: agent_load }
+    { period: period, kpis: kpis, daily_channels: daily_channels, interval_summary: interval_summary, interval_heatmap: interval_heatmap,
+      agent_load: agent_load }
   end
 
   private
@@ -71,7 +72,7 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def period_metrics(period_range)
-    total_chats, first_response_time = started_chat_stats(period_range)
+    total_chats, missed_chats, expired_chats, first_response_time = started_chat_stats(period_range)
     # Outgoing counts only agent (User) messages; bot, automation and Captain replies are left out.
     messages = account.messages.unscope(:order).where(inbox_id: inbox_ids, created_at: period_range, private: false)
     message_counts = messages.where(message_type: :incoming).or(messages.where(message_type: :outgoing, sender_type: 'User'))
@@ -81,15 +82,20 @@ class V2::Reports::CdpDashboardBuilder
       total_chats: total_chats,
       incoming_messages: message_counts['incoming'] || 0,
       outgoing_messages: message_counts['outgoing'] || 0,
+      missed_chats: missed_chats,
+      expired_chats: expired_chats,
       first_response_time: first_response_time&.round
     }
   end
 
   # AVG skips conversations without an agent reply, so they count as chats but not towards first response.
+  # Missed and expired are flags the sweep sets whenever it happens, so a chat that started in the
+  # period counts once flagged, even if that came after the period ended.
   def started_chat_stats(period_range)
     started_conversations(period_range)
       .joins(sanitize(FIRST_AGENT_REPLY_SQL, outgoing: Message.message_types[:outgoing]))
-      .pick(Arel.sql('COUNT(*)'), Arel.sql('AVG(EXTRACT(EPOCH FROM first_reply.replied_at - started.started_at))'))
+      .pick(Arel.sql('COUNT(*)'), Arel.sql('COUNT(conversations.missed_at)'), Arel.sql('COUNT(conversations.expired_at)'),
+            Arel.sql('AVG(EXTRACT(EPOCH FROM first_reply.replied_at - started.started_at))'))
   end
 
   def delta_percent(current, previous)
@@ -130,6 +136,12 @@ class V2::Reports::CdpDashboardBuilder
       busiest_weekday: busiest_weekday,
       outside_business_hours: outside_business_hours(hourly, total)
     }
+  end
+
+  # Every hour of the period, empty ones included, in the shape of the V2 reports API's hourly series.
+  def interval_heatmap
+    started_conversations(range).group_by_period(:hour, 'started.started_at', time_zone: timezone, range: range).count
+                                .map { |hour, count| { timestamp: hour.to_i, value: count } }
   end
 
   def peak_hour(hourly)

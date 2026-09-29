@@ -581,6 +581,8 @@
         "TOTAL_CHATS": "Total chats",
         "INCOMING_MESSAGES": "Incoming messages",
         "OUTGOING_MESSAGES": "Outgoing messages",
+        "MISSED_CHATS": "Missed",
+        "EXPIRED_CHATS": "Expired",
         "FIRST_RESPONSE_TIME": "First response"
       },
       "DAILY_CHANNELS": {
@@ -598,7 +600,7 @@
       },
       "INTERVAL_SUMMARY": {
         "HEADER": "Interval summary",
-        "SCOPE_NOTE": "Covers this card's period and project, by each chat's first customer message. The Conversation Interval heatmap below has its own range.",
+        "SCOPE_NOTE": "Covers this card's period and project, by each chat's first customer message, as does the Conversation Interval table below.",
         "PEAK_HOUR": "Peak hour",
         "PEAK_HOUR_DETAIL": "{count} of {total} chats",
         "BUSIEST_DAY": "Busiest day",
@@ -611,7 +613,6 @@
     "CONVERSATION_INTERVAL": {
       "HEADER": "Conversation Interval",
       "HOUR": "Hour",
-      "LOADING_MESSAGE": "Loading interval data...",
       "ARIA_LABEL": "Conversations by hour and day",
       "NO_CONVERSATIONS": "No conversations",
       "CONVERSATION": "{count} conversation",
