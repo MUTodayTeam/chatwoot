@@ -64,6 +64,10 @@ const chatStatusOptions = computed(() => [
     value: 'closed',
   },
   {
+    label: t('CHAT_LIST.CHAT_STATUS_FILTER_ITEMS.missed.TEXT'),
+    value: wootConstants.STATUS_TYPE.MISSED,
+  },
+  {
     label: t('CHAT_LIST.CHAT_STATUS_FILTER_ITEMS.active.TEXT'),
     value: wootConstants.STATUS_TYPE.ACTIVE,
   },

@@ -794,6 +794,7 @@ RSpec.describe Conversation do
         waiting_since: conversation.waiting_since.to_i,
         reply_due_at: conversation.reply_due_at.to_i,
         status_changed_at: conversation.status_changed_at.to_i,
+        missed_at: 0,
         priority: nil,
         unread_count: 0
       }

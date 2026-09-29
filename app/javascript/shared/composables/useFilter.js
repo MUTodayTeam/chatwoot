@@ -96,7 +96,11 @@ export const useFilter = ({ filteri18nKey, attributeModel }) => {
     currentUserDetails,
     activeAssigneeTab
   ) => {
-    if (activeStatus !== '') {
+    // The filter API has no Missed status, so a Missed list opens the filter without one
+    if (
+      activeStatus !== '' &&
+      activeStatus !== wootConstants.STATUS_TYPE.MISSED
+    ) {
       // "active" is a list shortcut, the filter API only knows the statuses behind it.
       const statuses =
         activeStatus === wootConstants.STATUS_TYPE.ACTIVE
