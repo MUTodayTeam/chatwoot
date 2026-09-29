@@ -13,8 +13,9 @@ export const resolveCurrentProject = (projects, { projectId, inboxId }) => {
 
 /**
  * The project's open conversations, when the chat list's count says exactly that: the
- * list is the project's own, on the Open status, not narrowed any further. Otherwise
- * null, since no loaded count covers the whole project.
+ * list is the project's own, on the Active status, not narrowed any further. Active is
+ * open, pending and snoozed together, the mockup's "open" (anything not yet solved or
+ * closed). Otherwise null, since no loaded count covers the whole project.
  * @param {Object} params
  * @param {Object} params.project
  * @param {Object} params.filters - The chat list's filters (getChatListFilters)
@@ -30,7 +31,7 @@ export const getProjectOpenCount = ({
   const isProjectOpenList =
     !hasAppliedFilters &&
     Number(filters.projectId) === project.id &&
-    filters.status === wootConstants.STATUS_TYPE.OPEN &&
+    filters.status === wootConstants.STATUS_TYPE.ACTIVE &&
     !filters.inboxId &&
     !filters.teamId &&
     !filters.labels?.length &&

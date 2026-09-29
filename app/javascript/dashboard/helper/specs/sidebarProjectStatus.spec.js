@@ -9,7 +9,7 @@ const projects = [
   { id: 2, name: 'MUToday', inboxIds: [21] },
 ];
 
-const projectListFilters = { projectId: '1', status: 'open' };
+const projectListFilters = { projectId: '1', status: 'active' };
 
 describe('sidebarProjectStatus', () => {
   describe('resolveCurrentProject', () => {
@@ -46,13 +46,11 @@ describe('sidebarProjectStatus', () => {
     });
 
     it('is null when the count covers something else', () => {
-      expect(
-        openCount({ ...projectListFilters, status: 'pending' })
-      ).toBeNull();
+      expect(openCount({ ...projectListFilters, status: 'open' })).toBeNull();
       expect(openCount({ ...projectListFilters, inboxId: 11 })).toBeNull();
       expect(openCount({ ...projectListFilters, labels: ['vip'] })).toBeNull();
       expect(openCount({ ...projectListFilters, projectId: '2' })).toBeNull();
-      expect(openCount({ status: 'open' })).toBeNull();
+      expect(openCount({ status: 'active' })).toBeNull();
       expect(openCount(projectListFilters, true)).toBeNull();
     });
   });

@@ -200,7 +200,7 @@ const copyConversationId = async () => {
       <div class="flex flex-col items-start min-w-0 ms-2 overflow-hidden">
         <div class="flex flex-row items-center max-w-full gap-1 p-0 m-0">
           <span
-            class="text-sm font-medium truncate leading-tight text-n-slate-12"
+            class="text-sm font-medium truncate leading-tight text-n-slate-12 min-w-[6.875rem]"
           >
             {{ currentContact.name }}
           </span>
@@ -215,7 +215,7 @@ const copyConversationId = async () => {
           <span
             v-for="tag in headerTags"
             :key="tag.key"
-            class="hidden min-[1320px]:inline-block px-1.5 border border-n-weak rounded-sm text-label-small text-n-slate-11 truncate max-w-32 flex-shrink-0"
+            class="hidden min-[1320px]:inline-block px-1.5 border border-n-weak rounded-sm text-label-small text-n-slate-11 truncate max-w-32"
           >
             {{ tag.label }}
           </span>
@@ -282,13 +282,18 @@ const copyConversationId = async () => {
       <template v-else>
         <Button
           v-tooltip.top="$t('CONVERSATION.ASSIGN_DIALOG.TOOLTIP')"
-          :label="$t('CONVERSATION.ASSIGN_DIALOG.BUTTON')"
+          :aria-label="$t('CONVERSATION.ASSIGN_DIALOG.BUTTON')"
           icon="i-lucide-user-round-plus"
           variant="faded"
           color="slate"
           size="sm"
           @click="assignDialogRef?.open()"
-        />
+        >
+          <!-- Below 1320px the toolbar keeps only the icon and its tooltip (spec §5) -->
+          <span class="hidden min-[1320px]:inline min-w-0 truncate">
+            {{ $t('CONVERSATION.ASSIGN_DIALOG.BUTTON') }}
+          </span>
+        </Button>
         <AssignDialog
           ref="assignDialogRef"
           :conversation-id="currentChat.id"
@@ -296,13 +301,17 @@ const copyConversationId = async () => {
         />
         <Button
           v-tooltip.top="$t('CONVERSATION.TRANSFER.TOOLTIP')"
-          :label="$t('CONVERSATION.TRANSFER.BUTTON')"
+          :aria-label="$t('CONVERSATION.TRANSFER.BUTTON')"
           icon="i-lucide-arrow-right-left"
           variant="faded"
           color="slate"
           size="sm"
           @click="transferDialogRef?.open()"
-        />
+        >
+          <span class="hidden min-[1320px]:inline min-w-0 truncate">
+            {{ $t('CONVERSATION.TRANSFER.BUTTON') }}
+          </span>
+        </Button>
         <TransferDialog
           ref="transferDialogRef"
           :conversation-id="currentChat.id"

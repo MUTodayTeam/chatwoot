@@ -58,11 +58,13 @@ const projectCount = computed(() => {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-2 min-w-0 text-label-small">
+  <div
+    class="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 min-w-0 text-label-small"
+  >
     <span
       v-if="project"
       v-tooltip.bottom="t('SIDEBAR.PROJECT_STATUS.CURRENT_PROJECT')"
-      class="flex items-center gap-1.5 min-w-0"
+      class="flex items-center gap-1.5 min-w-0 max-w-full"
     >
       <!-- The project's own colour, as its sidebar entry -->
       <span
@@ -74,7 +76,7 @@ const projectCount = computed(() => {
         {{ projectCount }}
       </span>
     </span>
-    <span class="flex items-center flex-shrink-0 gap-1 ms-auto text-n-slate-11">
+    <span class="flex items-center flex-shrink-0 gap-1 text-n-slate-11">
       <span class="rounded-full size-2 bg-n-teal-10" />
       {{ t('SIDEBAR.PROJECT_STATUS.AGENTS_ONLINE') }}
       <span class="font-semibold text-n-slate-12 tabular-nums">

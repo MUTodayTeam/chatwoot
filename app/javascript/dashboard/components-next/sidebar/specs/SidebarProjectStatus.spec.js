@@ -55,7 +55,7 @@ describe('SidebarProjectStatus', () => {
 
   it("shows the project's open count on its own open list", () => {
     route.params = { projectId: '1' };
-    getters.getChatListFilters.value = { projectId: '1', status: 'open' };
+    getters.getChatListFilters.value = { projectId: '1', status: 'active' };
 
     const wrapper = mountStatus();
 
@@ -65,7 +65,7 @@ describe('SidebarProjectStatus', () => {
 
   it("falls back to the project's unread count inside one of its channels", () => {
     route.params = { inbox_id: '12' };
-    getters.getChatListFilters.value = { inboxId: 12, status: 'open' };
+    getters.getChatListFilters.value = { inboxId: 12, status: 'active' };
 
     const wrapper = mountStatus();
 
