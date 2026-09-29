@@ -18,18 +18,36 @@ RSpec.describe 'Assignable agents of a project with teams', type: :request do
     create(:team_member, team: team, user: team_agent)
   end
 
-  def assignable_ids(inbox_ids)
+  def assignable_agents(inbox_ids)
     get "/api/v1/accounts/#{account.id}/assignable_agents",
         params: { inbox_ids: inbox_ids },
         headers: admin.create_new_auth_token,
         as: :json
 
     expect(response).to have_http_status(:success)
-    response.parsed_body['payload'].pluck('id')
+    response.parsed_body['payload']
+  end
+
+  def assignable_ids(inbox_ids)
+    assignable_agents(inbox_ids).pluck('id')
   end
 
   it 'keeps the stock list, admins included, when the project has no team' do
     expect(assignable_ids([inbox.id])).to contain_exactly(team_agent.id, other_agent.id, admin.id)
+  end
+
+  it "counts each agent's active conversations across the project's inboxes against the default limit" do
+    sibling_inbox = create(:inbox, account: account, project: project)
+    create(:conversation, account: account, inbox: inbox, assignee: team_agent, status: :open)
+    create(:conversation, account: account, inbox: sibling_inbox, assignee: team_agent, status: :pending)
+    create(:conversation, account: account, inbox: sibling_inbox, assignee: team_agent, status: :snoozed)
+    create(:conversation, account: account, inbox: inbox, assignee: team_agent, status: :resolved)
+    create(:conversation, account: account, inbox: other_inbox, assignee: team_agent, status: :open)
+
+    loads = assignable_agents([inbox.id]).to_h { |agent| [agent['id'], agent['conversation_load']] }
+
+    expect(loads[team_agent.id]).to eq('assigned_count' => 3, 'limit' => 10)
+    expect(loads[admin.id]).to eq('assigned_count' => 0, 'limit' => 10)
   end
 
   context 'when the project has teams' do

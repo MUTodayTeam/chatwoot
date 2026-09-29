@@ -6,6 +6,7 @@ json.payload do
     if owner[:type] == 'User'
       json.partial! 'api/v1/models/agent', formats: [:json], resource: owner[:resource]
       json.assignee_type 'User' if @include_ai_assignees
+      json.conversation_load @agent_loads[owner[:resource].id]
     else
       json.partial! 'api/v1/models/agent_bot_slim', formats: [:json], resource: owner[:resource]
       json.assignee_type 'AgentBot'
