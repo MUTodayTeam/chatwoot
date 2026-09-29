@@ -11,10 +11,13 @@ module Custom::Api::V1::Accounts::ContactsController
     @resolved_contacts = in_project(contacts)
   end
 
-  # Only search calls this: it also matches the hotel and lists the same contacts as the Contacts list
+  # Only search calls this: it also matches the hotel. Administrators search every contact like stock; an agent finds
+  # only the contacts the Contacts list shows them.
   def fetch_contacts_with_has_more(contacts)
     hotel = Current.account.contacts.where(Custom::ContactScope::HOTEL_SEARCH_CONDITION, search: "%#{params[:q].strip}%")
-    super(in_project(Custom::ContactScope.visible(contacts.or(hotel), Current.user, Current.account)))
+    contacts = contacts.or(hotel)
+    contacts = Custom::ContactScope.visible(contacts, Current.user, Current.account) unless Current.account_user.administrator?
+    super(in_project(contacts))
   end
 
   def in_project(contacts)

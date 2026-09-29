@@ -154,12 +154,17 @@ RSpec.describe 'Contacts filtered by project', type: :request do
   end
 
   context 'with crm_v2 enabled' do
+    let(:agent) { create(:user, account: account, role: :agent) }
     let!(:lead) { create(:contact, account: account, name: 'Lead Tester', email: nil, phone_number: nil, identifier: nil, contact_type: :lead) }
     let!(:customer) { create(:contact, :with_email, account: account, name: 'Lead Customer', contact_type: :customer) }
 
-    before { account.enable_features!('crm_v2') }
+    before do
+      account.enable_features!('crm_v2')
+      create(:inbox_member, inbox: project_inbox, user: agent)
+      create(:conversation, account: account, inbox: project_inbox, contact: customer)
+    end
 
-    it 'lists leads, not every contact with an email' do
+    it 'lists leads only, even a customer with a visible conversation' do
       get "/api/v1/accounts/#{account.id}/contacts", headers: admin.create_new_auth_token
 
       ids = response.parsed_body['payload'].pluck('id')
@@ -167,11 +172,25 @@ RSpec.describe 'Contacts filtered by project', type: :request do
       expect(ids).not_to include(customer.id)
     end
 
-    it 'searches the same way' do
-      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'lead' }, headers: admin.create_new_auth_token
+    it 'searches leads only for an agent' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'lead' }, headers: agent.create_new_auth_token
 
       expect(response.parsed_body['payload'].pluck('id')).to eq([lead.id])
     end
+
+    it 'searches every contact for an administrator, like stock' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'lead' }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to contain_exactly(lead.id, customer.id)
+    end
+  end
+
+  it 'finds for an administrator a name-only contact with no conversation, like stock' do
+    name_only = create(:contact, account: account, name: 'Nameonly Person', email: nil, phone_number: nil, identifier: nil)
+
+    get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'nameonly' }, headers: admin.create_new_auth_token
+
+    expect(response.parsed_body['payload'].pluck('id')).to eq([name_only.id])
   end
 
   context 'with a custom role that only manages the chats it takes part in', if: ChatwootApp.enterprise? do
