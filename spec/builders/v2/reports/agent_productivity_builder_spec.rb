@@ -39,7 +39,9 @@ RSpec.describe V2::Reports::AgentProductivityBuilder do
   def solve(conversation, by:, after:)
     travel_to(started_at + after) do
       Current.user = by
-      Conversations::SolveService.new(conversation: Conversation.find(conversation.id), user: by, send_survey: false).perform
+      # The Solved is read from the reporting event its async listener writes
+      solve_service = Conversations::SolveService.new(conversation: Conversation.find(conversation.id), user: by, send_survey: false)
+      perform_enqueued_jobs { solve_service.perform }
     end
   end
 
@@ -99,7 +101,7 @@ RSpec.describe V2::Reports::AgentProductivityBuilder do
 
     it 'credits the assignee when the rule auto-solves a pending conversation' do
       travel_to(started_at + 12.minutes) { conversation.update!(status: :pending) }
-      travel_to(started_at + 12.minutes + 25.hours) { LiveChatRules::SweepJob.perform_now }
+      travel_to(started_at + 12.minutes + 25.hours) { perform_enqueued_jobs { LiveChatRules::SweepJob.perform_now } }
       params[:until] = (started_at + 2.days).to_i.to_s
 
       expect(conversation.reload).to be_resolved
@@ -131,6 +133,14 @@ RSpec.describe V2::Reports::AgentProductivityBuilder do
 
     params.merge!(since: (started_at + 2.days).to_i.to_s, until: (started_at + 4.days).to_i.to_s)
     expect(agents).to contain_exactly(include(id: poy.id, resolved: 1, assisted: 0), include(id: toon.id, resolved: 0, assisted: 1))
+  end
+
+  it 'credits the turns of a conversation solved after it was left unassigned, with no resolver' do
+    conversation = start_chat
+    travel_to(started_at + 10.minutes) { Conversation.find(conversation.id).update!(assignee: nil) }
+    solve(conversation, by: create(:user, account: account, role: :administrator), after: 20.minutes)
+
+    expect(agents).to contain_exactly(include(id: toon.id, resolved: 0, assisted: 1))
   end
 
   it 'leaves out conversations that are open again or solved outside the period' do

@@ -353,7 +353,7 @@ RSpec.describe Api::V2::Accounts::ReportsController, type: :request do
 
     it 'returns the weights and a row per agent to an admin' do
       conversation = create(:conversation, account: account, inbox: inbox, assignee: agent)
-      conversation.update!(status: :resolved)
+      perform_enqueued_jobs { conversation.update!(status: :resolved) }
 
       get path, params: params, headers: admin.create_new_auth_token, as: :json
 

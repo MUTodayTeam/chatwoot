@@ -72,6 +72,16 @@ RSpec.describe Conversations::TransferService do
       expect(handlers.open.pluck(:user_id)).to eq([poy.id])
     end
 
+    # Two tabs, or a retried request: the second one loaded the conversation before the first committed
+    it 'refuses a transfer the conversation has moved on from since it was loaded' do
+      stale = Conversation.find(conversation.id)
+      transfer
+
+      expect(refusal_of { described_class.new(conversation: stale, user: toon, assignee_id: poy.id, reason: 'general').perform })
+        .to eq('Pick a member of the transfer team other than yourself and the current assignee')
+      expect(handlers.map { |handler| [handler.user_id, handler.end_reason] }).to eq([[toon.id, 'escalate'], [poy.id, nil]])
+    end
+
     it 'refuses a Solved conversation' do
       conversation.update!(status: :resolved)
 

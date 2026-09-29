@@ -22,10 +22,7 @@ class Conversations::TransferService
     refuse!(:transfer_team_missing) unless team
     refuse!(:transfer_reason_invalid) unless ConversationHandler::TRANSFER_REASONS.include?(reason)
 
-    assignee = self.class.candidates(conversation, user, team).find_by(id: assignee_id)
-    refuse!(:transfer_assignee_invalid) unless assignee
-
-    hand_over(assignee)
+    assignee = hand_over(team)
     create_note
     assignee
   end
@@ -33,14 +30,19 @@ class Conversations::TransferService
   private
 
   # The turn closes in the same transaction as the assignment and before it, so the handler
-  # listener only has the incoming agent's turn left to open.
-  def hand_over(assignee)
+  # listener only has the incoming agent's turn left to open. The assignee is checked against
+  # the row the lock reloaded: a second tab or a retried request that loaded the conversation
+  # earlier must not end the turn someone else has just been handed.
+  def hand_over(team)
     conversation.with_lock do
       refuse!(:transfer_finished) if ConversationHandler::FINISHED_STATUSES.include?(conversation.status)
+      assignee = self.class.candidates(conversation, user, team).find_by(id: assignee_id)
+      refuse!(:transfer_assignee_invalid) unless assignee
 
       ConversationHandler.close_open!(conversation, reason: reason, ended_by: user, note: note)
       conversation.transfer_reason = reason
       Conversations::AssignmentService.new(conversation: conversation, assignee_id: assignee.id).perform
+      assignee
     end
   end
 

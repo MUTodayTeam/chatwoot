@@ -95,6 +95,7 @@ class Api::V2::Accounts::ReportsController < Api::V1::Accounts::BaseController
     render json: builder.build
   end
 
+  # No timezone_offset: since and until are already instants and nothing is bucketed by day
   def agent_productivity
     return head :unprocessable_entity if params[:since].blank? || params[:until].blank?
 

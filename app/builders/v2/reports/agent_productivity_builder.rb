@@ -1,8 +1,11 @@
 # Touch-based productivity (spec 10, 11): every agent that had a turn on a conversation gets
 # credit for it, not only the one who solved it. Only conversations whose latest Solved falls in
-# the period count, and all of their turns count, including those before a reopen.
+# the period count, and all of their turns count, including those before a reopen. The Solved
+# comes from the conversation_resolved reporting event rather than from a turn, so a
+# conversation solved while nobody had it still credits the agents who did.
 #
-# - resolved: conversations whose latest Solved (or auto-solve) ended the agent's turn
+# - resolved: conversations whose latest Solved (or auto-solve) ended the agent's turn, which
+#   is then the conversation's last turn
 # - assisted: conversations the agent had a turn on but did not resolve
 # - transfer_out: the agent's turns that ended in a transfer; general_transfers is the share
 #   that costs the transfer penalty
@@ -20,25 +23,35 @@ class V2::Reports::AgentProductivityBuilder
 
   STATS_SQL = <<~SQL.squish.freeze
     WITH last_solves AS (
-      SELECT DISTINCT ON (handlers.conversation_id) handlers.conversation_id, handlers.user_id AS resolver_id, handlers.ended_at AS solved_at
-      FROM conversation_handlers handlers
-      INNER JOIN conversations ON conversations.id = handlers.conversation_id
-      WHERE handlers.account_id = :account_id
-        AND handlers.end_reason IN (:solved_reasons)
-        AND handlers.ended_at >= :since
+      SELECT DISTINCT ON (events.conversation_id) events.conversation_id, events.created_at AS solved_at
+      FROM reporting_events events
+      INNER JOIN conversations ON conversations.id = events.conversation_id
+      WHERE events.account_id = :account_id
+        AND events.name = :resolved_event
+        AND events.created_at >= :since
         AND conversations.status IN (:finished_statuses)
         AND conversations.inbox_id IN (:inbox_ids)
-      ORDER BY handlers.conversation_id, handlers.ended_at DESC, handlers.id DESC
+      ORDER BY events.conversation_id, events.created_at DESC, events.id DESC
     ),
     solved AS (
       SELECT * FROM last_solves WHERE solved_at < :until
     ),
-    turns AS (
-      SELECT handlers.*, solved.resolver_id,
+    ordered_turns AS (
+      SELECT handlers.*,
              LAG(handlers.end_reason) OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS previous_end_reason,
-             ROW_NUMBER() OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS position
+             ROW_NUMBER() OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS position,
+             ROW_NUMBER() OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at DESC, handlers.id DESC) AS position_from_end
       FROM conversation_handlers handlers
       INNER JOIN solved ON solved.conversation_id = handlers.conversation_id
+    ),
+    resolvers AS (
+      SELECT conversation_id, user_id AS resolver_id FROM ordered_turns
+      WHERE position_from_end = 1 AND end_reason IN (:solved_reasons)
+    ),
+    turns AS (
+      SELECT ordered_turns.*, resolvers.resolver_id
+      FROM ordered_turns
+      LEFT JOIN resolvers ON resolvers.conversation_id = ordered_turns.conversation_id
     ),
     first_responses AS (
       SELECT solved.conversation_id, EXTRACT(EPOCH FROM first_reply.replied_at - started.started_at) AS seconds
@@ -57,7 +70,7 @@ class V2::Reports::AgentProductivityBuilder
     )
     SELECT turns.user_id,
            COUNT(DISTINCT turns.conversation_id) FILTER (WHERE turns.user_id = turns.resolver_id) AS resolved,
-           COUNT(DISTINCT turns.conversation_id) FILTER (WHERE turns.user_id <> turns.resolver_id) AS assisted,
+           COUNT(DISTINCT turns.conversation_id) FILTER (WHERE turns.resolver_id IS DISTINCT FROM turns.user_id) AS assisted,
            COUNT(*) FILTER (WHERE turns.end_reason IN (:transfer_reasons)) AS transfer_out,
            COUNT(*) FILTER (WHERE turns.end_reason = :general_reason) AS general_transfers,
            COUNT(*) FILTER (WHERE turns.previous_end_reason IN (:transfer_reasons)) AS transfer_in,
@@ -122,7 +135,7 @@ class V2::Reports::AgentProductivityBuilder
   def stats_sql
     ActiveRecord::Base.sanitize_sql_array(
       [STATS_SQL, {
-        account_id: account.id, since: range.begin, until: range.end, inbox_ids: inbox_ids,
+        account_id: account.id, since: range.begin, until: range.end, inbox_ids: inbox_ids, resolved_event: 'conversation_resolved',
         solved_reasons: end_reason_values(ConversationHandler::SOLVED_REASONS),
         transfer_reasons: end_reason_values(ConversationHandler::TRANSFER_REASONS),
         general_reason: ConversationHandler.end_reasons[:general],

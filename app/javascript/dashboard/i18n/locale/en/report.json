@@ -647,7 +647,7 @@
     },
     "AGENT_PRODUCTIVITY": {
       "HEADER": "Agent productivity",
-      "LOADING_MESSAGE": "Loading agent productivity...",
+      "LOADING_MESSAGE": "Loading touch-based productivity...",
       "ARIA_LABEL": "Touch-based productivity by agent",
       "SCORE_NOTE": "Every agent who handled a solved conversation gets credit. Score = Resolved × 1 + Assisted × {assisted} − General handovers × {penalty}. Only conversations solved in this range count.",
       "COLUMNS": {
