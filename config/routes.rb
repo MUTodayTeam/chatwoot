@@ -178,6 +178,7 @@ Rails.application.routes.draw do
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
+              resource :solve, only: [:create]
             end
             member do
               post :mute
@@ -356,6 +357,13 @@ Rails.application.routes.draw do
           end
           resources :live_chat_rules
           resources :cases, only: [:index, :show, :update]
+          resources :case_categories, only: [:index, :create, :update, :destroy] do
+            collection do
+              get :template
+              get :export
+              post :import
+            end
+          end
 
           # Assignment V2 Routes
           resources :assignment_policies do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -552,6 +552,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.index ["enabled"], name: "index_captain_scenarios_on_enabled"
   end
 
+  create_table "case_categories", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "inquiry_type", default: 0, null: false
+    t.string "c1", null: false
+    t.string "c2", default: "", null: false
+    t.string "c3", null: false
+    t.string "merge_key", null: false
+    t.integer "sla_respond_minutes"
+    t.integer "sla_resolve_minutes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "merge_key"], name: "index_case_categories_on_account_id_and_merge_key", unique: true
+  end
+
   create_table "cases", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "conversation_id", null: false
@@ -565,10 +579,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
     t.integer "reopened_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "summary"
     t.index ["account_id", "created_at"], name: "index_cases_on_account_id_and_created_at"
     t.index ["account_id", "display_id"], name: "index_cases_on_account_id_and_display_id", unique: true
     t.index ["account_id", "project_id"], name: "index_cases_on_account_id_and_project_id"
     t.index ["account_id", "team_id"], name: "index_cases_on_account_id_and_team_id"
+    t.index ["case_category_id"], name: "index_cases_on_case_category_id"
     t.index ["conversation_id"], name: "index_cases_on_conversation_id", unique: true
   end
 
@@ -1671,6 +1687,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "cases", "case_categories", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify
   add_foreign_key "project_teams", "projects", on_delete: :cascade

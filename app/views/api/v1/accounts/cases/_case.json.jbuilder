@@ -11,6 +11,10 @@ json.created_at record.created_at.to_i
 json.updated_at record.updated_at.to_i
 json.project record.project&.slice(:id, :name, :color, :code)
 json.team record.team&.slice(:id, :name)
+# Picked when the case was solved; nil is "Other" once solved
+json.category record.case_category&.slice(:id, :inquiry_type, :c1, :c2, :c3, :sla_respond_minutes, :sla_resolve_minutes)
+json.summary record.summary
+json.resolved_by record.resolved_by && { id: record.resolved_by.id, name: record.resolved_by.available_name }
 json.conversation do
   json.id conversation.display_id
   json.inbox_id conversation.inbox_id

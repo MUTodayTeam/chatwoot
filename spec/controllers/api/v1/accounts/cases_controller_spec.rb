@@ -90,6 +90,20 @@ RSpec.describe 'Cases API', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['display']).to eq('#CK-858')
+      expect(response.parsed_body).to include('category' => nil, 'summary' => nil, 'resolved_by' => nil)
+    end
+
+    it 'shows the category, summary and solver of a solved case' do
+      category = create(:case_category, account: account, inquiry_type: :problem, c1: 'Booking', c2: 'Overbooking', c3: 'Same room')
+      agent_case.update!(case_category: category, summary: 'Moved to another room', resolved_by: agent)
+
+      get "/api/v1/accounts/#{account.id}/cases/#{agent_case.id}", headers: agent.create_new_auth_token, as: :json
+
+      expect(response.parsed_body).to include(
+        'category' => include('id' => category.id, 'inquiry_type' => 'problem', 'c1' => 'Booking', 'c2' => 'Overbooking', 'c3' => 'Same room'),
+        'summary' => 'Moved to another room',
+        'resolved_by' => { 'id' => agent.id, 'name' => agent.available_name }
+      )
     end
 
     it 'refuses a case outside the agent inboxes' do
@@ -147,14 +161,14 @@ RSpec.describe 'Cases API', type: :request do
   end
 
   describe 'the conversation payload' do
-    it 'carries the case number and severity' do
+    it 'carries the case number, severity and category' do
       get "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}", headers: agent.create_new_auth_token, as: :json
 
-      expect(response.parsed_body['case']).to eq('id' => agent_case.id, 'display' => '#CK-858', 'severity' => 'p4')
+      expect(response.parsed_body['case']).to eq('id' => agent_case.id, 'display' => '#CK-858', 'severity' => 'p4', 'case_category_id' => nil)
     end
 
     it 'is pushed with conversation events' do
-      expect(conversation.push_event_data[:case]).to eq(id: agent_case.id, display: '#CK-858', severity: 'p4')
+      expect(conversation.push_event_data[:case]).to eq(id: agent_case.id, display: '#CK-858', severity: 'p4', case_category_id: nil)
     end
   end
 end

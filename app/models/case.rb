@@ -6,6 +6,7 @@
 #  reopened_count   :integer          default(0), not null
 #  severity         :integer          default("p4"), not null
 #  subject          :string           default(""), not null
+#  summary          :string
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
 #  account_id       :bigint           not null
@@ -22,7 +23,12 @@
 #  index_cases_on_account_id_and_display_id  (account_id,display_id) UNIQUE
 #  index_cases_on_account_id_and_project_id  (account_id,project_id)
 #  index_cases_on_account_id_and_team_id     (account_id,team_id)
+#  index_cases_on_case_category_id           (case_category_id)
 #  index_cases_on_conversation_id            (conversation_id) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (case_category_id => case_categories.id) ON DELETE => nullify
 #
 # One case per conversation an agent takes. Its status is the conversation's status and
 # its owner is the conversation's assignee, so neither is stored here.
@@ -36,11 +42,15 @@ class Case < ApplicationRecord
   belongs_to :project, optional: true
   belongs_to :team, optional: true
   belongs_to :resolved_by, class_name: 'User', optional: true
+  # Picked when an agent solves the case; none is "Other"
+  belongs_to :case_category, optional: true
 
   enum :severity, { p1: 0, p2: 1, p3: 2, p4: 3 }, validate: true
 
   validates :subject, length: { maximum: 255 }, exclusion: { in: [nil], message: :blank }
+  validates :summary, length: { maximum: 255 }
   validate :team_belongs_to_account
+  validate :case_category_belongs_to_account
 
   after_create_commit :create_opened_activity
 
@@ -81,7 +91,7 @@ class Case < ApplicationRecord
 
   # What a conversation carries about its case
   def push_event_data
-    { id: id, display: display, severity: severity }
+    { id: id, display: display, severity: severity, case_category_id: case_category_id }
   end
 
   private
@@ -89,6 +99,10 @@ class Case < ApplicationRecord
   # A team_id that loads no team is as wrong as one from another account
   def team_belongs_to_account
     errors.add(:team_id, :invalid) if team_id && team&.account_id != account_id
+  end
+
+  def case_category_belongs_to_account
+    errors.add(:case_category_id, :invalid) if case_category_id && case_category&.account_id != account_id
   end
 
   def create_opened_activity

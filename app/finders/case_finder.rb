@@ -1,7 +1,7 @@
 class CaseFinder
   RESULTS_PER_PAGE = 25
   LIST_INCLUDES = [
-    :project, :team,
+    :project, :team, :case_category, :resolved_by,
     { conversation: [:inbox, { assignee: { avatar_attachment: :blob } }, { contact: { avatar_attachment: :blob } }] }
   ].freeze
 
