@@ -17,10 +17,14 @@ RSpec.describe Conversations::TransferService do
     described_class.new(conversation: Conversation.find(conversation.id), user: toon, assignee_id: assignee.id, reason: reason, note: note).perform
   end
 
+  # By class name: the suite can reload the constant between examples
   def refusal_of(&)
-    yield
-  rescue CustomExceptions::ConversationActionRefused => e
-    e.message
+    message = nil
+    expect(&).to(raise_error do |error|
+      expect(error.class.name).to eq('CustomExceptions::ConversationActionRefused')
+      message = error.message
+    end)
+    message
   end
 
   before do

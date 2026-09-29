@@ -3,8 +3,6 @@
 # reason instead of "assign", which is what productivity credits: the outgoing agent keeps an
 # Assisted, and a "general" handover costs them the transfer penalty.
 class Conversations::TransferService
-  REFUSED = CustomExceptions::ConversationActionRefused
-
   pattr_initialize [:conversation!, :user!, :assignee_id!, :reason!, :note]
 
   def self.transfer_team(conversation)
@@ -56,6 +54,6 @@ class Conversations::TransferService
   end
 
   def refuse!(reason_key)
-    raise REFUSED.new(reason: reason_key)
+    raise CustomExceptions::ConversationActionRefused.new(reason: reason_key)
   end
 end

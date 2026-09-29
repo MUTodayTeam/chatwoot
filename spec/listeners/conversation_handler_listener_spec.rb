@@ -13,8 +13,8 @@ describe ConversationHandlerListener do
   end
 
   it 'runs on the sync dispatcher, so turns follow the order of the commits' do
-    expect(SyncDispatcher.new.listeners).to include(listener)
-    expect(AsyncDispatcher.new.listeners).not_to include(listener)
+    expect(SyncDispatcher.new.listeners.map { |sync| sync.class.name }).to include(described_class.name)
+    expect(AsyncDispatcher.new.listeners.map { |async| async.class.name }).not_to include(described_class.name)
   end
 
   describe '#assignee_changed' do
