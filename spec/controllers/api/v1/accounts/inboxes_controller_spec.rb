@@ -90,6 +90,14 @@ RSpec.describe 'Inboxes API', type: :request do
         create(:inbox_member, user: agent, inbox: inbox)
       end
 
+      it 'tells whether an inbox has an active bot' do
+        get "/api/v1/accounts/#{account.id}/inboxes",
+            headers: admin.create_new_auth_token,
+            as: :json
+
+        expect(response.parsed_body['payload'].pluck('active_bot')).to all(be(false))
+      end
+
       it 'returns all inboxes of current_account as administrator' do
         get "/api/v1/accounts/#{account.id}/inboxes",
             headers: admin.create_new_auth_token,

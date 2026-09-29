@@ -94,9 +94,7 @@ const summary = computed(
 
 const inboxMedium = inboxId => inboxGetter.value(inboxId)?.medium;
 
-// The countdown reads a case as the conversation it mirrors. Pending shows none, as in the
-// list row: the sweep skips pending conversations in an inbox with an active bot, which
-// the client cannot tell (see getAutoTransition).
+// The countdown reads a case as the conversation it mirrors.
 const countdownConversation = kase => ({
   inbox_id: kase.conversation.inbox_id,
   status: kase.status,

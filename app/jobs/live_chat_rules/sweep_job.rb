@@ -23,7 +23,6 @@ class LiveChatRules::SweepJob < ApplicationJob
 
   def perform
     Account.active.find_each do |account|
-      flag_expired(account)
       inboxes_by_rule(account).each { |rule, inboxes| sweep(account.conversations.where(inbox: inboxes), inboxes, rule) }
     end
   end
@@ -47,9 +46,10 @@ class LiveChatRules::SweepJob < ApplicationJob
   end
 
   def sweep(conversations, inboxes, rule)
-    flag_missed(conversations, rule)
     # The activity messages name the rule, so they read as automatic.
     Current.executed_by = rule
+    flag_expired(conversations)
+    flag_missed(conversations, rule)
     # The assignee's turn ends as auto-solved, so they get the Resolved credit (spec 10)
     transition(auto_solvable(conversations, inboxes, rule), :resolved) do |conversation|
       ConversationHandler.close_open!(conversation, reason: :auto_solved)
@@ -59,21 +59,19 @@ class LiveChatRules::SweepJob < ApplicationJob
     Current.executed_by = nil
   end
 
-  # rubocop:disable Rails/SkipsModelValidations
-  # The flags are markers for reporting. A single UPDATE that only matches unflagged
-  # rows sets each of them once, however many runs overlap.
-  def flag_expired(account)
-    account.conversations.open.where.not(waiting_since: nil)
-           .where(reply_due_at: ...Time.current, expired_at: nil)
-           .update_all(expired_at: Time.current)
+  # The flags are markers for reporting. Saving each row (see transition) rather than
+  # updating them in bulk lets conversation_updated reach open tabs and writes the
+  # timeline activity, and only unflagged rows match, so each is flagged once.
+  def flag_expired(conversations)
+    transition(conversations.open.where.not(waiting_since: nil).where(reply_due_at: ...Time.current, expired_at: nil),
+               expired_at: Time.current)
   end
 
   def flag_missed(conversations, rule)
-    conversations.open.where(assignee_id: nil, first_reply_created_at: nil, missed_at: nil)
-                 .where('GREATEST(conversations.created_at, conversations.status_changed_at) < ?', rule.waiting_time_minutes.minutes.ago)
-                 .update_all(missed_at: Time.current)
+    transition(conversations.open.where(assignee_id: nil, first_reply_created_at: nil, missed_at: nil)
+                            .where('GREATEST(conversations.created_at, conversations.status_changed_at) < ?', rule.waiting_time_minutes.minutes.ago),
+               missed_at: Time.current)
   end
-  # rubocop:enable Rails/SkipsModelValidations
 
   # Pending in an inbox with a bot is the bot's conversation (see Custom::Message), not
   # a conversation waiting on the customer, so only agent inboxes auto-solve.
@@ -88,7 +86,9 @@ class LiveChatRules::SweepJob < ApplicationJob
   # skipped as in Conversations::ResolutionJob; any other failure is reported and the
   # rest of the batch still moves.
   # A block runs on each locked conversation just before it moves, in the same transaction.
-  def transition(scope, status)
+  # attrs is a status or the attributes to save.
+  def transition(scope, attrs)
+    attrs = { status: attrs } unless attrs.is_a?(Hash)
     scope = scope.where.not(contact_id: nil)
     scope.order(Arel.sql(STATUS_CLOCK)).limit(Limits::BULK_ACTIONS_LIMIT).ids.each do |id|
       Conversation.transaction do
@@ -96,7 +96,7 @@ class LiveChatRules::SweepJob < ApplicationJob
         next unless conversation
 
         yield conversation if block_given?
-        conversation.update!(status: status)
+        conversation.update!(attrs)
       end
     rescue ActiveRecord::RecordInvalid => e
       ChatwootExceptionTracker.new(e, account: e.record.account).capture_exception

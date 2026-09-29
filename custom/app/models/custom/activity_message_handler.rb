@@ -1,6 +1,19 @@
 module Custom::ActivityMessageHandler
   private
 
+  def create_activity
+    super
+    create_sweep_flag_activity('missed') if saved_change_to_missed_at?(from: nil)
+    create_sweep_flag_activity('expired') if saved_change_to_expired_at?(from: nil)
+  end
+
+  def create_sweep_flag_activity(type)
+    with_activity_type(type) do
+      content = I18n.t("conversations.activity.#{type}", locale: account.locale)
+      ::Conversations::ActivityMessageJob.perform_later(self, activity_message_params(content))
+    end
+  end
+
   # A transfer is an assignment with a reason, so it gets one activity that names the reason
   def generate_assignee_change_activity_content(user_name)
     return super if transfer_reason.blank?

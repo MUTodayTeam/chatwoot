@@ -7,6 +7,7 @@ import ConversationCard from '../ConversationCard.vue';
 withFullI18n();
 
 const getters = {
+  'inboxes/getInbox': ref(() => ({ active_bot: false })),
   'projects/getProjects': ref([{ id: 5, name: 'Checkin', inboxIds: [1] }]),
   'liveChatRules/getLiveChatRules': ref([
     { id: 1, projectId: null, autoSolveHours: 24, autoCloseHours: 48 },
@@ -139,7 +140,6 @@ describe('ConversationCard', () => {
 
     it.each([
       ['Open', { status: 'open' }],
-      ['Pending', { status: 'pending', meta: { assignee_type: 'User' } }],
       ['Bot', { status: 'pending', meta: { assignee_type: 'AgentBot' } }],
       ['On Hold', { status: 'snoozed' }],
       ['Closed', { status: 'closed' }],
@@ -167,6 +167,17 @@ describe('ConversationCard', () => {
       expect(
         wrapper.findComponent({ name: 'AutoTransitionCountdown' }).text()
       ).toBe('→ Closed in 03:00:00');
+    });
+
+    it('counts a pending conversation down to Solved', () => {
+      const wrapper = mountComponent({
+        status: 'pending',
+        status_changed_at: NOW - HOUR,
+      });
+
+      expect(
+        wrapper.findComponent({ name: 'AutoTransitionCountdown' }).text()
+      ).toBe('→ Solved in 01:00:00');
     });
 
     it('ticks the countdown every second', async () => {

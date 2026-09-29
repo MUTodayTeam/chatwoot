@@ -20,6 +20,11 @@ module Custom::Conversation
 
   private
 
+  # The sweep flags Missed and Expired on a clock, so open tabs learn of them from the event.
+  def list_of_keys
+    super + %w[missed_at expired_at]
+  end
+
   # Closed is the end of the lifecycle. It follows resolved, so the resolution is reported,
   # CSAT goes out and the resolved listeners run exactly once; the only way out is reopening.
   def closed_status_transition

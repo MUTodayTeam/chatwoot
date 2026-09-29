@@ -9,7 +9,7 @@ import {
   getAutoTransition,
 } from 'dashboard/helper/conversationListRow';
 
-// A solved conversation closes by itself; this counts down to it.
+// Solved conversations close and pending ones solve by themselves; this counts down to it.
 const props = defineProps({
   chat: { type: Object, required: true },
 });
@@ -20,11 +20,16 @@ const { t } = useI18n();
 
 const projects = useMapGetter('projects/getProjects');
 const rules = useMapGetter('liveChatRules/getLiveChatRules');
+const inboxGetter = useMapGetter('inboxes/getInbox');
 
 const transition = computed(() => {
   const project = findProjectForInbox(projects.value, props.chat.inbox_id);
   const rule = findLiveChatRule(rules.value, project?.id);
-  return getAutoTransition(props.chat, rule);
+  return getAutoTransition(
+    props.chat,
+    rule,
+    inboxGetter.value(props.chat.inbox_id)
+  );
 });
 
 const nowInSeconds = () => Math.floor(Date.now() / 1000);

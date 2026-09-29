@@ -20,6 +20,7 @@ json.lock_to_single_conversation resource.lock_to_single_conversation
 json.sender_name_type resource.sender_name_type
 json.business_name resource.business_name
 json.project_id resource.project_id
+json.active_bot resource.active_bot?
 
 if resource.portal.present?
   json.help_center do
