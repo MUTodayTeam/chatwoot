@@ -9,7 +9,7 @@ import {
   getAutoTransition,
 } from 'dashboard/helper/conversationListRow';
 
-// Pending and Solved conversations move on by themselves; this counts down to it.
+// A solved conversation closes by itself; this counts down to it.
 const props = defineProps({
   chat: { type: Object, required: true },
 });

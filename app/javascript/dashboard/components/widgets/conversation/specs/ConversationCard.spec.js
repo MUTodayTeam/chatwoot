@@ -148,6 +148,7 @@ describe('ConversationCard', () => {
 
     it.each([
       ['Open', { status: 'open' }],
+      ['Pending', { status: 'pending', meta: { assignee_type: 'User' } }],
       ['Bot', { status: 'pending', meta: { assignee_type: 'AgentBot' } }],
       ['On Hold', { status: 'snoozed' }],
       ['Closed', { status: 'closed' }],
@@ -162,20 +163,6 @@ describe('ConversationCard', () => {
         expect(wrapper.text()).not.toContain('→');
       }
     );
-
-    it("counts a pending conversation down to Solved on its project's rule", () => {
-      const wrapper = mountComponent({
-        status: 'pending',
-        status_changed_at: NOW - 30 * 60,
-      });
-
-      expect(wrapper.findComponent({ name: 'CardTagRow' }).text()).toContain(
-        'Pending'
-      );
-      expect(
-        wrapper.findComponent({ name: 'AutoTransitionCountdown' }).text()
-      ).toBe('→ Solved in 01:30:00');
-    });
 
     it('counts a solved conversation down to Closed', () => {
       const wrapper = mountComponent({
@@ -193,7 +180,7 @@ describe('ConversationCard', () => {
 
     it('ticks the countdown every second', async () => {
       const wrapper = mountComponent({
-        status: 'pending',
+        status: 'resolved',
         status_changed_at: NOW - 30 * 60,
       });
 
@@ -202,7 +189,7 @@ describe('ConversationCard', () => {
 
       expect(
         wrapper.findComponent({ name: 'AutoTransitionCountdown' }).text()
-      ).toBe('→ Solved in 01:29:55');
+      ).toBe('→ Closed in 03:29:55');
     });
   });
 

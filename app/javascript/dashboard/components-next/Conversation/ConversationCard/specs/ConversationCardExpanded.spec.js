@@ -74,6 +74,31 @@ describe('ConversationCardExpanded', () => {
     expect(tags).toContain('— Unassigned');
   });
 
+  it('shows the assignee only in the tag row', () => {
+    const assigned = mountCard({}, { assignee: { name: 'Toon' } });
+    const unassigned = mountCard();
+
+    const avatarNames = assigned
+      .findAllComponents({ name: 'Avatar' })
+      .map(avatar => avatar.props('name'));
+    const icons = unassigned
+      .findAllComponents({ name: 'Icon' })
+      .map(icon => icon.props('icon'));
+
+    expect(avatarNames).not.toContain('Toon');
+    expect(icons).not.toContain('i-woot-empty-assignee');
+  });
+
+  it('marks an Instagram conversation from a Facebook Page inbox IG', () => {
+    const wrapper = mountCard({
+      additional_attributes: { type: 'instagram_direct_message' },
+    });
+
+    expect(wrapper.findComponent({ name: 'CardChannelBadge' }).text()).toBe(
+      'IG'
+    );
+  });
+
   it('counts a solved conversation down to Closed', () => {
     const wrapper = mountCard({ status: 'resolved' });
 

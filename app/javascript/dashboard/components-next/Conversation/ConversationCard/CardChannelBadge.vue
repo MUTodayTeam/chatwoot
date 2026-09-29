@@ -3,10 +3,12 @@ import { computed } from 'vue';
 import { getChannelBadge } from 'dashboard/helper/conversationListRow';
 
 const props = defineProps({
-  channelType: { type: String, default: '' },
+  chat: { type: Object, required: true },
 });
 
-const badge = computed(() => getChannelBadge(props.channelType));
+const badge = computed(() =>
+  getChannelBadge(props.chat.meta?.channel, props.chat.additional_attributes)
+);
 </script>
 
 <template>

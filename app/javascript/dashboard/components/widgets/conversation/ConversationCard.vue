@@ -2,13 +2,13 @@
 import { computed, ref, watch } from 'vue';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
-import { formatListRowTime } from 'dashboard/helper/conversationListRow';
 import MessagePreview from './MessagePreview.vue';
 import InboxName from '../InboxName.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
 import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
 import CardChannelBadge from 'dashboard/components-next/Conversation/ConversationCard/CardChannelBadge.vue';
 import CardTagRow from 'dashboard/components-next/Conversation/ConversationCard/CardTagRow.vue';
+import ListRowTime from 'dashboard/components-next/Conversation/ConversationCard/ListRowTime.vue';
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
 import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
@@ -54,10 +54,6 @@ const voiceCallData = computed(() => {
 // The assignee is in the tag row now, so it no longer opens this section.
 const showMetaSection = computed(
   () => props.showInboxName || props.chat.priority
-);
-
-const lastActivityTime = computed(() =>
-  formatListRowTime(props.chat.timestamp)
 );
 
 const hasSlaPolicyId = computed(
@@ -146,10 +142,7 @@ watch(
             </label>
           </template>
         </Avatar>
-        <CardChannelBadge
-          :channel-type="chat.meta?.channel"
-          class="absolute -bottom-1 -end-1 z-20"
-        />
+        <CardChannelBadge :chat="chat" class="absolute -bottom-1 -end-1 z-20" />
       </div>
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
@@ -213,9 +206,11 @@ watch(
         class="absolute flex flex-col ltr:right-3 rtl:left-3"
         :class="showMetaSection ? 'top-8' : 'top-4'"
       >
-        <span class="ms-auto font-normal leading-4 text-xxs text-n-slate-11">
-          {{ lastActivityTime }}
-        </span>
+        <ListRowTime
+          :last-activity-timestamp="chat.timestamp"
+          :created-at-timestamp="chat.created_at"
+          class="ms-auto font-normal leading-4 text-xxs text-n-slate-11"
+        />
       </div>
       <div class="flex items-center gap-1.5 mt-0.5 mx-2 min-w-0">
         <CardTagRow :chat="chat" :assignee="assignee" class="flex-1" />

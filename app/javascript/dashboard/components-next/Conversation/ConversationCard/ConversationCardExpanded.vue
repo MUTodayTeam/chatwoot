@@ -6,12 +6,11 @@ import CardContent from './CardContent.vue';
 import CardLabels from './CardLabelsV5.vue';
 import CardPriorityIcon from './CardPriorityIcon.vue';
 import InboxName from 'dashboard/components-next/Conversation/InboxName.vue';
-import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from 'dashboard/components-next/Conversation/Sla/SLACardLabel.vue';
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
 import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
-import { formatListRowTime } from 'dashboard/helper/conversationListRow';
 import CardTagRow from './CardTagRow.vue';
+import ListRowTime from './ListRowTime.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 
@@ -22,7 +21,6 @@ const props = defineProps({
   inbox: { type: Object, default: () => ({}) },
   selected: { type: Boolean, default: false },
   isActiveChat: { type: Boolean, default: false },
-  showAssignee: { type: Boolean, default: false },
   showInboxName: { type: Boolean, default: false },
   isInboxView: { type: Boolean, default: false },
 });
@@ -49,10 +47,6 @@ const voiceCallData = computed(() => {
 });
 
 const hasUnread = computed(() => props.chat.unread_count > 0);
-
-const lastActivityTime = computed(() =>
-  formatListRowTime(props.chat.timestamp)
-);
 
 const slaCardLabel = useTemplateRef('slaCardLabel');
 
@@ -104,26 +98,6 @@ const selectedModel = computed({
         <CardPriorityIcon :priority="chat.priority" show-empty />
       </div>
 
-      <div class="w-4 flex items-center justify-center flex-shrink-0">
-        <Avatar
-          v-if="showAssignee && assignee.name"
-          v-tooltip.top="{
-            content: assignee.name,
-            delay: { show: 500, hide: 0 },
-          }"
-          :name="assignee.name"
-          :src="assignee.thumbnail"
-          :size="14"
-          :status="assignee.availability_status"
-          hide-offline-status
-        />
-        <Icon
-          v-else
-          icon="i-woot-empty-assignee"
-          class="size-4 text-n-slate-7"
-        />
-      </div>
-
       <div class="w-px h-3 bg-n-slate-6 flex-shrink-0" />
 
       <div v-if="!isInboxView && showInboxName" class="w-20 flex-shrink-0">
@@ -156,7 +130,7 @@ const selectedModel = computed({
         :selected="false"
         :enable-selection="false"
         :hide-thumbnail="false"
-        :channel-type="chat.meta?.channel"
+        :chat="chat"
       />
 
       <h4
@@ -202,9 +176,11 @@ const selectedModel = computed({
       </div>
 
       <div class="flex-shrink-0 w-[4.375rem] text-end">
-        <span class="font-440 text-xs text-n-slate-11">
-          {{ lastActivityTime }}
-        </span>
+        <ListRowTime
+          :last-activity-timestamp="chat.timestamp"
+          :created-at-timestamp="chat.created_at"
+          class="font-440 text-xs text-n-slate-11"
+        />
       </div>
 
       <span

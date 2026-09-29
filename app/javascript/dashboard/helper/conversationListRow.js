@@ -1,4 +1,4 @@
-import { format, fromUnixTime, isToday } from 'date-fns';
+import { format, fromUnixTime, isSameDay } from 'date-fns';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import {
   LIFECYCLE_STATUS,
@@ -15,12 +15,21 @@ export const CHANNEL_BADGES = Object.freeze({
   [INBOX_TYPES.EMAIL]: 'EM',
 });
 
-export const getChannelBadge = channelType => CHANNEL_BADGES[channelType] || '';
+// Instagram messages that arrive through a Facebook Page inbox are marked on the
+// conversation, as MessagesView and ReplyBottomPanel read them.
+const INSTAGRAM_DIRECT_MESSAGE = 'instagram_direct_message';
+
+export const getChannelBadge = (channelType, additionalAttributes) => {
+  if (additionalAttributes?.type === INSTAGRAM_DIRECT_MESSAGE) {
+    return CHANNEL_BADGES[INBOX_TYPES.INSTAGRAM];
+  }
+  return CHANNEL_BADGES[channelType] || '';
+};
 
 // A solid chip per lifecycle status, in the spec's order of weight: Open is the darkest,
 // On Hold carries the accent, Solved and Closed fade out.
 export const STATUS_CHIP_CLASSES = Object.freeze({
-  [LIFECYCLE_STATUS.BOT]: 'bg-n-alpha-2 text-n-slate-12',
+  [LIFECYCLE_STATUS.BOT]: 'bg-n-iris-4 text-n-iris-11',
   [LIFECYCLE_STATUS.OPEN]: 'bg-n-slate-12 text-n-background',
   [LIFECYCLE_STATUS.PENDING]: 'bg-n-slate-5 text-n-slate-12',
   [LIFECYCLE_STATUS.ON_HOLD]: 'bg-n-blue-4 text-n-blue-11',
@@ -34,15 +43,14 @@ export const getStatusChipClass = lifecycleStatus =>
   STATUS_CHIP_CLASSES[LIFECYCLE_STATUS.CLOSED];
 
 // Today's conversations show the time, older ones the date.
-export const formatListRowTime = timestamp => {
+export const formatListRowTime = (timestamp, now = new Date()) => {
   if (!timestamp) return '';
   const date = fromUnixTime(timestamp);
-  return format(date, isToday(date) ? 'HH:mm' : 'dd/MM/yy');
+  return format(date, isSameDay(date, now) ? 'HH:mm' : 'dd/MM/yy');
 };
 
-// The column defaults on live_chat_rules, which LiveChatRule.for_project also applies
+// The column default on live_chat_rules, which LiveChatRule.for_project also applies
 // to an account that has saved no rule yet.
-export const DEFAULT_AUTO_SOLVE_HOURS = 24;
 export const DEFAULT_AUTO_CLOSE_HOURS = 48;
 const SECONDS_PER_HOUR = 3600;
 
@@ -58,9 +66,13 @@ export const findLiveChatRule = (rules, projectId) =>
   null;
 
 /**
- * When LiveChatRules::SweepJob moves the conversation on by itself: Pending to Solved
- * after auto_solve_hours, Solved to Closed after auto_close_hours. Every other status
- * stays where it is, so it has no transition.
+ * When LiveChatRules::SweepJob moves the conversation on by itself: Solved to Closed
+ * after auto_close_hours.
+ *
+ * Pending to Solved is left out. The sweep skips pending conversations in an inbox
+ * with an active bot (Inbox#active_bot?: an agent bot, Dialogflow, or Captain with
+ * responses left), whoever they are assigned to, and nothing the client loads says
+ * which inboxes those are, so a countdown there would run out with nothing happening.
  *
  * The clock starts at status_changed_at. Conversations from before v4.18.0 never had
  * it set, and the sweep counts those from updated_at instead (its STATUS_CLOCK).
@@ -69,25 +81,15 @@ export const findLiveChatRule = (rules, projectId) =>
  *   unix time in seconds it is due
  */
 export const getAutoTransition = (conversation, rule) => {
-  const lifecycleStatus = getLifecycleStatus(conversation);
+  if (getLifecycleStatus(conversation) !== LIFECYCLE_STATUS.SOLVED) return null;
+
   const since =
     conversation.status_changed_at || Math.floor(conversation.updated_at);
-
-  if (lifecycleStatus === LIFECYCLE_STATUS.PENDING) {
-    const hours = rule?.autoSolveHours ?? DEFAULT_AUTO_SOLVE_HOURS;
-    return {
-      target: LIFECYCLE_STATUS.SOLVED,
-      dueAt: since + hours * SECONDS_PER_HOUR,
-    };
-  }
-  if (lifecycleStatus === LIFECYCLE_STATUS.SOLVED) {
-    const hours = rule?.autoCloseHours ?? DEFAULT_AUTO_CLOSE_HOURS;
-    return {
-      target: LIFECYCLE_STATUS.CLOSED,
-      dueAt: since + hours * SECONDS_PER_HOUR,
-    };
-  }
-  return null;
+  const hours = rule?.autoCloseHours ?? DEFAULT_AUTO_CLOSE_HOURS;
+  return {
+    target: LIFECYCLE_STATUS.CLOSED,
+    dueAt: since + hours * SECONDS_PER_HOUR,
+  };
 };
 
 const pad = value => String(value).padStart(2, '0');

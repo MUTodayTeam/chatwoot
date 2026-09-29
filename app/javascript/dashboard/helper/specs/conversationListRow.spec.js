@@ -1,6 +1,5 @@
 import {
   DEFAULT_AUTO_CLOSE_HOURS,
-  DEFAULT_AUTO_SOLVE_HOURS,
   findLiveChatRule,
   findProjectForInbox,
   formatCountdown,
@@ -47,6 +46,14 @@ describe('getChannelBadge', () => {
     expect(getChannelBadge(channelType)).toBe(badge);
   });
 
+  it('marks an Instagram conversation from a Facebook Page inbox IG', () => {
+    expect(
+      getChannelBadge('Channel::FacebookPage', {
+        type: 'instagram_direct_message',
+      })
+    ).toBe('IG');
+  });
+
   it('has no badge for a channel outside the spec', () => {
     expect(getChannelBadge('Channel::Api')).toBe('');
     expect(getChannelBadge(undefined)).toBe('');
@@ -65,7 +72,11 @@ describe('getStatusChipClass', () => {
     ].map(getStatusChipClass);
 
     expect(new Set(classes).size).toBe(classes.length);
-    classes.forEach(chipClass => expect(chipClass).toMatch(/\bbg-n-/));
+    classes.forEach(chipClass => {
+      expect(chipClass).toMatch(/\bbg-n-/);
+      // The active row is bg-n-alpha-2, so a translucent chip would vanish on it.
+      expect(chipClass).not.toMatch(/\bbg-n-alpha-/);
+    });
   });
 });
 
@@ -87,6 +98,13 @@ describe('formatListRowTime', () => {
   it('shows dd/mm/yy before today', () => {
     const timestamp = new Date(2026, 8, 28, 23, 59).getTime() / 1000;
     expect(formatListRowTime(timestamp)).toBe('28/09/26');
+  });
+
+  it('shows the date once the day it is measured against has moved on', () => {
+    const timestamp = new Date(2026, 8, 29, 9, 5).getTime() / 1000;
+    expect(formatListRowTime(timestamp, new Date(2026, 8, 30, 0, 1))).toBe(
+      '29/09/26'
+    );
   });
 });
 
@@ -123,28 +141,19 @@ describe('findLiveChatRule', () => {
 });
 
 describe('getAutoTransition', () => {
-  it('counts a pending conversation to Solved on the project rule', () => {
-    expect(
-      getAutoTransition(conversation({ status: 'pending' }), projectRule)
-    ).toEqual({ target: 'solved', dueAt: CHANGED_AT + 2 * HOUR });
-  });
-
-  it('counts a pending conversation on the account default rule', () => {
-    expect(
-      getAutoTransition(conversation({ status: 'pending' }), defaultRule)
-    ).toEqual({ target: 'solved', dueAt: CHANGED_AT + 12 * HOUR });
-  });
-
-  it('counts a resolved conversation to Closed on auto_close_hours', () => {
+  it('counts a resolved conversation to Closed on the project rule', () => {
     expect(
       getAutoTransition(conversation({ status: 'resolved' }), projectRule)
     ).toEqual({ target: 'closed', dueAt: CHANGED_AT + 4 * HOUR });
   });
 
-  it('uses the column defaults when the account saved no rule', () => {
+  it('counts a resolved conversation on the account default rule', () => {
     expect(
-      getAutoTransition(conversation({ status: 'pending' }), null).dueAt
-    ).toBe(CHANGED_AT + DEFAULT_AUTO_SOLVE_HOURS * HOUR);
+      getAutoTransition(conversation({ status: 'resolved' }), defaultRule)
+    ).toEqual({ target: 'closed', dueAt: CHANGED_AT + 36 * HOUR });
+  });
+
+  it('uses the column default when the account saved no rule', () => {
     expect(
       getAutoTransition(conversation({ status: 'resolved' }), null).dueAt
     ).toBe(CHANGED_AT + DEFAULT_AUTO_CLOSE_HOURS * HOUR);
@@ -153,13 +162,20 @@ describe('getAutoTransition', () => {
   it('counts from updated_at when status_changed_at was never set, as the sweep does', () => {
     expect(
       getAutoTransition(
-        conversation({ status: 'pending', status_changed_at: 0 }),
+        conversation({ status: 'resolved', status_changed_at: 0 }),
         projectRule
       ).dueAt
-    ).toBe(CHANGED_AT + 2 * HOUR);
+    ).toBe(CHANGED_AT + 4 * HOUR);
   });
 
+  // The sweep leaves pending alone in an inbox with an active bot, whoever holds the
+  // conversation, and the client cannot tell those inboxes apart.
   it.each([
+    [
+      'pending with an agent',
+      { status: 'pending', meta: { assignee_type: 'User' } },
+    ],
+    ['pending with nobody', { status: 'pending', meta: {} }],
     ['bot', { status: 'pending', meta: { assignee_type: 'AgentBot' } }],
     ['open', { status: 'open' }],
     ['on hold', { status: 'snoozed' }],

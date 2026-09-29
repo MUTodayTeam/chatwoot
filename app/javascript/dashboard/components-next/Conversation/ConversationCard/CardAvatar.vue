@@ -9,7 +9,7 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
   enableSelection: { type: Boolean, default: true },
   hideThumbnail: { type: Boolean, default: false },
-  channelType: { type: String, default: '' },
+  chat: { type: Object, default: null },
 });
 
 const emit = defineEmits(['selectConversation']);
@@ -57,7 +57,8 @@ const selectedModel = computed({
         </template>
       </Avatar>
       <CardChannelBadge
-        :channel-type="channelType"
+        v-if="chat"
+        :chat="chat"
         class="absolute -bottom-1.5 -end-1.5 z-20"
       />
     </div>
