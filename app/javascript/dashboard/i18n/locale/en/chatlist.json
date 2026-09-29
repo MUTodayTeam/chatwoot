@@ -36,6 +36,9 @@
       "closed": {
         "TEXT": "Closed"
       },
+      "missed": {
+        "TEXT": "Missed"
+      },
       "active": {
         "TEXT": "Active"
       },

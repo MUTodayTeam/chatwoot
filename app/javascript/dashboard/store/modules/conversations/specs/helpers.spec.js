@@ -11,6 +11,12 @@ describe('Conversation Helpers', () => {
       ).toEqual(['open', 'pending', 'snoozed']);
     });
 
+    it('matches a flagged conversation in any status for missed', () => {
+      expect(filterByStatus('resolved', 'missed', 1790000000)).toBe(true);
+      expect(filterByStatus('open', 'missed', 0)).toBe(false);
+      expect(filterByStatus('open', 'missed')).toBe(false);
+    });
+
     it('matches the exact status otherwise', () => {
       expect(filterByStatus('closed', 'closed')).toBe(true);
       expect(filterByStatus('resolved', 'closed')).toBe(false);

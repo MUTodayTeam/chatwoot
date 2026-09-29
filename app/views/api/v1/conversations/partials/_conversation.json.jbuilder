@@ -73,6 +73,8 @@ json.waiting_since conversation.waiting_since.to_i.to_i
 json.reply_due_at conversation.reply_due_at.to_i
 # The list row and the end-of-chat bar count down to the sweep's automatic move from this moment.
 json.status_changed_at conversation.status_changed_at.to_i
+# The list's Missed filter keeps a conversation the sweep flagged; 0 when it never was.
+json.missed_at conversation.missed_at.to_i
 json.case conversation.case&.push_event_data
 sla_applicable = conversation.account.feature_enabled?('sla') && (!conversation.respond_to?(:sla_applicable?) || conversation.sla_applicable?)
 json.sla_policy_id sla_applicable ? conversation.sla_policy_id : nil

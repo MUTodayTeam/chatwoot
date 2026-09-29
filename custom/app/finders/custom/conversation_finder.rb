@@ -9,9 +9,12 @@ module Custom::ConversationFinder
     super.preload(case: :project)
   end
 
+  # "Missed" is a flag the sweep sets, not a status, so it lists missed conversations in any status
   def filter_by_status
-    return super unless params[:status] == 'active'
-
-    @conversations = @conversations.where(status: ACTIVE_STATUSES)
+    case params[:status]
+    when 'active' then @conversations = @conversations.where(status: ACTIVE_STATUSES)
+    when 'missed' then @conversations = @conversations.where.not(missed_at: nil)
+    else super
+    end
   end
 end
