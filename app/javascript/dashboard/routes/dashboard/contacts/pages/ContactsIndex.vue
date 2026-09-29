@@ -13,6 +13,7 @@ import ContactEmptyState from 'dashboard/components-next/Contacts/EmptyState/Con
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ContactsList from 'dashboard/components-next/Contacts/Pages/ContactsList.vue';
 import ContactsBulkActionBar from '../components/ContactsBulkActionBar.vue';
+import ContactProjectFilter from 'dashboard/components-next/Contacts/ContactProjectFilter.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import BulkActionsAPI from 'dashboard/api/bulkActions';
 
@@ -33,6 +34,7 @@ const customViewsUiFlags = useMapGetter('customViews/getUIFlags');
 const segments = useMapGetter('customViews/getContactCustomViews');
 const appliedFilters = useMapGetter('contacts/getAppliedContactFilters');
 const meta = useMapGetter('contacts/getMeta');
+const projects = useMapGetter('projects/getProjects');
 
 const searchQuery = computed(() => route.query?.search);
 const searchValue = ref(searchQuery.value || '');
@@ -60,6 +62,7 @@ const sortState = reactive({
 });
 
 const activeLabel = computed(() => route.params.label);
+const activeProjectId = computed(() => Number(route.query.project_id) || null);
 const activeSegmentId = computed(() => route.params.segmentId);
 const isFetchingList = computed(
   () => uiFlags.value.isFetching || customViewsUiFlags.value.isFetching
@@ -110,17 +113,27 @@ const showEmptyStateLayout = computed(() => {
     !searchQuery.value &&
     !hasContacts.value &&
     isContactIndexView.value &&
-    !hasAppliedFilters.value
+    !hasAppliedFilters.value &&
+    !activeProjectId.value
   );
 });
 const showEmptyText = computed(() => {
   return (
     (searchQuery.value ||
       hasAppliedFilters.value ||
+      activeProjectId.value ||
       !isContactIndexView.value) &&
     !hasContacts.value
   );
 });
+// Only the plain list and search narrow by project, so segments and filters hide it
+const showProjectFilter = computed(
+  () =>
+    projects.value.length > 0 &&
+    !isActiveView.value &&
+    !activeSegmentId.value &&
+    !hasAppliedFilters.value
+);
 
 const headerTitle = computed(() => {
   if (searchQuery.value) return t('CONTACTS_LAYOUT.HEADER.SEARCH_TITLE');
@@ -195,6 +208,7 @@ const getCommonFetchParams = (page = 1) => ({
   page,
   sortAttr: buildSortAttr(),
   label: activeLabel.value,
+  projectId: activeProjectId.value,
 });
 
 const fetchContacts = async (page = 1, options = {}) => {
@@ -325,6 +339,13 @@ const fetchContactsBasedOnContext = async (page, options = {}) => {
   await fetchContacts(page, {
     clearSelection: shouldClearSelection,
   });
+};
+
+const filterByProject = async projectId => {
+  await router.replace({
+    query: { ...route.query, project_id: projectId || undefined },
+  });
+  fetchContactsBasedOnContext(1);
 };
 
 const onPageChange = page =>
@@ -521,6 +542,12 @@ onMounted(async () => {
       @clear-filters="fetchContacts"
       @load-more="loadMoreSearchResults"
     >
+      <ContactProjectFilter
+        v-if="showProjectFilter"
+        :model-value="activeProjectId"
+        class="pt-4"
+        @update:model-value="filterByProject"
+      />
       <div
         v-if="isFetchingList && !(isSearchView && hasContacts)"
         class="flex items-center justify-center py-10 text-n-slate-11"

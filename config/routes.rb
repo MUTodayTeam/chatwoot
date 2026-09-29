@@ -243,6 +243,7 @@ Rails.application.routes.draw do
               resources :labels, only: [:create, :index]
               resources :notes
               get :attachments, to: 'attachments#index'
+              get :overview, to: 'overviews#show'
               post :call, on: :member, to: 'calls#create' if ChatwootApp.enterprise?
             end
           end

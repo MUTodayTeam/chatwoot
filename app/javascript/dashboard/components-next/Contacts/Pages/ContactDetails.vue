@@ -9,6 +9,7 @@ import { useExactTimestamp } from 'shared/composables/useExactTimestamp';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ContactLabels from 'dashboard/components-next/Contacts/ContactLabels/ContactLabels.vue';
+import Contact360Overview from 'dashboard/components-next/Contacts/Contact360/Contact360Overview.vue';
 import ContactsForm from 'dashboard/components-next/Contacts/ContactsForm/ContactsForm.vue';
 import ConfirmContactDeleteDialog from 'dashboard/components-next/Contacts/ContactsForm/ConfirmContactDeleteDialog.vue';
 import Policy from 'dashboard/components/policy.vue';
@@ -178,6 +179,7 @@ const handleAvatarDelete = async () => {
         </div>
       </div>
       <ContactLabels :contact-id="selectedContact?.id" />
+      <Contact360Overview :contact="selectedContact" />
     </div>
     <div class="flex flex-col items-start gap-6">
       <ContactsForm

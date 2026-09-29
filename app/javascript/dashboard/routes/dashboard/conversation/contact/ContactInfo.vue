@@ -18,6 +18,7 @@ import ComposeConversation from 'dashboard/components-next/NewConversation/Compo
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import VoiceCallButton from 'dashboard/components-next/Contacts/VoiceCallButton.vue';
 import InlineInput from 'dashboard/components-next/inline-input/InlineInput.vue';
+import Contact360Link from 'dashboard/components-next/Contacts/Contact360/Contact360Link.vue';
 
 export default {
   components: {
@@ -32,6 +33,7 @@ export default {
     ContactDeleteModal,
     VoiceCallButton,
     InlineInput,
+    Contact360Link,
   },
   props: {
     contact: {
@@ -338,6 +340,7 @@ export default {
             :title="$t('CONTACT_PANEL.LOCATION')"
           />
           <SocialIcons :social-profiles="socialProfiles" />
+          <Contact360Link :contact="contact" />
         </div>
       </div>
       <div class="flex items-center w-full mt-0.5 gap-2">
