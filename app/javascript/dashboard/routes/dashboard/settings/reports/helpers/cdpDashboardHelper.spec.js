@@ -1,6 +1,7 @@
 import {
   DELTA_TONES,
   buildDailyChannelChart,
+  buildTopTopicRows,
   formatCount,
   formatDayWithWeekday,
   formatDeltaPercent,
@@ -19,13 +20,15 @@ describe('cdpDashboardHelper', () => {
       expect(getDeltaTone('incomingMessages', -3)).toBe(DELTA_TONES.WORSE);
     });
 
-    it('treats fewer missed or expired chats and a shorter first response as better', () => {
+    it('treats fewer missed or expired chats and a shorter first response or duration as better', () => {
       expect(getDeltaTone('firstResponseTime', -20)).toBe(DELTA_TONES.BETTER);
       expect(getDeltaTone('firstResponseTime', 20)).toBe(DELTA_TONES.WORSE);
       expect(getDeltaTone('missedChats', -20)).toBe(DELTA_TONES.BETTER);
       expect(getDeltaTone('missedChats', 20)).toBe(DELTA_TONES.WORSE);
       expect(getDeltaTone('expiredChats', -20)).toBe(DELTA_TONES.BETTER);
       expect(getDeltaTone('expiredChats', 20)).toBe(DELTA_TONES.WORSE);
+      expect(getDeltaTone('avgDuration', -20)).toBe(DELTA_TONES.BETTER);
+      expect(getDeltaTone('avgDuration', 20)).toBe(DELTA_TONES.WORSE);
     });
 
     it('stays neutral without a change or without a delta', () => {
@@ -110,5 +113,37 @@ describe('cdpDashboardHelper', () => {
       { id: 'line', label: 'LINE', color: 'red', data: [3, 0] },
       { id: 'others', label: 'Others', color: 'grey', data: [0, 5] },
     ]);
+  });
+
+  describe('buildTopTopicRows', () => {
+    it('names a topic by Category 3 with Category 1 › 2 as its path, and one without an id as Other', () => {
+      const rows = buildTopTopicRows(
+        [
+          {
+            id: 4,
+            c1: 'Booking',
+            c2: 'Change',
+            c3: 'Change date',
+            chats: 5,
+            contacts: 3,
+          },
+          { id: 7, c1: 'Payment', c2: '', c3: 'Refund', chats: 2, contacts: 2 },
+          { id: null, c1: null, c2: null, c3: null, chats: 1, contacts: 1 },
+        ],
+        'Other'
+      );
+
+      expect(rows).toEqual([
+        {
+          key: 4,
+          name: 'Change date',
+          path: 'Booking › Change',
+          chats: 5,
+          contacts: 3,
+        },
+        { key: 7, name: 'Refund', path: 'Payment', chats: 2, contacts: 2 },
+        { key: 'other', name: 'Other', path: '', chats: 1, contacts: 1 },
+      ]);
+    });
   });
 });

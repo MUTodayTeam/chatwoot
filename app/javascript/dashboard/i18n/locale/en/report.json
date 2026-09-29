@@ -583,7 +583,8 @@
         "OUTGOING_MESSAGES": "Outgoing messages",
         "MISSED_CHATS": "Missed",
         "EXPIRED_CHATS": "Expired",
-        "FIRST_RESPONSE_TIME": "First response"
+        "FIRST_RESPONSE_TIME": "First response",
+        "AVG_DURATION": "Avg duration"
       },
       "DAILY_CHANNELS": {
         "HEADER": "Chats per day by channel",
@@ -592,6 +593,14 @@
         "FACEBOOK": "Facebook",
         "OTHERS": "Others",
         "NO_DATA": "No chats in this range"
+      },
+      "TOP_TOPICS": {
+        "HEADER": "Top chat topics",
+        "TOPIC": "Topic",
+        "CHATS": "Chats",
+        "CONTACTS": "Contacts",
+        "OTHER": "Other",
+        "NO_DATA": "No solved chats with a topic in this range"
       },
       "AGENT_LOAD": {
         "HEADER": "Agent load now",
@@ -626,17 +635,6 @@
         "FRIDAY": "Fri",
         "SATURDAY": "Sat"
       }
-    },
-    "AGENT_RANKING": {
-      "HEADER": "Productivity by agent",
-      "LOADING_MESSAGE": "Loading agent productivity...",
-      "ARIA_LABEL": "Productivity ranking by agent",
-      "RANK": "#",
-      "AGENT": "Agent",
-      "CONVERSATIONS": "Conversations",
-      "RESOLVED": "Resolved",
-      "BAR_LABEL": "Share of resolved conversations",
-      "NO_AGENTS": "No agent activity in this range"
     },
     "AGENT_DAILY": {
       "HEADER": "Daily by agent",
