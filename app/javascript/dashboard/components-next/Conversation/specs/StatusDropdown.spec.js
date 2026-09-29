@@ -5,6 +5,24 @@ import StatusDropdown from '../StatusDropdown.vue';
 
 const dispatch = vi.fn();
 const currentChat = ref({});
+const missingAttributes = ref([]);
+const dialogOpen = vi.fn();
+const dialogClose = vi.fn();
+const attributesModalOpen = vi.fn();
+
+const SelectCategoryDialogStub = {
+  name: 'SelectCategoryDialog',
+  props: { isLoading: Boolean },
+  emits: ['solve'],
+  methods: { open: dialogOpen, close: dialogClose },
+  template: '<div />',
+};
+const ResolveAttributesModalStub = {
+  name: 'ConversationResolveAttributesModal',
+  emits: ['submit'],
+  methods: { open: attributesModalOpen },
+  template: '<div />',
+};
 
 vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
 vi.mock('dashboard/composables/store', () => ({
@@ -17,7 +35,10 @@ vi.mock('dashboard/composables/useKeyboardEvents', () => ({
 }));
 vi.mock('dashboard/composables/useConversationRequiredAttributes', () => ({
   useConversationRequiredAttributes: () => ({
-    checkMissingAttributes: () => ({ hasMissing: false, missing: [] }),
+    checkMissingAttributes: () => ({
+      hasMissing: missingAttributes.value.length > 0,
+      missing: missingAttributes.value,
+    }),
   }),
 }));
 
@@ -34,7 +55,10 @@ const mountDropdown = async chat => {
   const wrapper = mount(StatusDropdown, {
     global: {
       directives: { onClickaway: {} },
-      stubs: { ConversationResolveAttributesModal: true },
+      stubs: {
+        ConversationResolveAttributesModal: ResolveAttributesModalStub,
+        SelectCategoryDialog: SelectCategoryDialogStub,
+      },
     },
   });
   await wrapper.find('button').trigger('click');
@@ -52,6 +76,10 @@ describe('StatusDropdown', () => {
   beforeEach(() => {
     dispatch.mockReset();
     useAlert.mockReset();
+    dialogOpen.mockReset();
+    dialogClose.mockReset();
+    attributesModalOpen.mockReset();
+    missingAttributes.value = [];
   });
 
   it('labels the button with the lifecycle status', async () => {
@@ -97,16 +125,80 @@ describe('StatusDropdown', () => {
     );
   });
 
-  it('resolves when Solved is picked', async () => {
-    dispatch.mockResolvedValue();
-    const wrapper = await mountDropdown({ status: 'open' });
+  it('asks for the category when Solved is picked, preselecting the case one', async () => {
+    const wrapper = await mountDropdown({
+      status: 'open',
+      case: { id: 3, case_category_id: 11 },
+    });
 
     await menuItem(wrapper, 'solved').trigger('click');
     await flushPromises();
 
+    expect(dialogOpen).toHaveBeenCalledWith(11);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('solves with the category, summary and survey choice from the dialog', async () => {
+    dispatch.mockResolvedValue();
+    const wrapper = await mountDropdown({ status: 'open' });
+    await menuItem(wrapper, 'solved').trigger('click');
+
+    wrapper.findComponent(SelectCategoryDialogStub).vm.$emit('solve', {
+      caseCategoryId: 11,
+      summary: 'Refunded',
+      sendSurvey: false,
+    });
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('solveConversation', {
+      conversationId: 7,
+      caseCategoryId: 11,
+      summary: 'Refunded',
+      sendSurvey: false,
+      customAttributes: null,
+    });
+    expect(dialogClose).toHaveBeenCalled();
+    expect(useAlert).toHaveBeenCalledWith('CONVERSATION.CHANGE_STATUS');
+  });
+
+  it('keeps the dialog open and alerts when the solve is refused', async () => {
+    dispatch.mockRejectedValue(new Error('Conversation is already solved'));
+    const wrapper = await mountDropdown({ status: 'open' });
+    await menuItem(wrapper, 'solved').trigger('click');
+
+    wrapper
+      .findComponent(SelectCategoryDialogStub)
+      .vm.$emit('solve', { caseCategoryId: 11, summary: '', sendSurvey: true });
+    await flushPromises();
+
+    expect(dialogClose).not.toHaveBeenCalled();
+    expect(useAlert).toHaveBeenCalledWith('Conversation is already solved');
+  });
+
+  it('asks for the required attributes first and saves them with the solve', async () => {
+    dispatch.mockResolvedValue();
+    missingAttributes.value = [{ attribute_key: 'order_id' }];
+    const wrapper = await mountDropdown({ status: 'open' });
+
+    await menuItem(wrapper, 'solved').trigger('click');
+    expect(attributesModalOpen).toHaveBeenCalled();
+    expect(dialogOpen).not.toHaveBeenCalled();
+
+    const context = attributesModalOpen.mock.calls[0][2];
+    wrapper
+      .findComponent(ResolveAttributesModalStub)
+      .vm.$emit('submit', { attributes: { order_id: 'A1' }, context });
+    await flushPromises();
+    expect(dialogOpen).toHaveBeenCalled();
+
+    wrapper
+      .findComponent(SelectCategoryDialogStub)
+      .vm.$emit('solve', { caseCategoryId: 11, summary: '', sendSurvey: true });
+    await flushPromises();
+
     expect(dispatch).toHaveBeenCalledWith(
-      'toggleStatus',
-      expect.objectContaining({ status: 'resolved' })
+      'solveConversation',
+      expect.objectContaining({ customAttributes: { order_id: 'A1' } })
     );
   });
 

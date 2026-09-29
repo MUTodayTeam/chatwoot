@@ -18,6 +18,7 @@ import templates from './templates/templates.routes';
 import integrations from './integrations/integrations.routes';
 import labels from './labels/labels.routes';
 import liveChatRules from './liveChatRules/liveChatRules.routes';
+import caseCategories from './caseCategories/caseCategories.routes';
 import macros from './macros/macros.routes';
 import projects from './projects/projects.routes';
 import reports from './reports/reports.routes';
@@ -65,6 +66,7 @@ export default {
     ...data.routes,
     ...labels.routes,
     ...liveChatRules.routes,
+    ...caseCategories.routes,
     ...macros.routes,
     ...projects.routes,
     ...reports.routes,

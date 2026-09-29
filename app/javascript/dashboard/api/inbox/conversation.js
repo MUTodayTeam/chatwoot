@@ -64,6 +64,15 @@ class ConversationApi extends ApiClient {
     });
   }
 
+  // Solved from the Select Category dialog; no category files the case as "Other"
+  solve({ conversationId, caseCategoryId = null, summary = '', sendSurvey }) {
+    return axios.post(`${this.url}/${conversationId}/solve`, {
+      case_category_id: caseCategoryId,
+      summary,
+      send_survey: sendSurvey,
+    });
+  }
+
   togglePriority({ conversationId, priority }) {
     return axios.post(`${this.url}/${conversationId}/toggle_priority`, {
       priority,

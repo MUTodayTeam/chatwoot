@@ -13,6 +13,7 @@ import {
   CASE_TABS,
   CASE_FINISHED_STATUSES,
 } from 'dashboard/helper/caseHelper';
+import { categoryPath } from 'dashboard/helper/caseCategoryHelper';
 import { conversationUrl, frontendURL } from 'dashboard/helper/URLHelper';
 import { dynamicTime } from 'shared/helpers/timeHelper';
 
@@ -74,6 +75,7 @@ const headers = computed(() => [
   t('CASES.TABLE.PROJECT'),
   t('CASES.TABLE.CONTACT'),
   t('CASES.TABLE.SUBJECT'),
+  t('CASES.TABLE.TOPIC'),
   t('CASES.TABLE.SEVERITY'),
   t('CASES.TABLE.STATUS'),
   t('CASES.TABLE.TEAM'),
@@ -88,6 +90,14 @@ const summary = computed(
 );
 
 const inboxMedium = inboxId => inboxGetter.value(inboxId)?.medium;
+
+// Picked when the case was solved: a solved case without one is "Other", an open one has none yet
+const caseTopic = kase => {
+  if (kase.category) return kase.category.c3;
+  return CASE_FINISHED_STATUSES.includes(kase.status)
+    ? t('CASES.TOPIC_OTHER')
+    : '';
+};
 
 const syncFiltersToUrl = () => {
   router.replace({
@@ -246,6 +256,14 @@ onMounted(() => {
             <BaseTableCell>
               <span class="block max-w-60 truncate text-n-slate-12">
                 {{ kase.subject }}
+              </span>
+            </BaseTableCell>
+            <BaseTableCell>
+              <span
+                v-tooltip.top="kase.category ? categoryPath(kase.category) : ''"
+                class="block max-w-48 truncate text-n-slate-12"
+              >
+                {{ caseTopic(kase) }}
               </span>
             </BaseTableCell>
             <BaseTableCell>

@@ -610,6 +610,47 @@ describe('#actions', () => {
     });
   });
 
+  describe('#solveConversation', () => {
+    it('posts the category, summary and survey choice, then marks the conversation resolved', async () => {
+      axios.post.mockResolvedValue({
+        data: { conversation_id: 1, current_status: 'resolved', case: {} },
+      });
+      await actions.solveConversation(
+        { commit },
+        {
+          conversationId: 1,
+          caseCategoryId: 7,
+          summary: 'Refunded',
+          sendSurvey: false,
+        }
+      );
+      expect(axios.post).toHaveBeenCalledWith('/api/v1/conversations/1/solve', {
+        case_category_id: 7,
+        summary: 'Refunded',
+        send_survey: false,
+      });
+      expect(commit.mock.calls).toEqual([
+        [
+          'CHANGE_CONVERSATION_STATUS',
+          { conversationId: 1, status: 'resolved', snoozedUntil: null },
+        ],
+      ]);
+    });
+
+    it('throws the server reason and leaves the status alone when refused', async () => {
+      axios.post.mockRejectedValue({
+        response: { data: { message: 'Conversation is already solved' } },
+      });
+      await expect(
+        actions.solveConversation(
+          { commit },
+          { conversationId: 1, caseCategoryId: 7, sendSurvey: true }
+        )
+      ).rejects.toThrow('Conversation is already solved');
+      expect(commit).not.toHaveBeenCalled();
+    });
+  });
+
   describe('#assignTeam', () => {
     it('sends correct mutations if assignment is successful', async () => {
       axios.post.mockResolvedValue({

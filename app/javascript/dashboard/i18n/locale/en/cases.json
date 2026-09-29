@@ -22,10 +22,12 @@
       "TEAM": "Team",
       "OWNER": "Owner",
       "THREAD": "Thread",
+      "TOPIC": "Topic",
       "TIME": "Opened"
     },
     "NO_PROJECT": "No project",
     "NO_TEAM": "No team",
+    "TOPIC_OTHER": "Other",
     "UNASSIGNED": "Unassigned",
     "OPEN_THREAD": "Open thread",
     "REOPENED": "Reopened ×{count}",

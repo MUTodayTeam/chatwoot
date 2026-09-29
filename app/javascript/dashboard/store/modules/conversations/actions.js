@@ -391,6 +391,47 @@ const actions = {
     }
   },
 
+  solveConversation: async (
+    { commit },
+    {
+      conversationId,
+      caseCategoryId,
+      summary,
+      sendSurvey,
+      customAttributes = null,
+    }
+  ) => {
+    try {
+      // Required attributes are saved first, as toggleStatus does
+      if (customAttributes) {
+        await ConversationApi.updateCustomAttributes({
+          conversationId,
+          customAttributes,
+        });
+        commit(types.UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES, {
+          conversationId,
+          customAttributes,
+        });
+      }
+
+      const {
+        data: { current_status: status },
+      } = await ConversationApi.solve({
+        conversationId,
+        caseCategoryId,
+        summary,
+        sendSurvey,
+      });
+      commit(types.CHANGE_CONVERSATION_STATUS, {
+        conversationId,
+        status,
+        snoozedUntil: null,
+      });
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
+
   extendReplyDeadline: async ({ commit }, { conversationId }) => {
     const {
       data: { reply_due_at: replyDueAt },
