@@ -57,6 +57,19 @@ RSpec.describe Custom::ActivityMessageHandler do
       Current.user = nil
     end
 
+    it 'tags a team assignment that assigns an agent in the same save' do
+      Current.user = agent
+      team = create(:team, account: conversation.account)
+      create(:team_member, team: team, user: agent)
+
+      expect { conversation.update!(team: team, assignee: agent) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: "Assigned to #{agent.name} via #{team.name} by #{agent.name}",
+                                           content_attributes: { activity: { type: 'team_changed' } }))
+    ensure
+      Current.user = nil
+    end
+
     it 'tags a reply deadline extension' do
       Current.user = agent
 

@@ -12,9 +12,10 @@ const activity = (id, createdAt, attributes, content = `activity ${id}`) => ({
   content_attributes: { activity: attributes },
 });
 
-const build = messages =>
+const build = (messages, isComplete = true) =>
   buildConversationTimeline({
     messages,
+    isComplete,
     createdAt: 100,
     arrivedText: 'Arrived via LINE',
   });
@@ -35,7 +36,7 @@ describe('buildConversationTimeline', () => {
     const tones = build([
       activity(1, 110, { type: 'assignee_changed' }),
       activity(2, 120, { type: 'assignee_changed' }),
-      activity(3, 130, { type: 'conversation_transferred' }),
+      activity(3, 130, { type: 'team_changed' }),
       activity(4, 140, {
         type: 'conversation_status_changed',
         status: 'pending',
@@ -70,7 +71,7 @@ describe('buildConversationTimeline', () => {
       [6, TIMELINE_TONES.ACCENT],
       [5, TIMELINE_TONES.SYSTEM],
       [4, TIMELINE_TONES.ACTION],
-      [3, TIMELINE_TONES.ACCENT],
+      [3, TIMELINE_TONES.ACTION],
       [2, TIMELINE_TONES.ACTION],
       [1, TIMELINE_TONES.ACTION],
       [ARRIVED_EVENT_ID, TIMELINE_TONES.SYSTEM],
@@ -114,5 +115,23 @@ describe('buildConversationTimeline', () => {
     ]).map(event => event.id);
 
     expect(ids).toEqual([ARRIVED_EVENT_ID]);
+  });
+
+  it('leaves out the arrival while older activities may be missing', () => {
+    const ids = build(
+      [activity(1, 110, { type: 'assignee_changed' })],
+      false
+    ).map(event => event.id);
+
+    expect(ids).toEqual([1]);
+  });
+
+  it('shows an activity once when both the history and the thread hold it', () => {
+    const assigned = activity(1, 110, { type: 'assignee_changed' });
+
+    expect(build([assigned, { ...assigned }]).map(event => event.id)).toEqual([
+      1,
+      ARRIVED_EVENT_ID,
+    ]);
   });
 });

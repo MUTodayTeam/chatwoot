@@ -17,15 +17,17 @@ export const TIMELINE_TONE_CLASSES = Object.freeze({
 const STATUS_CHANGED = 'conversation_status_changed';
 
 // The activity types the timeline shows, read from content_attributes.activity.type.
-// conversation_transferred is the type the Transfer action tags its activity with.
 const ACTIVITY_TONES = Object.freeze({
   assignee_changed: TIMELINE_TONES.ACTION,
-  conversation_transferred: TIMELINE_TONES.ACCENT,
+  team_changed: TIMELINE_TONES.ACTION,
   reply_deadline_extended: TIMELINE_TONES.SYSTEM,
   case_opened: TIMELINE_TONES.ACCENT,
 });
 
 export const ARRIVED_EVENT_ID = 'arrived';
+
+// Custom::MessageFinder::ACTIVITY_LIMIT: a full page may leave older activities out.
+export const TIMELINE_ACTIVITY_LIMIT = 200;
 
 const activityTone = activity => {
   if (!activity) return null;
@@ -39,19 +41,26 @@ const activityTone = activity => {
 
 /**
  * The events of one conversation, newest first: its activity messages that say what
- * happened to it, then the conversation arriving through its channel.
+ * happened to it, then the conversation arriving through its channel once the
+ * messages are known to hold its whole history.
  * @param {Object} params
- * @param {Array} params.messages - The conversation's loaded messages, as the API sends them
+ * @param {Array} params.messages - Messages as the API sends them; the same message may come twice
+ * @param {boolean} params.isComplete - Whether the messages hold every activity since it arrived
  * @param {number} params.createdAt - When the conversation started, unix seconds
  * @param {string} params.arrivedText - What the first row says
  */
 export const buildConversationTimeline = ({
   messages = [],
+  isComplete,
   createdAt,
   arrivedText,
 }) => {
-  const events = messages
-    .filter(message => message.message_type === MESSAGE_TYPE.ACTIVITY)
+  const activities = new Map(
+    messages
+      .filter(message => message.message_type === MESSAGE_TYPE.ACTIVITY)
+      .map(message => [message.id, message])
+  );
+  const events = [...activities.values()]
     .map(message => ({
       id: message.id,
       text: message.content,
@@ -60,6 +69,8 @@ export const buildConversationTimeline = ({
     }))
     .filter(event => event.tone)
     .sort((a, b) => b.createdAt - a.createdAt || b.id - a.id);
+
+  if (!isComplete) return events;
 
   return [
     ...events,

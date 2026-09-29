@@ -232,8 +232,34 @@ describe('#mutations', () => {
           id: 1,
           messages: [],
           status: 'resolved',
+          status_changed_at: expect.any(Number),
         },
       ]);
+    });
+
+    it('restarts status_changed_at only when the status changes', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1_800_000_000 * 1000);
+      const conversation = {
+        id: 1,
+        messages: [],
+        status: 'open',
+        status_changed_at: 1_799_000_000,
+      };
+      const state = { allConversations: [conversation] };
+
+      mutations[types.CHANGE_CONVERSATION_STATUS](state, {
+        conversationId: 1,
+        status: 'open',
+      });
+      expect(conversation.status_changed_at).toBe(1_799_000_000);
+
+      mutations[types.CHANGE_CONVERSATION_STATUS](state, {
+        conversationId: 1,
+        status: 'resolved',
+      });
+      expect(conversation.status_changed_at).toBe(1_800_000_000);
+      vi.useRealTimers();
     });
 
     describe('#UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES', () => {

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { I18nT, useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useInboxProject } from 'dashboard/composables/useInboxProject';
@@ -58,8 +58,12 @@ const statusLabel = computed(() =>
 const topic = computed(() => t('CONVERSATION.END_BAR.OTHER_TOPIC'));
 
 const closesIn = computed(() => {
-  const statusChangedAt = props.chat.status_changed_at;
-  if (!isSolved.value || !statusChangedAt) return '';
+  if (!isSolved.value) return '';
+
+  // Conversations solved before status_changed_at existed have none; the sweep closes
+  // them on updated_at instead, so the countdown does too.
+  const statusChangedAt =
+    props.chat.status_changed_at || Math.floor(props.chat.updated_at);
 
   const rule = findLiveChatRule(rules.value, project.value?.id ?? null);
   const seconds = autoCloseRemainingSeconds({
@@ -100,10 +104,14 @@ const reopen = async () => {
     class="flex flex-wrap items-center gap-3 px-5 py-3 border-t-2 border-n-weak text-body-main text-n-slate-11"
   >
     <span>
-      <span class="font-medium text-n-slate-12">{{ statusLabel }}</span>
-      ·
-      {{ t('CONVERSATION.END_BAR.TOPIC') }}
-      <span class="font-medium text-n-slate-12">{{ topic }}</span>
+      <I18nT keypath="CONVERSATION.END_BAR.SUMMARY" tag="span">
+        <template #status>
+          <span class="font-medium text-n-slate-12">{{ statusLabel }}</span>
+        </template>
+        <template #topic>
+          <span class="font-medium text-n-slate-12">{{ topic }}</span>
+        </template>
+      </I18nT>
       <span v-if="closesIn" class="ms-1 tabular-nums">
         {{ t('CONVERSATION.END_BAR.CLOSES_IN', { time: closesIn }) }}
       </span>

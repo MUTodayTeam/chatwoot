@@ -48,13 +48,13 @@
     "NOT_ASSIGNED_TO_YOU": "This conversation is not assigned to you. Would you like to assign this conversation to yourself?",
     "ASSIGN_TO_ME": "Assign to me",
     "BOT_MODE_BANNER": {
-      "MESSAGE": "This chat is in Bot mode —",
+      "MESSAGE": "This chat is in Bot mode — {takeOver}",
       "TAKE_OVER": "take it over as an agent"
     },
     "END_BAR": {
       "SOLVED": "Solved",
       "CLOSED": "Closed",
-      "TOPIC": "Topic",
+      "SUMMARY": "{status} · {topic}",
       "OTHER_TOPIC": "Other",
       "CLOSES_IN": "→ Closed in {time}",
       "REOPEN_NOTE": "If the customer writes back, case {display} reopens with its full history",

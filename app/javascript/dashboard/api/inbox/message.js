@@ -106,6 +106,14 @@ class MessageApi extends ApiClient {
     return axios.get(`${this.url}/${conversationId}/messages`, { params });
   }
 
+  // The conversation's activity messages across its whole history, for its timeline
+  getActivities(conversationId, { signal } = {}) {
+    return axios.get(`${this.url}/${conversationId}/messages`, {
+      params: { activity_only: true },
+      signal,
+    });
+  }
+
   translateMessage(conversationId, messageId, targetLanguage) {
     return axios.post(
       `${this.url}/${conversationId}/messages/${messageId}/translate`,

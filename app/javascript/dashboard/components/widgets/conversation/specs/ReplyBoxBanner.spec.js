@@ -1,7 +1,10 @@
 import { ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
+import { withFullI18n } from '../../../../../../../vitest.i18n';
 import ReplyBoxBanner from '../ReplyBoxBanner.vue';
 import BotModeBanner from 'dashboard/components-next/Conversation/BotModeBanner.vue';
+
+withFullI18n();
 
 const dispatch = vi.fn();
 const currentChat = ref({});
@@ -33,6 +36,9 @@ describe('ReplyBoxBanner', () => {
     });
 
     expect(wrapper.findComponent(BotModeBanner).exists()).toBe(true);
+    expect(wrapper.text()).toContain(
+      'This chat is in Bot mode — take it over as an agent'
+    );
   });
 
   it.each([
@@ -46,23 +52,36 @@ describe('ReplyBoxBanner', () => {
     expect(mountBanner(chat).findComponent(BotModeBanner).exists()).toBe(false);
   });
 
-  it('takes the chat over by opening it and assigning it to the agent', async () => {
-    dispatch.mockResolvedValue();
-    const wrapper = mountBanner({
-      status: 'pending',
-      meta: { assignee: { id: 3, name: 'Bot' }, assignee_type: 'AgentBot' },
-    });
+  it.each([
+    ['an agent bot', 3, 'AgentBot'],
+    ['a Captain assistant', 3, 'Captain::Assistant'],
+    ['a Captain assistant whose id matches the agent', 7, 'Captain::Assistant'],
+  ])(
+    'takes the chat over from %s by opening it and assigning it to the agent',
+    async (_, assigneeId, type) => {
+      dispatch.mockResolvedValue();
+      const wrapper = mountBanner({
+        status: 'pending',
+        meta: {
+          assignee: { id: assigneeId, name: 'Bot' },
+          assignee_type: type,
+        },
+      });
 
-    await wrapper.findComponent(BotModeBanner).find('button').trigger('click');
-    await flushPromises();
+      await wrapper
+        .findComponent(BotModeBanner)
+        .find('button')
+        .trigger('click');
+      await flushPromises();
 
-    expect(dispatch).toHaveBeenCalledWith('toggleStatus', {
-      conversationId: 12,
-      status: 'open',
-    });
-    expect(dispatch).toHaveBeenCalledWith('assignAgent', {
-      conversationId: 12,
-      agentId: 7,
-    });
-  });
+      expect(dispatch).toHaveBeenCalledWith('toggleStatus', {
+        conversationId: 12,
+        status: 'open',
+      });
+      expect(dispatch).toHaveBeenCalledWith('assignAgent', {
+        conversationId: 12,
+        agentId: 7,
+      });
+    }
+  );
 });

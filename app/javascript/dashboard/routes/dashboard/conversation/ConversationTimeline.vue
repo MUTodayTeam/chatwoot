@@ -1,10 +1,13 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMapGetter } from 'dashboard/composables/store';
+import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
+import MessageApi from 'dashboard/api/inbox/message';
 import { messageStamp } from 'shared/helpers/timeHelper';
 import { dayLabel } from 'dashboard/helper/dayDivider';
 import {
+  TIMELINE_ACTIVITY_LIMIT,
   TIMELINE_TONE_CLASSES,
   buildConversationTimeline,
 } from 'dashboard/helper/conversationTimeline';
@@ -19,10 +22,29 @@ const props = defineProps({
 const { t } = useI18n();
 const inboxGetter = useMapGetter('inboxes/getInbox');
 
+// The thread loads its messages a page at a time, so the timeline fetches the whole
+// activity history once and adds the activities that arrive live in the thread.
+const { run } = useAbortableRequest();
+const history = ref(null);
+
+watch(
+  () => props.chat.id,
+  async conversationId => {
+    history.value = null;
+    const response = await run(signal =>
+      MessageApi.getActivities(conversationId, { signal })
+    );
+    if (response) history.value = response.data.payload;
+  },
+  { immediate: true }
+);
+
 const events = computed(() => {
   const inbox = inboxGetter.value(props.chat.inbox_id);
   return buildConversationTimeline({
-    messages: props.chat.messages,
+    messages: [...(history.value || []), ...props.chat.messages],
+    isComplete:
+      !!history.value && history.value.length < TIMELINE_ACTIVITY_LIMIT,
     createdAt: props.chat.created_at,
     arrivedText: t('CONVERSATION_SIDEBAR.TIMELINE.ARRIVED', {
       channel: inbox.name,

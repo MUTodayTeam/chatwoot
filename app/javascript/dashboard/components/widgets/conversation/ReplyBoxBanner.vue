@@ -60,10 +60,6 @@ const showSelfAssignBanner = computed(() => {
   );
 });
 
-const isAgentBotOwned = computed(
-  () => currentChat.value?.meta?.assignee_type === 'AgentBot'
-);
-
 // Pending with an agent bot or a Captain assistant as the assignee (spec §5 Bot banner)
 const showBotHandoffBanner = computed(
   () =>
@@ -77,10 +73,6 @@ const selfAssignConversation = async () => {
   const { avatar_url, ...rest } = currentUser.value || {};
   assignedAgent.value = { ...rest, thumbnail: avatar_url };
 };
-
-const needsAssignmentToCurrentUser = computed(() => {
-  return isUnassigned.value || isAssignedToOtherAgent.value;
-});
 
 const onClickSelfAssign = async () => {
   try {
@@ -98,17 +90,14 @@ const reopenConversation = async () => {
   });
 };
 
+// The bar only shows while an agent bot or a Captain assistant holds the chat, so taking
+// it over always assigns it to the agent. Comparing ids would not do: the assistant's id
+// comes from another table and can equal the agent's.
 const onClickBotHandoff = async () => {
   isTakingOver.value = true;
   try {
-    const shouldAssignToCurrentUser =
-      isAgentBotOwned.value || needsAssignmentToCurrentUser.value;
-
     await reopenConversation();
-
-    if (shouldAssignToCurrentUser) {
-      await selfAssignConversation();
-    }
+    await selfAssignConversation();
 
     useAlert(t('CONVERSATION.BOT_HANDOFF_SUCCESS'));
   } catch (error) {

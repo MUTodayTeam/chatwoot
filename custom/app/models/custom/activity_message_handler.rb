@@ -18,6 +18,11 @@ module Custom::ActivityMessageHandler
     with_activity_type('assignee_changed') { super }
   end
 
+  # Assigning a team, with or without an agent, writes this one activity instead of the assignment's.
+  def create_team_change_activity(user_name)
+    with_activity_type('team_changed') { super }
+  end
+
   def create_reply_deadline_extended_message(minutes)
     with_activity_type('reply_deadline_extended') { super }
   end

@@ -49,7 +49,7 @@ describe('ConversationEndBar', () => {
   it('counts a solved conversation down to the close on its project rule', () => {
     const wrapper = mountBar({ status: 'resolved' });
 
-    expect(wrapper.text()).toContain('Solved · Topic Other');
+    expect(wrapper.text()).toContain('Solved · Other');
     expect(wrapper.text()).toContain('→ Closed in 01:30:00');
     expect(wrapper.text()).toContain(
       'If the customer writes back, case #CK-858 reopens with its full history'
@@ -71,10 +71,20 @@ describe('ConversationEndBar', () => {
     expect(wrapper.text()).toContain('→ Closed in 47:30:00');
   });
 
+  it('counts down from updated_at when the conversation has no status_changed_at, as the sweep does', () => {
+    const wrapper = mountBar({
+      status: 'resolved',
+      status_changed_at: 0,
+      updated_at: NOW - 60 * 60 + 0.25,
+    });
+
+    expect(wrapper.text()).toContain('→ Closed in 01:00:00');
+  });
+
   it('shows a closed conversation without a countdown or a Reopen button', () => {
     const wrapper = mountBar({ status: 'closed' });
 
-    expect(wrapper.text()).toContain('Closed · Topic Other');
+    expect(wrapper.text()).toContain('Closed · Other');
     expect(wrapper.text()).not.toContain('Closed in');
     expect(wrapper.text()).toContain('case #CK-858 reopens');
     expect(wrapper.find('button').exists()).toBe(false);

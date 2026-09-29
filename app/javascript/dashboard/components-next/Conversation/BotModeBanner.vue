@@ -1,5 +1,5 @@
 <script setup>
-import { useI18n } from 'vue-i18n';
+import { I18nT, useI18n } from 'vue-i18n';
 
 defineProps({
   isLoading: {
@@ -18,14 +18,17 @@ const { t } = useI18n();
     class="flex items-center gap-2.5 px-5 py-2 bg-n-slate-12 text-n-slate-1 text-label-small"
   >
     <span class="flex-shrink-0 size-2 bg-n-ruby-9 animate-pulse" />
-    <span>{{ t('CONVERSATION.BOT_MODE_BANNER.MESSAGE') }}</span>
-    <button
-      type="button"
-      class="p-0 underline bg-transparent border-0 text-label-small text-n-slate-1 disabled:opacity-50"
-      :disabled="isLoading"
-      @click="emit('takeOver')"
-    >
-      {{ t('CONVERSATION.BOT_MODE_BANNER.TAKE_OVER') }}
-    </button>
+    <I18nT keypath="CONVERSATION.BOT_MODE_BANNER.MESSAGE" tag="span">
+      <template #takeOver>
+        <button
+          type="button"
+          class="p-0 underline bg-transparent border-0 text-label-small text-n-slate-1 disabled:opacity-50"
+          :disabled="isLoading"
+          @click="emit('takeOver')"
+        >
+          {{ t('CONVERSATION.BOT_MODE_BANNER.TAKE_OVER') }}
+        </button>
+      </template>
+    </I18nT>
   </div>
 </template>
