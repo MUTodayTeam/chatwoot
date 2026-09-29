@@ -39,6 +39,7 @@ RSpec.describe Case do
 
       expect(described_class.where(conversation: conversation).count).to eq(1)
       expect(conversation.messages.activity.pluck(:content)).to eq(['Case #CK-1 opened automatically'])
+      expect(conversation.messages.activity.first.content_attributes).to eq('activity' => { 'type' => 'case_opened' })
     end
 
     it 'names the team in the activity message when the case has one' do

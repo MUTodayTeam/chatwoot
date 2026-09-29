@@ -281,7 +281,8 @@ RSpec.describe Conversation do
       expect(Conversations::ActivityMessageJob)
         .to(have_been_enqueued.at_least(:once)
         .with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id, message_type: :activity,
-                              content: "Assigned to #{new_assignee.name} by #{old_assignee.name}" }))
+                              content: "Assigned to #{new_assignee.name} by #{old_assignee.name}",
+                              content_attributes: { activity: { type: 'assignee_changed' } } }))
     end
 
     it 'adds a message for system auto resolution if marked resolved by system' do
@@ -618,7 +619,8 @@ RSpec.describe Conversation do
       expect(Conversations::ActivityMessageJob)
         .to(have_been_enqueued.with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id,
                                                     message_type: :activity,
-                                                    content: "#{user.name} extended the reply deadline by 15 minutes" }))
+                                                    content: "#{user.name} extended the reply deadline by 15 minutes",
+                                                    content_attributes: { activity: { type: 'reply_deadline_extended' } } }))
     end
 
     context 'when nobody is waiting on a reply' do
@@ -750,6 +752,7 @@ RSpec.describe Conversation do
         updated_at: conversation.updated_at.to_f,
         waiting_since: conversation.waiting_since.to_i,
         reply_due_at: conversation.reply_due_at.to_i,
+        status_changed_at: conversation.status_changed_at.to_i,
         priority: nil,
         unread_count: 0
       }

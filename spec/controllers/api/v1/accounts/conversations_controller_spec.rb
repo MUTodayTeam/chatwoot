@@ -811,7 +811,8 @@ RSpec.describe 'Conversations API', type: :request do
         expect(Conversations::ActivityMessageJob)
           .to(have_been_enqueued.with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id,
                                                       message_type: :activity,
-                                                      content: "#{agent.name} extended the reply deadline by 60 minutes" }))
+                                                      content: "#{agent.name} extended the reply deadline by 60 minutes",
+                                                      content_attributes: { activity: { type: 'reply_deadline_extended' } } }))
       end
 
       it 'returns unprocessable entity when nobody is waiting on a reply' do

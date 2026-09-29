@@ -47,9 +47,23 @@
     "API_HOURS_WINDOW": "You can only reply to this conversation within {hours} hours",
     "NOT_ASSIGNED_TO_YOU": "This conversation is not assigned to you. Would you like to assign this conversation to yourself?",
     "ASSIGN_TO_ME": "Assign to me",
-    "BOT_HANDOFF_MESSAGE": "This conversation is currently handled by {assigneeName}.",
-    "BOT_HANDOFF_FALLBACK_ASSIGNEE": "a bot",
-    "BOT_HANDOFF_ACTION": "Take over",
+    "BOT_MODE_BANNER": {
+      "MESSAGE": "This chat is in Bot mode —",
+      "TAKE_OVER": "take it over as an agent"
+    },
+    "END_BAR": {
+      "SOLVED": "Solved",
+      "CLOSED": "Closed",
+      "TOPIC": "Topic",
+      "OTHER_TOPIC": "Other",
+      "CLOSES_IN": "→ Closed in {time}",
+      "REOPEN_NOTE": "If the customer writes back, case {display} reopens with its full history",
+      "REOPEN_NOTE_NO_CASE": "If the customer writes back, the conversation reopens with its full history",
+      "REOPEN": "Reopen"
+    },
+    "DAY_DIVIDER": {
+      "TODAY": "Today"
+    },
     "BOT_HANDOFF_REOPEN_ACTION": "Mark conversation open",
     "BOT_HANDOFF_SUCCESS": "Conversation has been handed over to you",
     "BOT_HANDOFF_ERROR": "Failed to take over the conversation. Please try again.",
@@ -503,10 +517,14 @@
       "CONTACT_ATTRIBUTES": "Contact Attributes",
       "PREVIOUS_CONVERSATION": "Previous Conversations",
       "RELATED_CASES": "Related cases",
+      "TIMELINE": "Timeline",
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders",
       "SHARED_FILES": "Attachments"
+    },
+    "TIMELINE": {
+      "ARRIVED": "Arrived via {channel}"
     },
     "SHARED_FILES": {
       "EMPTY": "No attachments yet",

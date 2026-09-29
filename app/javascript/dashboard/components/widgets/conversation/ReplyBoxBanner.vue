@@ -1,12 +1,16 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
-import wootConstants from 'dashboard/constants/globals';
+import {
+  LIFECYCLE_STATUS,
+  getLifecycleStatus,
+} from 'dashboard/helper/conversationLifecycle';
 
 import Banner from 'dashboard/components/ui/Banner.vue';
+import BotModeBanner from 'dashboard/components-next/Conversation/BotModeBanner.vue';
 
 const props = defineProps({
   message: {
@@ -56,25 +60,18 @@ const showSelfAssignBanner = computed(() => {
   );
 });
 
-const isPendingConversation = computed(
-  () => currentChat.value?.status === wootConstants.STATUS_TYPE.PENDING
-);
-
 const isAgentBotOwned = computed(
   () => currentChat.value?.meta?.assignee_type === 'AgentBot'
 );
 
-const showBotHandoffBanner = computed(() => {
-  return isPendingConversation.value && isAgentBotOwned.value;
-});
+// Pending with an agent bot or a Captain assistant as the assignee (spec §5 Bot banner)
+const showBotHandoffBanner = computed(
+  () =>
+    !!currentChat.value &&
+    getLifecycleStatus(currentChat.value) === LIFECYCLE_STATUS.BOT
+);
 
-const botAssigneeName = computed(() => {
-  if (isAgentBotOwned.value && assignedAgent.value?.name) {
-    return assignedAgent.value.name;
-  }
-
-  return t('CONVERSATION.BOT_HANDOFF_FALLBACK_ASSIGNEE');
-});
+const isTakingOver = ref(false);
 
 const selfAssignConversation = async () => {
   const { avatar_url, ...rest } = currentUser.value || {};
@@ -102,6 +99,7 @@ const reopenConversation = async () => {
 };
 
 const onClickBotHandoff = async () => {
+  isTakingOver.value = true;
   try {
     const shouldAssignToCurrentUser =
       isAgentBotOwned.value || needsAssignmentToCurrentUser.value;
@@ -115,6 +113,8 @@ const onClickBotHandoff = async () => {
     useAlert(t('CONVERSATION.BOT_HANDOFF_SUCCESS'));
   } catch (error) {
     useAlert(t('CONVERSATION.BOT_HANDOFF_ERROR'));
+  } finally {
+    isTakingOver.value = false;
   }
 };
 </script>
@@ -130,18 +130,9 @@ const onClickBotHandoff = async () => {
     :action-button-label="$t('CONVERSATION.ASSIGN_TO_ME')"
     @primary-action="onClickSelfAssign"
   />
-  <Banner
+  <BotModeBanner
     v-if="showBotHandoffBanner"
-    action-button-variant="ghost"
-    color-scheme="secondary"
-    class="mx-2 mb-2 rounded-lg !py-2"
-    :banner-message="
-      $t('CONVERSATION.BOT_HANDOFF_MESSAGE', {
-        assigneeName: botAssigneeName,
-      })
-    "
-    has-action-button
-    :action-button-label="$t('CONVERSATION.BOT_HANDOFF_ACTION')"
-    @primary-action="onClickBotHandoff"
+    :is-loading="isTakingOver"
+    @take-over="onClickBotHandoff"
   />
 </template>
