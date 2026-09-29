@@ -5,6 +5,9 @@
 #    Hence there is no need to set user_id in message for outgoing echo messages.
 
 class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
+  # GraphMethodException, code: 100: the profile API refuses senders without a role on the app
+  PROFILE_NOT_READABLE_SUBCODE = 33
+
   attr_reader :response
 
   def initialize(response, inbox, outgoing_echo: false)
@@ -134,8 +137,10 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
   end
 
   def process_contact_params_result(result)
+    name = result['name'].presence || [result['first_name'], result['last_name']].compact_blank.join(' ').presence || 'John Doe'
+
     {
-      name: "#{result['first_name'] || 'John'} #{result['last_name'] || 'Doe'}",
+      name: name,
       account_id: @inbox.account_id,
       avatar_url: result['profile_pic']
     }
@@ -158,6 +163,8 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
       # We don't need to capture this error as we don't care about contact params in case of echo messages
       if e.message.include?('2018218')
         Rails.logger.warn e
+      elsif e.fb_error_subcode == PROFILE_NOT_READABLE_SUBCODE
+        result = profile_from_conversation(k)
       else
         ChatwootExceptionTracker.new(e, account: @inbox.account).capture_exception unless @outgoing_echo
       end
@@ -169,4 +176,18 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
+
+  # Without Advanced Access to "Business Asset User Profile Access" the profile API only serves users with a role on the app,
+  # but the Conversations API still names the participants of the thread. A known sender keeps its contact, so only a new
+  # one is looked up, and this runs inside the ClientError rescue, so a failed lookup must not cost the message.
+  def profile_from_conversation(api)
+    return {} if @inbox.contact_inboxes.exists?(source_id: @sender_id)
+
+    conversations = api.get_connections('me', 'conversations', platform: 'messenger', user_id: @sender_id, fields: 'participants')
+    participant = conversations.flat_map { |conversation| conversation['participants']['data'] }.find { |user| user['id'] == @sender_id }
+    participant ? { 'name' => participant['name'] } : {}
+  rescue StandardError => e
+    Rails.logger.warn("Facebook conversation lookup failed for inbox: #{@inbox.id} with error: #{e.message}")
+    {}
+  end
 end
