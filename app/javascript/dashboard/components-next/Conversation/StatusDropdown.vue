@@ -23,6 +23,7 @@ import {
 import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import ConversationResolveAttributesModal from 'dashboard/components-next/ConversationWorkflow/ConversationResolveAttributesModal.vue';
+import SelectCategoryDialog from 'dashboard/components-next/Cases/SelectCategoryDialog.vue';
 
 const { STATUS_TYPE } = wootConstants;
 const SNOOZE_UNTIL_ACTION = 'snooze_until';
@@ -33,6 +34,10 @@ const { checkMissingAttributes } = useConversationRequiredAttributes();
 
 const isLoading = ref(false);
 const resolveAttributesModalRef = ref(null);
+const selectCategoryDialogRef = ref(null);
+const isSolving = ref(false);
+// Required attributes filled in before the category is picked, saved with the solve
+const solveCustomAttributes = ref(null);
 const showDropdown = ref(false);
 const toggleDropdown = (value = !showDropdown.value) => {
   showDropdown.value = value;
@@ -126,14 +131,62 @@ const resolveConversation = () => {
   }
 };
 
+const openSelectCategory = (customAttributes = null) => {
+  solveCustomAttributes.value = customAttributes;
+  selectCategoryDialogRef.value?.open(
+    currentChat.value.case?.case_category_id ?? null
+  );
+};
+
+// Solved from the menu asks for the category the case is filed under (spec 7.3)
+const solveConversation = () => {
+  if (isClosed.value) return;
+
+  const currentCustomAttributes = currentChat.value.custom_attributes || {};
+  const { hasMissing, missing } = checkMissingAttributes(
+    currentCustomAttributes
+  );
+
+  if (hasMissing) {
+    resolveAttributesModalRef.value?.open(missing, currentCustomAttributes, {
+      id: currentChat.value.id,
+      snoozedUntil: null,
+      selectCategory: true,
+    });
+  } else {
+    openSelectCategory();
+  }
+};
+
+const onSolve = async ({ caseCategoryId, summary, sendSurvey }) => {
+  isSolving.value = true;
+  try {
+    await store.dispatch('solveConversation', {
+      conversationId: currentChat.value.id,
+      caseCategoryId,
+      summary,
+      sendSurvey,
+      customAttributes: solveCustomAttributes.value,
+    });
+    selectCategoryDialogRef.value?.close();
+    useAlert(t('CONVERSATION.CHANGE_STATUS'));
+  } catch (error) {
+    useAlert(error.message || t('CONVERSATION.CHANGE_STATUS_FAILED'));
+  } finally {
+    isSolving.value = false;
+  }
+};
+
 const handleResolveWithAttributes = ({ attributes, context }) => {
   if (!context) return;
 
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
-  changeStatus(STATUS_TYPE.RESOLVED, context.snoozedUntil, {
-    ...currentCustomAttributes,
-    ...attributes,
-  });
+  const customAttributes = { ...currentCustomAttributes, ...attributes };
+  if (context.selectCategory) {
+    openSelectCategory(customAttributes);
+    return;
+  }
+  changeStatus(STATUS_TYPE.RESOLVED, context.snoozedUntil, customAttributes);
 };
 
 const reopenConversation = () => changeStatus(STATUS_TYPE.OPEN);
@@ -152,9 +205,7 @@ const onMenuAction = ({ action, value }) => {
   if (value === lifecycleStatus.value) return;
 
   if (value === LIFECYCLE_STATUS.SOLVED) {
-    // Seam for the categories PR: Solved will open the Select Category dialog here
-    // and resolve once a category is picked.
-    resolveConversation();
+    solveConversation();
     return;
   }
 
@@ -236,6 +287,11 @@ useEmitter(CMD_RESOLVE_CONVERSATION, resolveConversation);
     <ConversationResolveAttributesModal
       ref="resolveAttributesModalRef"
       @submit="handleResolveWithAttributes"
+    />
+    <SelectCategoryDialog
+      ref="selectCategoryDialogRef"
+      :is-loading="isSolving"
+      @solve="onSolve"
     />
   </div>
 </template>

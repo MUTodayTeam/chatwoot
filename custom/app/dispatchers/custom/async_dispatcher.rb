@@ -1,5 +1,5 @@
 module Custom::AsyncDispatcher
   def listeners
-    super + [CaseListener.instance]
+    super.map { |listener| listener == CsatSurveyListener.instance ? SolveCsatSurveyListener.instance : listener } + [CaseListener.instance]
   end
 end

@@ -985,6 +985,12 @@ const menuItems = computed(() => {
           to: accountScopedRoute('live_chat_rules_index'),
         },
         {
+          name: 'Settings Case Categories',
+          label: t('SIDEBAR.CASE_CATEGORIES'),
+          icon: 'i-lucide-folder-tree',
+          to: accountScopedRoute('case_categories_index'),
+        },
+        {
           name: 'Settings Labels',
           label: t('SIDEBAR.LABELS'),
           icon: 'i-lucide-tags',

@@ -1,0 +1,92 @@
+{
+  "CASE_CATEGORIES": {
+    "HEADER": "Categories",
+    "DESCRIPTION": "The three-level topics agents pick when they solve a chat: Inquiry type, then Category 1 › Category 2 › Category 3, each with its own SLA. Importing a file merges it: a category that already exists is skipped and keeps its SLA.",
+    "LOADING": "Fetching categories",
+    "COUNT": "{n} category | {n} categories",
+    "SEARCH_PLACEHOLDER": "Search categories",
+    "EMPTY": "No categories match.",
+    "INQUIRY_TYPES": {
+      "all": "All",
+      "info": "Info",
+      "request": "Request",
+      "problem": "Problem"
+    },
+    "TABLE": {
+      "INQUIRY_TYPE": "Inquiry type",
+      "C1": "Category 1",
+      "C2": "Category 2",
+      "C3": "Category 3",
+      "SLA": "SLA",
+      "ACTION": "Actions"
+    },
+    "SLA": {
+      "MINUTES": "{n} min",
+      "HOURS": "{n} h",
+      "DAYS": "{n} d",
+      "NONE": "—",
+      "PAIR": "{respond} / {resolve}",
+      "RESPOND": "Respond within",
+      "RESOLVE": "Resolve within"
+    },
+    "COLUMNS": {
+      "TITLE": "Column {column}",
+      "A": "Required · the main group",
+      "B": "The subgroup",
+      "C": "Required · the topic agents pick",
+      "D": "\"Respond within / resolve within\", such as 15 นาที / 1 วัน or 15 min / 1 day · (E) Inquiry type is optional and defaults to Request"
+    },
+    "ADD": {
+      "BUTTON": "Add",
+      "SUCCESS": "Category added",
+      "ERROR": "Could not add the category, please try again"
+    },
+    "DELETE": {
+      "BUTTON": "Delete",
+      "TITLE": "Delete category",
+      "MESSAGE": "Cases filed under it will show as Other. Delete",
+      "YES": "Yes, delete",
+      "NO": "No, keep it",
+      "SUCCESS": "Category deleted",
+      "ERROR": "Could not delete the category, please try again"
+    },
+    "TEMPLATE": "Template .csv",
+    "EXPORT": "Export all",
+    "IMPORT": "Import .csv",
+    "DOWNLOAD_ERROR": "Could not download the file, please try again",
+    "IMPORT_ERROR": "Could not import the file, please try again",
+    "FETCH_ERROR": "Could not load the categories, please try again",
+    "IMPORT_RESULT": {
+      "TITLE": "Import result · {fileName}",
+      "ADDED": "Added",
+      "SKIPPED": "Already there · skipped",
+      "INVALID": "Invalid",
+      "INVALID_ROW": "Line {line} · {reason}",
+      "CLOSE": "Close",
+      "REASONS": {
+        "missing_category": "Category 1 or Category 3 is missing",
+        "invalid_sla": "The SLA could not be read",
+        "invalid_inquiry_type": "The inquiry type is not Info, Request or Problem",
+        "invalid": "The row is not a valid category"
+      }
+    },
+    "SOLVE": {
+      "TITLE": "Solved · Select category",
+      "MANAGE": "Manage",
+      "INQUIRY_TYPE": "Inquiry type",
+      "CURRENT": "Current category:",
+      "NONE_SELECTED": "Not chosen yet, click a row below",
+      "CLEAR": "Clear category",
+      "SEARCH_PLACEHOLDER": "Search…",
+      "COUNT": "{n} item | {n} items",
+      "HINT": "Click a row to choose it",
+      "NO_CATEGORIES": "No categories are set up yet, so this chat is solved as Other.",
+      "SUMMARY_PLACEHOLDER": "Short summary (optional)",
+      "SEND_SURVEY": "Send the thank-you message and survey",
+      "CANCEL": "Cancel",
+      "SUBMIT": "Solved · {name}",
+      "CHOOSE_FIRST": "Choose a category first",
+      "OTHER": "Other"
+    }
+  }
+}

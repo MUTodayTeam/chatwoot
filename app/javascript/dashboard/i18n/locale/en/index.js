@@ -8,6 +8,7 @@ import bulkActions from './bulkActions.json';
 import calls from './calls.json';
 import campaign from './campaign.json';
 import cases from './cases.json';
+import caseCategories from './caseCategories.json';
 import cannedMgmt from './cannedMgmt.json';
 import chatlist from './chatlist.json';
 import companies from './companies.json';
@@ -60,6 +61,7 @@ export default {
   ...calls,
   ...campaign,
   ...cases,
+  ...caseCategories,
   ...cannedMgmt,
   ...chatlist,
   ...companies,
