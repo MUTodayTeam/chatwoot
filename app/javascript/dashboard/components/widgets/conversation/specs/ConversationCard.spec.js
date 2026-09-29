@@ -54,7 +54,6 @@ const mountComponent = (chat, currentContact = {}, props = {}) =>
         'fluent-icon': true,
         ReplyCountdown: false,
         CardTagRow: false,
-        CardChannelBadge: false,
         AutoTransitionCountdown: false,
       },
     },
@@ -97,14 +96,6 @@ describe('ConversationCard', () => {
 
     expect(wrapper.findComponent({ name: 'Icon' }).props('icon')).toBe(
       'i-lucide-bot'
-    );
-  });
-
-  it('puts the channel badge on the avatar', () => {
-    const wrapper = mountComponent({ meta: { channel: 'Channel::Line' } });
-
-    expect(wrapper.findComponent({ name: 'CardChannelBadge' }).text()).toBe(
-      'LN'
     );
   });
 
