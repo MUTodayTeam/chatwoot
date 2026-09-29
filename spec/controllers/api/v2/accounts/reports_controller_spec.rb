@@ -336,6 +336,52 @@ RSpec.describe Api::V2::Accounts::ReportsController, type: :request do
     end
   end
 
+  describe 'GET /api/v2/accounts/{account.id}/reports/agent_productivity' do
+    let(:params) { { since: 1.week.ago.to_i.to_s, until: 1.hour.from_now.to_i.to_s } }
+    let(:path) { "/api/v2/accounts/#{account.id}/reports/agent_productivity" }
+
+    it 'returns unauthorized when unauthenticated' do
+      get path
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns unauthorized to an agent' do
+      get path, params: params, headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns the weights and a row per agent to an admin' do
+      conversation = create(:conversation, account: account, inbox: inbox, assignee: agent)
+      perform_enqueued_jobs { conversation.update!(status: :resolved) }
+
+      get path, params: params, headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body['weights']).to eq('resolved' => 1.0, 'assisted' => 0.5, 'transfer_penalty' => 0.2)
+      expect(body['agents'].sole.keys).to contain_exactly(
+        'id', 'name', 'resolved', 'assisted', 'transfer_out', 'transfer_in', 'general_transfers', 'penalty',
+        'contribution_percent', 'avg_handle_time', 'avg_first_response', 'score'
+      )
+    end
+
+    it 'returns unprocessable entity without a date range' do
+      get path, headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'returns not found for a project of another account' do
+      other_project = Project.create!(account: create(:account), name: 'Other')
+
+      get path, params: params.merge(project_id: other_project.id), headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe 'GET /api/v2/accounts/{account.id}/reports/first_response_time_distribution' do
     let!(:web_widget_inbox) { create(:inbox, account: account, channel: create(:channel_widget, account: account)) }
 

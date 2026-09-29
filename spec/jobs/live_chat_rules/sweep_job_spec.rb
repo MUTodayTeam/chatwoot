@@ -105,6 +105,16 @@ RSpec.describe LiveChatRules::SweepJob do
       expect(conversation.reload).to be_resolved
     end
 
+    it "ends the assignee's turn as auto-solved, so they get the credit" do
+      agent = create(:user, account: account, role: :agent)
+      conversation.update!(assignee: agent)
+      conversation.update_columns(status_changed_at: 25.hours.ago)
+
+      described_class.perform_now
+
+      expect(conversation.handlers.pluck(:user_id, :end_reason)).to eq([[agent.id, 'auto_solved']])
+    end
+
     it 'resolves a conversation that was pending before status changes were timed, by its last update' do
       conversation.update_columns(status_changed_at: nil, updated_at: 25.hours.ago)
 

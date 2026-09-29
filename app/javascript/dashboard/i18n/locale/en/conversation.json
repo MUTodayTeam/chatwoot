@@ -453,6 +453,38 @@
       "EXTEND_TOOLTIP": "Give this conversation {n} more minute | Give this conversation {n} more minutes",
       "EXTENDED": "Added {n} minute to the reply deadline | Added {n} minutes to the reply deadline",
       "EXTEND_ERROR": "Could not extend the reply deadline, please try again"
+    },
+    "TRANSFER": {
+      "BUTTON": "Transfer",
+      "TOOLTIP": "Transfer to another agent with a reason",
+      "TITLE": "Transfer the conversation",
+      "DESCRIPTION": "Hand it to a member of {team}. They see the whole thread, private notes included.",
+      "REASON": "Reason",
+      "REASONS": {
+        "scope": "Out of scope, another team knows it better",
+        "escalate": "Escalate to a lead",
+        "shift": "End of shift or on leave",
+        "general": "General handover"
+      },
+      "NOTE": "Note to the next agent (optional)",
+      "NOTE_PLACEHOLDER": "Saved as a private note. The customer does not see it.",
+      "CREDIT": {
+        "SELF": "You get an Assisted and {time} of handling time. The next agent gets the Resolved when it is solved.",
+        "OTHER": "The current agent gets an Assisted and {time} of handling time. The next agent gets the Resolved when it is solved.",
+        "NEW_ONLY": "The next agent gets the Resolved when it is solved."
+      },
+      "PICK": "Transfer",
+      "NO_TEAM": "No transfer team is set up. An admin can choose one in Settings › Live chat rules.",
+      "NO_AGENTS": "Nobody else in {team} can take it.",
+      "CANCEL": "Cancel",
+      "SUCCESS": "Transferred to {name}",
+      "ERROR": "Could not transfer the conversation, please try again",
+      "FETCH_ERROR": "Could not load the transfer team, please try again"
+    },
+    "REOPEN": {
+      "BUTTON": "Reopen",
+      "SUCCESS": "Conversation reopened",
+      "ERROR": "Could not reopen the conversation, please try again"
     }
   },
   "EMAIL_TRANSCRIPT": {

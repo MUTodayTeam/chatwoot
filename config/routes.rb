@@ -179,6 +179,8 @@ Rails.application.routes.draw do
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
               resource :solve, only: [:create]
+              resource :transfer, only: [:show, :create]
+              resource :reopen, only: [:create]
             end
             member do
               post :mute
@@ -571,6 +573,7 @@ Rails.application.routes.draw do
               get :inbox_label_matrix
               get :agent_daily_matrix
               get :cdp_dashboard
+              get :agent_productivity
               get :first_response_time_distribution
               get :outgoing_messages_count
             end

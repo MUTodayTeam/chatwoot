@@ -118,6 +118,11 @@ en:
       closed_status_change: can only change from closed by reopening the conversation
       closed_requires_resolved: can only be closed after the conversation is resolved
       already_resolved: Conversation is already solved
+      transfer_team_missing: No transfer team is set up in the live chat rules for this project
+      transfer_assignee_invalid: Pick a member of the transfer team other than yourself and the current assignee
+      transfer_reason_invalid: Pick a reason for the transfer
+      transfer_finished: A solved or closed conversation cannot be transferred
+      reopen_not_finished: Only a solved or closed conversation can be reopened
       unread_counts:
         feature_not_enabled: Conversation unread counts feature not enabled for this account
     projects:
@@ -371,6 +376,12 @@ en:
         self_assigned: '%{user_name} self-assigned this conversation'
         assigned: 'Assigned to %{assignee_name} by %{user_name}'
         removed: 'Conversation unassigned by %{user_name}'
+        transferred: 'Transferred to %{assignee_name} by %{user_name} · %{reason}'
+      transfer_reasons:
+        scope: 'Out of scope, another team knows it better'
+        escalate: 'Escalated to a lead'
+        shift: 'End of shift or on leave'
+        general: 'General handover'
       team:
         assigned: 'Assigned to %{team_name} by %{user_name}'
         assigned_with_assignee: 'Assigned to %{assignee_name} via %{team_name} by %{user_name}'

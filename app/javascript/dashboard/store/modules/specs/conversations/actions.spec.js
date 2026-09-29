@@ -651,6 +651,54 @@ describe('#actions', () => {
     });
   });
 
+  describe('#transferConversation', () => {
+    it('posts the assignee, reason and note, then shows the new assignee', async () => {
+      const assignee = { id: 2, name: 'Poy' };
+      axios.post.mockResolvedValue({ data: { conversation_id: 1, assignee } });
+      await actions.transferConversation(
+        { dispatch },
+        { conversationId: 1, assigneeId: 2, reason: 'escalate', note: 'VIP' }
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        '/api/v1/conversations/1/transfer',
+        { assignee_id: 2, reason: 'escalate', note: 'VIP' }
+      );
+      expect(dispatch).toHaveBeenCalledWith('setCurrentChatAssignee', {
+        conversationId: 1,
+        assignee,
+      });
+    });
+
+    it('throws the server reason when refused', async () => {
+      axios.post.mockRejectedValue({
+        response: { data: { message: 'Pick a reason for the transfer' } },
+      });
+      await expect(
+        actions.transferConversation(
+          { dispatch },
+          { conversationId: 1, assigneeId: 2, reason: 'solved' }
+        )
+      ).rejects.toThrow('Pick a reason for the transfer');
+      expect(dispatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('#reopenConversation', () => {
+    it('reopens the conversation and marks it open', async () => {
+      axios.post.mockResolvedValue({
+        data: { conversation_id: 1, current_status: 'open', assignee_id: 2 },
+      });
+      await actions.reopenConversation({ commit }, { conversationId: 1 });
+      expect(axios.post).toHaveBeenCalledWith('/api/v1/conversations/1/reopen');
+      expect(commit.mock.calls).toEqual([
+        [
+          'CHANGE_CONVERSATION_STATUS',
+          { conversationId: 1, status: 'open', snoozedUntil: null },
+        ],
+      ]);
+    });
+  });
+
   describe('#assignTeam', () => {
     it('sends correct mutations if assignment is successful', async () => {
       axios.post.mockResolvedValue({

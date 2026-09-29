@@ -10,6 +10,8 @@ import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDeadlineControl.vue';
 import StatusDropdown from 'dashboard/components-next/Conversation/StatusDropdown.vue';
+import TransferDialog from 'dashboard/components-next/Conversation/TransferDialog.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
@@ -76,6 +78,32 @@ const isHMACVerified = computed(() => {
 const currentContact = computed(() =>
   store.getters['contacts/getContact'](props.chat.meta.sender.id)
 );
+
+// Solved and Closed have no agent to transfer from; they reopen instead (spec 5, 7.4)
+const FINISHED_STATUSES = [
+  wootConstants.STATUS_TYPE.RESOLVED,
+  wootConstants.STATUS_TYPE.CLOSED,
+];
+const isFinished = computed(() =>
+  FINISHED_STATUSES.includes(currentChat.value.status)
+);
+
+const transferDialogRef = ref(null);
+const isReopening = ref(false);
+
+const reopenConversation = async () => {
+  isReopening.value = true;
+  try {
+    await store.dispatch('reopenConversation', {
+      conversationId: currentChat.value.id,
+    });
+    useAlert(t('CONVERSATION.REOPEN.SUCCESS'));
+  } catch (error) {
+    useAlert(error.message || t('CONVERSATION.REOPEN.ERROR'));
+  } finally {
+    isReopening.value = false;
+  }
+};
 
 const isSnoozed = computed(
   () => currentChat.value.status === wootConstants.STATUS_TYPE.SNOOZED
@@ -207,6 +235,32 @@ const copyConversationId = async () => {
         class="hidden md:flex"
       />
       <ConversationCallButton :inbox="inbox" :chat="currentChat" />
+      <Button
+        v-if="isFinished"
+        :label="$t('CONVERSATION.REOPEN.BUTTON')"
+        icon="i-lucide-rotate-ccw"
+        variant="faded"
+        color="slate"
+        size="sm"
+        :is-loading="isReopening"
+        :disabled="isReopening"
+        @click="reopenConversation"
+      />
+      <template v-else>
+        <Button
+          v-tooltip.top="$t('CONVERSATION.TRANSFER.TOOLTIP')"
+          :label="$t('CONVERSATION.TRANSFER.BUTTON')"
+          icon="i-lucide-arrow-right-left"
+          variant="faded"
+          color="slate"
+          size="sm"
+          @click="transferDialogRef?.open()"
+        />
+        <TransferDialog
+          ref="transferDialogRef"
+          :conversation-id="currentChat.id"
+        />
+      </template>
       <StatusDropdown />
       <MoreActions :conversation-id="currentChat.id" />
     </div>

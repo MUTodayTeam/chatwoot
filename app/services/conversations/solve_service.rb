@@ -42,6 +42,8 @@ class Conversations::SolveService
   private
 
   def resolve_and_file
+    # The assignee's turn ends as Solved even when someone else clicks it (design 8.4)
+    ConversationHandler.close_open!(conversation, reason: :solved, ended_by: user)
     conversation.update!(status: :resolved)
     # A conversation solved before anyone took it gets its case now
     kase = Case.ensure_for!(conversation, user)

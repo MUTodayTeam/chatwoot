@@ -53,6 +53,13 @@ class ReportsAPI extends ApiClient {
     });
   }
 
+  getAgentProductivity({ from, to, projectId, signal }) {
+    return axios.get(`${this.url}/agent_productivity`, {
+      params: { since: from, until: to, project_id: projectId },
+      signal,
+    });
+  }
+
   getDrilldown({
     metric,
     bucketTimestamp,

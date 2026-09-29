@@ -53,6 +53,14 @@ class LiveChatRule < ApplicationRecord
     (project && rules.find_by(project_id: project.id)) || rules.find_by(project_id: nil) || new(account: account)
   end
 
+  # The team a project's conversations are transferred to (spec 7.2). Unlike the other
+  # settings it falls back to the account default when the project's own rule leaves it unset,
+  # so a project override does not have to repeat it.
+  def self.transfer_team_for(account, project)
+    rules = account.live_chat_rules.where(project_id: [project&.id, nil].uniq).where.not(transfer_team_id: nil).includes(:transfer_team)
+    rules.max_by { |rule| rule.project_id ? 1 : 0 }&.transfer_team
+  end
+
   private
 
   def transfer_team_in_account

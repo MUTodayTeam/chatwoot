@@ -73,6 +73,24 @@ class ConversationApi extends ApiClient {
     });
   }
 
+  // Who the conversation can be transferred to, and the open turn the credit note refers to
+  getTransfer(conversationId, { signal } = {}) {
+    return axios.get(`${this.url}/${conversationId}/transfer`, { signal });
+  }
+
+  transfer({ conversationId, assigneeId, reason, note = '' }) {
+    return axios.post(`${this.url}/${conversationId}/transfer`, {
+      assignee_id: assigneeId,
+      reason,
+      note,
+    });
+  }
+
+  // Back to Open with the previous agent, or the caller when it had none
+  reopen(conversationId) {
+    return axios.post(`${this.url}/${conversationId}/reopen`);
+  }
+
   togglePriority({ conversationId, priority }) {
     return axios.post(`${this.url}/${conversationId}/toggle_priority`, {
       priority,

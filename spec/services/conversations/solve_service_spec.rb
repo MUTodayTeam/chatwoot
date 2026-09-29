@@ -18,6 +18,14 @@ RSpec.describe Conversations::SolveService do
     expect(conversation.messages.activity.pluck(:content).grep(/\ASolved/).size).to eq(1)
   end
 
+  it "ends the assignee's turn as Solved, by whoever clicked it, before the resolve" do
+    admin = create(:user, account: account, role: :administrator)
+
+    described_class.new(conversation: Conversation.find(conversation.id), user: admin, send_survey: true).perform
+
+    expect(conversation.handlers.pluck(:user_id, :end_reason, :ended_by_id)).to eq([[agent.id, 'solved', admin.id]])
+  end
+
   describe '.survey_skipped!' do
     before do
       travel_to(Time.zone.parse('2026-09-29 10:00:00'))
