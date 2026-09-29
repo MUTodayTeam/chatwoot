@@ -24,11 +24,11 @@ RSpec.describe CaseCategories::ImportService do
 
     it 'adds the new categories with their Thai text and SLA' do
       expect(result[:added].map(&:c3)).to eq(['Overbooking · จองซ้ำห้องเดียวกัน', 'Greeting', 'ลืมรหัสผ่าน / ปลดล็อกบัญชี'])
-      overbooking, greeting, password = result[:added]
+      overbooking, greeting, unlock = result[:added]
       expect(overbooking).to have_attributes(c1: 'โรงแรม / Partner', inquiry_type: 'problem', sla_respond_minutes: 15, sla_resolve_minutes: 240)
       expect(greeting).to have_attributes(inquiry_type: 'info', sla_respond_minutes: 5, sla_resolve_minutes: nil)
       # Inquiry Type is optional and defaults to Request (spec 15)
-      expect(password).to have_attributes(inquiry_type: 'request', sla_respond_minutes: nil, sla_resolve_minutes: nil)
+      expect(unlock).to have_attributes(inquiry_type: 'request', sla_respond_minutes: nil, sla_resolve_minutes: nil)
       expect(CaseCategory.where(account_id: account.id).count).to eq(4)
     end
 
