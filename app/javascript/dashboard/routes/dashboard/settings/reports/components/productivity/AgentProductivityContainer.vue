@@ -165,6 +165,7 @@ onMounted(() => {
           v-model:from="selectedFrom"
           v-model:to="selectedTo"
           v-model:days-num="selectedDaysBefore"
+          default-range="last_30_days"
           @range-type-change="handleRangeTypeChange"
           @month-offset-change="handleMonthOffsetChange"
         />

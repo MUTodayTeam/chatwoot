@@ -7,14 +7,16 @@
 # - resolved: conversations whose latest Solved (or auto-solve) ended the agent's turn, which
 #   is then the conversation's last turn
 # - assisted: conversations the agent had a turn on but did not resolve
-# - transfer_out: the agent's turns that ended in a transfer; general_transfers is the share
-#   that costs the transfer penalty
-# - transfer_in: the agent's turns that started from someone else's transfer
+# - transfer_out: the agent's turns that ended without a Solved while the conversation went on,
+#   whether by a transfer or a plain reassignment; general_transfers is the share that costs the
+#   transfer penalty
+# - transfer_in: the agent's turns that took the conversation over from a different agent, so a
+#   reopen turn of the same agent is not a transfer in
 # - avg_handle_time: seconds per turn
 # - avg_first_response: seconds from the customer's first message to the first agent reply, on
 #   the conversations where the agent had the first turn
 # - score: resolved x 1.0 + assisted x assisted_weight - general_transfers x transfer_penalty,
-#   with the weights of the account's default live chat rule
+#   with the weights of the live chat rule of the selected project, else the account default
 class V2::Reports::AgentProductivityBuilder
   include DateRangeHelper
 
@@ -38,7 +40,7 @@ class V2::Reports::AgentProductivityBuilder
     ),
     ordered_turns AS (
       SELECT handlers.*,
-             LAG(handlers.end_reason) OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS previous_end_reason,
+             LAG(handlers.user_id) OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS previous_user_id,
              ROW_NUMBER() OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at, handlers.id) AS position,
              ROW_NUMBER() OVER (PARTITION BY handlers.conversation_id ORDER BY handlers.started_at DESC, handlers.id DESC) AS position_from_end
       FROM conversation_handlers handlers
@@ -71,9 +73,9 @@ class V2::Reports::AgentProductivityBuilder
     SELECT turns.user_id,
            COUNT(DISTINCT turns.conversation_id) FILTER (WHERE turns.user_id = turns.resolver_id) AS resolved,
            COUNT(DISTINCT turns.conversation_id) FILTER (WHERE turns.resolver_id IS DISTINCT FROM turns.user_id) AS assisted,
-           COUNT(*) FILTER (WHERE turns.end_reason IN (:transfer_reasons)) AS transfer_out,
+           COUNT(*) FILTER (WHERE turns.position_from_end > 1 AND turns.end_reason NOT IN (:solved_reasons)) AS transfer_out,
            COUNT(*) FILTER (WHERE turns.end_reason = :general_reason) AS general_transfers,
-           COUNT(*) FILTER (WHERE turns.previous_end_reason IN (:transfer_reasons)) AS transfer_in,
+           COUNT(*) FILTER (WHERE turns.position > 1 AND turns.previous_user_id <> turns.user_id) AS transfer_in,
            AVG(EXTRACT(EPOCH FROM turns.ended_at - turns.started_at)) AS avg_handle_time,
            AVG(first_responses.seconds) FILTER (WHERE turns.position = 1) AS avg_first_response
     FROM turns
@@ -129,7 +131,7 @@ class V2::Reports::AgentProductivityBuilder
   end
 
   def rule
-    @rule ||= LiveChatRule.for_project(account, nil)
+    @rule ||= LiveChatRule.for_project(account, project)
   end
 
   def stats_sql
@@ -137,7 +139,6 @@ class V2::Reports::AgentProductivityBuilder
       [STATS_SQL, {
         account_id: account.id, since: range.begin, until: range.end, inbox_ids: inbox_ids, resolved_event: 'conversation_resolved',
         solved_reasons: end_reason_values(ConversationHandler::SOLVED_REASONS),
-        transfer_reasons: end_reason_values(ConversationHandler::TRANSFER_REASONS),
         general_reason: ConversationHandler.end_reasons[:general],
         finished_statuses: ConversationHandler::FINISHED_STATUSES.map { |status| Conversation.statuses[status] },
         incoming: Message.message_types[:incoming], outgoing: Message.message_types[:outgoing]
@@ -149,8 +150,11 @@ class V2::Reports::AgentProductivityBuilder
     reasons.map { |reason| ConversationHandler.end_reasons[reason] }
   end
 
+  def project
+    @project ||= account.projects.find(params[:project_id]) if params[:project_id].present?
+  end
+
   def inbox_ids
-    inboxes = params[:project_id].present? ? account.projects.find(params[:project_id]).inboxes : account.inboxes
-    inboxes.pluck(:id)
+    (project ? project.inboxes : account.inboxes).pluck(:id)
   end
 end
