@@ -4,8 +4,8 @@ json.display_id record.display_id
 json.display record.display
 json.subject record.subject
 json.severity record.severity
-# The conversation's status: a case has none of its own
-json.status conversation.status
+# The conversation's status: a case has none of its own. A chat the bot is still holding counts as Open.
+json.status conversation.pending? && conversation.inbox.active_bot? ? 'open' : conversation.status
 json.reopened_count record.reopened_count
 json.created_at record.created_at.to_i
 json.updated_at record.updated_at.to_i
@@ -26,6 +26,7 @@ json.contact do
   json.id conversation.contact.id
   json.name conversation.contact.name
   json.thumbnail conversation.contact.avatar_url
+  json.company_name conversation.contact.additional_attributes['company_name']
 end
 # The owner is whoever the conversation is assigned to
 if conversation.assignee

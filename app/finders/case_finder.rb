@@ -42,11 +42,10 @@ class CaseFinder
     params[:status] == 'active' ? Case::OPEN_STATUSES : params[:status]
   end
 
-  # Owned by me, or a conversation I replied in. Handlers history will widen "handled".
+  # Owned by me, or one I had a turn on (handlers), so solved and reassigned cases stay in My Cases
   def mine(cases)
-    replied = Message.where(account_id: account.id, sender_type: 'User', sender_id: user.id, message_type: :outgoing, private: false)
-                     .select(:conversation_id)
-    cases.where(conversations: { assignee_id: user.id }).or(cases.where(conversation_id: replied))
+    handled = ConversationHandler.where(account_id: account.id, user_id: user.id).select(:conversation_id)
+    cases.where(conversations: { assignee_id: user.id }).or(cases.where(conversation_id: handled))
   end
 
   def current_page

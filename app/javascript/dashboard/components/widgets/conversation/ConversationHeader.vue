@@ -11,6 +11,7 @@ import ReplyDeadlineControl from 'dashboard/components-next/Conversation/ReplyDe
 import StatusDropdown from 'dashboard/components-next/Conversation/StatusDropdown.vue';
 import TransferDialog from 'dashboard/components-next/Conversation/TransferDialog.vue';
 import AssignDialog from 'dashboard/components-next/Conversation/AssignDialog.vue';
+import CaseEditDialog from 'dashboard/components-next/Cases/CaseEditDialog.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
@@ -95,6 +96,7 @@ const isFinished = computed(() =>
 
 const transferDialogRef = ref(null);
 const assignDialogRef = ref(null);
+const caseEditDialogRef = ref(null);
 const isReopening = ref(false);
 
 const reopenConversation = async () => {
@@ -233,8 +235,20 @@ const copyConversationId = async () => {
           </button>
           <template v-if="chat.case">
             <span>•</span>
-            <span class="text-label-small text-n-ruby-11">
+            <button
+              v-tooltip.top="$t('CASES.EDIT.BUTTON')"
+              type="button"
+              class="text-label-small text-n-ruby-11 hover:underline !p-0"
+              @click="caseEditDialogRef?.open(chat.case.id)"
+            >
               {{ $t('CASES.HEADER_CHIP', { display: chat.case.display }) }}
+            </button>
+            <CaseEditDialog ref="caseEditDialogRef" />
+          </template>
+          <template v-else>
+            <span>•</span>
+            <span class="text-label-small text-n-slate-11">
+              {{ $t('CASES.HEADER_NO_CASE') }}
             </span>
           </template>
           <template v-for="tag in headerTags" :key="tag.key">

@@ -50,6 +50,8 @@ describe('caseHelper', () => {
   describe('colours', () => {
     it('maps severities and falls back to low', () => {
       expect(caseSeverityColor('p1')).toBe('ruby');
+      expect(caseSeverityColor('p2')).toBe('amber');
+      expect(caseSeverityColor('p3')).toBe('blue');
       expect(caseSeverityColor('p4')).toBe('slate');
       expect(caseSeverityColor('unknown')).toBe('slate');
     });

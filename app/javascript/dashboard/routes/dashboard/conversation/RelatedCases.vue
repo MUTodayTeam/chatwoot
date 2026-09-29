@@ -1,10 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 import { useAlert } from 'dashboard/composables';
 import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
 import CasesAPI from 'dashboard/api/cases';
+import { useOpenConversationThread } from 'dashboard/composables/useOpenConversationThread';
 import CaseSeverityLabel from 'dashboard/components-next/Cases/CaseSeverityLabel.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -20,9 +20,11 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['count']);
+
 const { t } = useI18n();
-const router = useRouter();
 const { run, isPending } = useAbortableRequest();
+const openConversationThread = useOpenConversationThread();
 
 const cases = ref([]);
 
@@ -31,18 +33,17 @@ const fetchCases = async () => {
     const response = await run(signal =>
       CasesAPI.get({ contact_id: props.contactId }, { signal })
     );
-    if (response) cases.value = response.data.payload;
+    if (response) {
+      cases.value = response.data.payload;
+      emit('count', response.data.meta.count);
+    }
   } catch (error) {
     useAlert(t('CASES.API.ERROR_MESSAGE'));
   }
 };
 
-const openCases = () => {
-  router.push({
-    name: 'cases_index',
-    query: { contact_id: props.contactId },
-  });
-};
+const openCase = kase =>
+  openConversationThread({ id: kase.conversation.id, status: kase.status });
 
 watch(() => [props.contactId, props.caseId], fetchCases, { immediate: true });
 </script>
@@ -60,7 +61,7 @@ watch(() => [props.contactId, props.caseId], fetchCases, { immediate: true });
       :key="kase.id"
       type="button"
       class="flex items-center w-full gap-2 px-2 py-1.5 text-start border rounded-lg border-n-weak hover:bg-n-alpha-1"
-      @click="openCases"
+      @click="openCase(kase)"
     >
       <span class="text-label-small text-n-ruby-11 whitespace-nowrap">
         {{ kase.display }}

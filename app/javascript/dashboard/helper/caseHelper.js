@@ -1,9 +1,9 @@
-// Colours from components-next/label/Label.vue: P1 red, P2 amber, P3 iris (Label has no dark
-// tone for the spec's black), P4 grey (spec 9.2)
+// Colours from components-next/label/Label.vue: P1 red, P2 amber, P3 blue (iris is the On Hold
+// chip's tone, and Label has no dark tone for the spec's black), P4 grey (spec 9.2)
 export const CASE_SEVERITY_COLORS = Object.freeze({
   p1: 'ruby',
   p2: 'amber',
-  p3: 'iris',
+  p3: 'blue',
   p4: 'slate',
 });
 

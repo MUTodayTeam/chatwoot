@@ -53,6 +53,9 @@ class Case < ApplicationRecord
   validate :case_category_belongs_to_account
 
   after_create_commit :create_opened_activity
+  # The header chip reads the case off the conversation, so an agent's edit has to reach open screens.
+  # Solving writes the category and solver on a conversation that is already being broadcast.
+  after_update_commit :broadcast_conversation_updated, if: -> { saved_change_to_subject? || saved_change_to_severity? || saved_change_to_team_id? }
 
   # Opens the case for a conversation the first time an agent takes it, or when it is resolved
   # before anyone did (user is then nil and so is the team). Assignment events can arrive twice
@@ -125,9 +128,13 @@ class Case < ApplicationRecord
       content: opened_activity_content,
       content_attributes: { activity: { type: 'case_opened' } }
     )
-    # The header shows the case, so agents already looking at the conversation need to hear about it.
-    # Only their screens: the assignment that opened the case already dispatched conversation_updated,
-    # and dispatching it again would run automation rules and webhooks twice.
+    broadcast_conversation_updated
+  end
+
+  # The header shows the case, so agents already looking at the conversation need to hear about it.
+  # Only their screens: the assignment that opened the case already dispatched conversation_updated,
+  # and dispatching it again would run automation rules and webhooks twice.
+  def broadcast_conversation_updated
     ActionCableListener.instance.conversation_updated(
       Events::Base.new(Events::Types::CONVERSATION_UPDATED, Time.zone.now, conversation: conversation)
     )
