@@ -1,10 +1,12 @@
 <script setup>
 import { computed, reactive } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Message from './Message.vue';
 import { MESSAGE_TYPES } from './constants.js';
 import { useCamelCase } from 'dashboard/composables/useTransformKeys';
 import { useMapGetter } from 'dashboard/composables/store.js';
 import MessageApi from 'dashboard/api/inbox/message.js';
+import { dayDividerLabel, startsNewDay } from 'dashboard/helper/dayDivider';
 
 /**
  * Props definition for the component
@@ -37,9 +39,16 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  // What each day divider names after the date, such as the project and the channel
+  dayDividerParts: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits(['retry']);
+
+const { t } = useI18n();
 
 const allMessages = computed(() => {
   return useCamelCase(props.messages, {
@@ -169,6 +178,18 @@ const getInReplyToMessage = parentMessage => {
   <ul class="px-4 bg-n-surface-1">
     <slot name="beforeAll" />
     <template v-for="(message, index) in allMessages" :key="message.id">
+      <li
+        v-if="startsNewDay(message, allMessages[index - 1])"
+        class="py-2 list-none uppercase tracking-wider text-label-small text-n-slate-11"
+      >
+        {{
+          dayDividerLabel(
+            message.createdAt,
+            t('CONVERSATION.DAY_DIVIDER.TODAY'),
+            dayDividerParts
+          )
+        }}
+      </li>
       <slot
         v-if="firstUnreadId && message.id === firstUnreadId"
         name="unreadBadge"

@@ -15,7 +15,8 @@ describe AutoAssignOnReplyListener do
       expect { listener.message_created(event) }
         .to have_enqueued_job(Conversations::ActivityMessageJob)
         .with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id, message_type: :activity,
-                              content: "#{agent.name} self-assigned this conversation" })
+                              content: "#{agent.name} self-assigned this conversation",
+                              content_attributes: { activity: { type: 'assignee_changed' } } })
       expect(conversation.reload.assignee).to eq(agent)
       expect(Current.user).to be_nil
     end
