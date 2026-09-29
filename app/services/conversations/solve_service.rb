@@ -1,6 +1,6 @@
 # Solved from the Select Category dialog (spec 7.3). The conversation is resolved the stock way,
-# so events, CSAT and reports treat it like any other resolve, and CaseListener records the
-# resolver and the timeline entry as for every resolve; this files the case under the chosen
+# so events, CSAT and reports treat it like any other resolve, and CaseResolvedListener records
+# the resolver and the timeline entry as for every resolve; this files the case under the chosen
 # category (none is "Other") with the summary, in the same commit.
 class Conversations::SolveService
   # CSAT goes out from an async listener, so skipping it for this one resolve is a flag holding

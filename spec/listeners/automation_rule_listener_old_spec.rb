@@ -41,9 +41,6 @@ describe AutomationRuleListener do
     create(:account_user, user: user_1, account: account)
 
     conversation.resolved!
-    # The resolve opened the conversation's case; its activity message is not what these examples count
-    conversation.messages.activity.delete_all
-    conversation.messages.reset
     automation_rule.update!(actions:
                                       [
                                         {
@@ -459,7 +456,8 @@ describe AutomationRuleListener do
         listener.conversation_opened(event)
         conversation.reload
 
-        expect(conversation.messages.first.content).to eq('Send this message.')
+        # Muting resolves the conversation the rule just assigned, which opens its case; that activity is not what this counts
+        expect(conversation.messages.outgoing.first.content).to eq('Send this message.')
       end
     end
   end

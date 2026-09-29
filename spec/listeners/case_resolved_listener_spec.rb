@@ -22,6 +22,25 @@ describe CaseResolvedListener do
     expect(conversation.reload.case.resolved_by).to eq(admin)
   end
 
+  it 'says Solved after the stock resolved-by entry' do
+    conversation
+    Current.user = admin
+
+    perform_enqueued_jobs(only: Conversations::ActivityMessageJob) { conversation.update!(status: :resolved) }
+
+    contents = conversation.messages.activity.reorder(:id).pluck(:content)
+    expect(contents.index(solved_activity)).to be > contents.index("Conversation was marked resolved by #{admin.name}")
+  end
+
+  it 'opens no case when a bot resolves a conversation nobody took' do
+    unassigned = create(:conversation, account: account, status: :pending)
+    Current.user = create(:agent_bot, account: account)
+
+    expect { unassigned.update!(status: :resolved) }.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+      .with(unassigned, hash_including(content: solved_activity))
+    expect(Case.where(conversation: unassigned)).to be_empty
+  end
+
   it 'records the agent who ran bulk Solved' do
     BulkActionsJob.perform_now(account: account, user: admin,
                                params: { type: 'Conversation', fields: { status: 'resolved' }, ids: [conversation.display_id] })

@@ -32,7 +32,7 @@ class Conversations::FilterService < FilterService
     ).preload(
       inbox: :channel,
       ai_assignee: { avatar_attachment: [:blob] },
-      case: :project
+      case: [:project, :case_category]
     )
 
     Conversations::PermissionFilterService.new(

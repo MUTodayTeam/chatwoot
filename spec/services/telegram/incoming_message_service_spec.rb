@@ -688,7 +688,7 @@ describe Telegram::IncomingMessageService do
 
         # Should use the same conversation
         expect(telegram_channel.inbox.conversations.count).to eq(1)
-        expect(telegram_channel.inbox.conversations.last.messages.incoming.count).to eq(2)
+        expect(telegram_channel.inbox.conversations.last.messages.count).to eq(2)
         expect(telegram_channel.inbox.conversations.last.messages.last.content).to eq('second message')
       end
     end
@@ -721,7 +721,7 @@ describe Telegram::IncomingMessageService do
 
         # Should use the same conversation
         expect(telegram_channel.inbox.conversations.count).to eq(1)
-        expect(telegram_channel.inbox.conversations.last.messages.incoming.count).to eq(2)
+        expect(telegram_channel.inbox.conversations.last.messages.count).to eq(2)
         expect(telegram_channel.inbox.conversations.last.messages.last.content).to eq('second message')
       end
     end
