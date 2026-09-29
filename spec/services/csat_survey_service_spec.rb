@@ -66,7 +66,7 @@ describe CsatSurveyService do
       end
 
       it 'does nothing when CSAT already sent' do
-        create(:message, conversation: conversation, content_type: :input_csat)
+        create(:message, conversation: conversation, message_type: :template, content_type: :input_csat)
 
         service.perform
 

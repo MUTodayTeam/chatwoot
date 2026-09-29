@@ -36,11 +36,11 @@ module Custom::Message
   # finished, so a burst of customer messages reopens it, and hands it over, once.
   def reopen_for_customer
     hand_to_online_teammate
-    conversation.with_lock do
-      next unless finished_conversation?
+    with_locked_conversation do |locked|
+      next unless finished_conversation?(locked)
 
       Current.executed_by = sender if reopened_by_contact?
-      conversation.open!
+      locked.open!
     end
   end
 
@@ -48,32 +48,44 @@ module Custom::Message
   # stays with the agent when nobody is online. It is a save of its own, marked the way the
   # inbox's auto-assignment marks one, so the timeline shows the handover.
   def hand_to_online_teammate
-    conversation.with_lock do
-      next unless finished_conversation? && assignee_offline?
+    with_locked_conversation do |locked|
+      next unless finished_conversation?(locked) && assignee_offline?(locked)
 
-      teammate = online_teammate
+      teammate = online_teammate(locked)
       next unless teammate
 
-      Current.executed_by = conversation.inbox.assignment_policy || conversation.inbox
-      conversation.update!(assignee: teammate)
+      Current.executed_by = locked.inbox.assignment_policy || locked.inbox
+      locked.update!(assignee: teammate)
     end
   ensure
     Current.executed_by = nil
   end
 
-  def finished_conversation?
-    conversation.resolved? || conversation.closed?
+  # Rails refuses to lock a copy with unsaved changes, and a conversation created in this
+  # process carries one (Conversation writes display_id back after create), so each step
+  # locks a freshly loaded row. The message's copy then takes what the row saved, as its
+  # other callbacks (waiting_since, the message.created broadcast) and its caller read it,
+  # and keeps its own unsaved changes.
+  def with_locked_conversation(&)
+    row = Conversation.transaction { Conversation.lock.find(conversation.id).tap(&) }
+    saved = row.attributes.reject { |name, value| conversation.attribute_changed?(name) || conversation.attribute_in_database(name) == value }
+    saved.each { |name, value| conversation[name] = value }
+    conversation.clear_attribute_changes(saved.keys)
   end
 
-  def assignee_offline?
-    conversation.assignee.present? &&
-      conversation.account.account_users.find_by(user_id: conversation.assignee_id)&.availability_status == 'offline'
+  def finished_conversation?(locked)
+    locked.resolved? || locked.closed?
   end
 
-  def online_teammate
-    candidate_ids = conversation.inbox.member_ids_with_assignment_capacity
-    candidate_ids &= conversation.team.members.ids if conversation.team
-    AutoAssignment::AgentAssignmentService.new(conversation: conversation, allowed_agent_ids: candidate_ids).find_assignee
+  def assignee_offline?(locked)
+    locked.assignee.present? &&
+      locked.account.account_users.find_by(user_id: locked.assignee_id)&.availability_status == 'offline'
+  end
+
+  def online_teammate(locked)
+    candidate_ids = locked.inbox.member_ids_with_assignment_capacity
+    candidate_ids &= locked.team.members.ids if locked.team
+    AutoAssignment::AgentAssignmentService.new(conversation: locked, allowed_agent_ids: candidate_ids).find_assignee
   end
 
   # An agent answering a conversation an agent bot or Dialogflow holds takes it from the bot

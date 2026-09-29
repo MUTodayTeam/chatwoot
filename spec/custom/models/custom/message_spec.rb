@@ -140,6 +140,16 @@ RSpec.describe Custom::Message do
       expect(conversation.reload.assignee_id).to eq(handed_to)
     end
 
+    it 'reopens a conversation created in this process and brings its copy up to date' do
+      teammate.account_users.first.update!(auto_offline: false, availability: :online)
+      created_here = create(:conversation, account: conversation.account, inbox: inbox, assignee: agent, status: :resolved)
+
+      create(:message, message_type: :incoming, conversation: created_here)
+
+      expect(created_here).to be_open
+      expect(created_here.assignee).to eq(teammate)
+    end
+
     it 'keeps its offline agent when no teammate is online' do
       create(:message, message_type: :incoming, conversation: conversation)
 
