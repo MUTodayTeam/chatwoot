@@ -92,6 +92,16 @@ RSpec.describe 'Conversation Solve API', type: :request do
     expect(csat_messages.count).to eq(1)
   end
 
+  it 'keeps the survey for a later resolve when the customer reopened before the listener ran' do
+    post path, params: { send_survey: false }, headers: agent.create_new_auth_token, as: :json
+    conversation.reload.open!
+    perform_enqueued_jobs
+
+    perform_enqueued_jobs { conversation.reload.resolved! }
+
+    expect(csat_messages.count).to eq(1)
+  end
+
   it 'refuses a conversation that is already solved' do
     conversation.resolved!
 

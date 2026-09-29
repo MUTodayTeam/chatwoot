@@ -25,6 +25,8 @@ class CaseCategory < ApplicationRecord
   LEVEL_LENGTH = 255
   # A year, like LiveChatRule::MAX_MINUTES
   MAX_SLA_MINUTES = 525_600
+  # Unicode spaces, plus the zero-width space and BOM that text pasted from the web or Excel carries
+  EDGE_SPACE = /\A[[:space:]\u200B\uFEFF]+|[[:space:]\u200B\uFEFF]+\z/
 
   belongs_to :account
 
@@ -46,13 +48,17 @@ class CaseCategory < ApplicationRecord
 
   # Two rows naming the same path, whatever their case or surrounding spaces, are one category
   def self.merge_key_for(*levels)
-    levels.map { |level| level.to_s.strip.downcase }.join('|')
+    levels.map { |level| clean_level(level).downcase }.join('|')
+  end
+
+  def self.clean_level(level)
+    level.to_s.unicode_normalize(:nfc).gsub(EDGE_SPACE, '')
   end
 
   private
 
   def normalize_levels
-    LEVELS.each { |level| self[level] = self[level].to_s.strip }
+    LEVELS.each { |level| self[level] = self.class.clean_level(self[level]) }
     self.merge_key = self.class.merge_key_for(c1, c2, c3)
   end
 end

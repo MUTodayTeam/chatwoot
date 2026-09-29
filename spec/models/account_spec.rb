@@ -16,6 +16,7 @@ RSpec.describe Account do
   it { is_expected.to have_many(:reporting_events) }
   it { is_expected.to have_many(:portals).dependent(:destroy_async) }
   it { is_expected.to have_many(:categories).dependent(:destroy_async) }
+  it { is_expected.to have_many(:case_categories).dependent(:destroy_async) }
   it { is_expected.to have_many(:teams).dependent(:destroy_async) }
 
   # This validation happens in ApplicationRecord

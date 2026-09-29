@@ -11,6 +11,13 @@ RSpec.describe CaseCategory do
       expect([category.c1, category.c2, category.c3]).to eq(['Booking', 'Overbooking', 'Same Room'])
     end
 
+    it 'trims the no-break, full-width and zero-width spaces pasted text carries' do
+      category = create(:case_category, account: account, c1: "\u00A0บัญชี\u3000", c2: "\u200B", c3: "ลืมรหัสผ่าน\u200B\uFEFF")
+
+      expect(category.merge_key).to eq('บัญชี||ลืมรหัสผ่าน')
+      expect([category.c1, category.c2, category.c3]).to eq(['บัญชี', '', 'ลืมรหัสผ่าน'])
+    end
+
     it 'keeps Thai text as it is' do
       category = create(:case_category, account: account, c1: 'บัญชีลูกค้า', c2: '', c3: 'ลืมรหัสผ่าน')
 

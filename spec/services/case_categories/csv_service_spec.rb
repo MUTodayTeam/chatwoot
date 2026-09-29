@@ -35,6 +35,14 @@ RSpec.describe CaseCategories::CsvService do
       )
     end
 
+    it 'writes a level Excel would run as a formula as text, and the import reads it back' do
+      create(:case_category, account: account, c1: '=HYPERLINK("http://example.com","y")', c2: '-', c3: '@ใครก็ได้')
+      csv = described_class.export(CaseCategory.where(account_id: account.id))
+
+      expect(CSV.parse(csv.delete_prefix("\uFEFF")).second.first(3)).to eq(["'=HYPERLINK(\"http://example.com\",\"y\")", "'-", "'@ใครก็ได้"])
+      expect(CaseCategories::ImportService.new(account: account, content: csv).perform).to include(added: [], skipped: 1)
+    end
+
     it 'round-trips through the import as all skipped' do
       create(:case_category, account: account, sla_respond_minutes: 90, sla_resolve_minutes: 2880)
       csv = described_class.export(CaseCategory.where(account_id: account.id))

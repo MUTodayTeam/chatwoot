@@ -2,8 +2,12 @@
 # exists is skipped and its SLA left alone, a new one is added, and a row without Category 1 or
 # Category 3 is invalid. Columns as CaseCategories::CsvService writes them.
 class CaseCategories::ImportService
-  # Excel's plain "CSV" on a Thai system is Windows-874; "CSV UTF-8" and our export are UTF-8
+  # Excel's plain "CSV" on a Thai system is Windows-874; "CSV UTF-8" and our export are UTF-8.
+  # Another legacy code page decodes its accented letters as Thai glued to Latin ones ("Café" reads
+  # "Caf้"), so such a file is refused and the admin asked for CSV UTF-8.
   FALLBACK_ENCODING = 'Windows-874'.freeze
+  FALLBACK_TEXT = /\p{Thai}/
+  FALLBACK_GARBLE = /\p{Latin}\p{Thai}|\p{Thai}\p{Latin}/
   DEFAULT_INQUIRY_TYPE = 'request'.freeze
 
   pattr_initialize [:account!, :content!]
@@ -24,8 +28,12 @@ class CaseCategories::ImportService
 
   def utf8_content
     text = content.dup.force_encoding(Encoding::UTF_8)
-    text = content.dup.force_encoding(FALLBACK_ENCODING).encode(Encoding::UTF_8) unless text.valid_encoding?
-    text.delete_prefix(CaseCategories::CsvService::BOM)
+    return text.delete_prefix(CaseCategories::CsvService::BOM) if text.valid_encoding?
+
+    text = content.dup.force_encoding(FALLBACK_ENCODING).encode(Encoding::UTF_8)
+    raise EncodingError, 'save the file as CSV UTF-8' if !text.match?(FALLBACK_TEXT) || text.match?(FALLBACK_GARBLE)
+
+    text
   end
 
   def header?(row)
@@ -33,7 +41,7 @@ class CaseCategories::ImportService
   end
 
   def import_row(row, line)
-    levels = CaseCategory::LEVELS.zip(row.first(3).map { |value| value.to_s.strip }).to_h
+    levels = CaseCategory::LEVELS.zip(row.first(3).map { |value| CaseCategories::CsvService.unescape(CaseCategory.clean_level(value)) }).to_h
     return invalid(row, line, :missing_category) if levels[:c1].blank? || levels[:c3].blank?
 
     key = CaseCategory.merge_key_for(*levels.values)
@@ -68,6 +76,8 @@ class CaseCategories::ImportService
       @result[:added] << category
     elsif category.errors.of_kind?(:merge_key, :taken)
       @result[:skipped] += 1
+    elsif category.errors.include?(:sla_respond_minutes) || category.errors.include?(:sla_resolve_minutes)
+      invalid(row, line, :invalid_sla)
     else
       invalid(row, line, :invalid)
     end

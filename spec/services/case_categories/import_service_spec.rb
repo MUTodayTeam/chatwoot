@@ -86,6 +86,32 @@ RSpec.describe CaseCategories::ImportService do
     end
   end
 
+  context 'with a file in another legacy code page' do
+    it 'refuses a Latin-1 file instead of reading it as Thai' do
+      expect { described_class.new(account: account, content: "Caf\xE9,,Menu\n".b).perform }.to raise_error(EncodingError)
+      expect { described_class.new(account: account, content: "Voil\xE0,,Menu\n".b).perform }.to raise_error(EncodingError)
+      expect(CaseCategory.where(account_id: account.id).count).to eq(1)
+    end
+  end
+
+  context 'with levels that differ from an existing path only by the spaces pasted text carries' do
+    let(:content) do
+      "คำสั่งซื้อ\u00A0,สถานะคำสั่งซื้อ,ติดตามสถานะคำสั่งซื้อ\u200B,,\n\u3000คำสั่งซื้อ,สถานะคำสั่งซื้อ,ติดตามสถานะคำสั่งซื้อ,,\n"
+    end
+
+    it 'skips them as the same category' do
+      expect(result).to include(added: [], skipped: 2)
+    end
+  end
+
+  context 'with an SLA it reads but the category does not allow' do
+    let(:content) { "Booking,,Same room,0 นาที / 1 วัน,\n" }
+
+    it 'reports it as an SLA problem' do
+      expect(result[:invalid].pluck(:line, :reason)).to eq([[1, :invalid_sla]])
+    end
+  end
+
   context 'with malformed CSV' do
     let(:content) { "Booking,\"Overbooking,Same room\n" }
 
