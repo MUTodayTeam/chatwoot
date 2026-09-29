@@ -58,6 +58,9 @@ useKeyboardEvents(keyboardEvents);
       :index="index"
       :name="item.name"
       :count="item.count"
+      :alert-count="
+        item.key === wootConstants.ASSIGNEE_TYPE.UNASSIGNED && item.count > 0
+      "
       is-compact
     />
   </woot-tabs>

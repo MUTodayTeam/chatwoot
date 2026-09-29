@@ -2,14 +2,15 @@
 import { computed, ref, watch } from 'vue';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
-import Icon from 'dashboard/components-next/icon/Icon.vue';
 import MessagePreview from './MessagePreview.vue';
 import InboxName from '../InboxName.vue';
-import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
 import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
-import UnreadBadge from 'dashboard/components-next/Conversation/ConversationCard/UnreadBadge.vue';
+import CardChannelBadge from 'dashboard/components-next/Conversation/ConversationCard/CardChannelBadge.vue';
+import CardTagRow from 'dashboard/components-next/Conversation/ConversationCard/CardTagRow.vue';
+import ListRowTime from 'dashboard/components-next/Conversation/ConversationCard/ListRowTime.vue';
 import ReplyCountdown from 'dashboard/components-next/Conversation/ReplyCountdown.vue';
+import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
@@ -21,7 +22,6 @@ const props = defineProps({
   inbox: { type: Object, default: () => ({}) },
   selected: { type: Boolean, default: false },
   isActiveChat: { type: Boolean, default: false },
-  showAssignee: { type: Boolean, default: false },
   showInboxName: { type: Boolean, default: false },
   hideThumbnail: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
@@ -51,16 +51,9 @@ const voiceCallData = computed(() => {
   };
 });
 
-const showMetaSection = computed(() => {
-  return (
-    props.showInboxName ||
-    (props.showAssignee && props.assignee.name) ||
-    props.chat.priority
-  );
-});
-
-const isAIAssignee = computed(() =>
-  ['AgentBot', 'Captain::Assistant'].includes(props.chat?.meta?.assignee_type)
+// The assignee is in the tag row now, so it no longer opens this section.
+const showMetaSection = computed(
+  () => props.showInboxName || props.chat.priority
 );
 
 const hasSlaPolicyId = computed(
@@ -108,7 +101,7 @@ watch(
   <div
     class="relative flex items-start flex-grow-0 flex-shrink-0 w-auto max-w-full py-0 cursor-pointer conversation border-b border-n-slate-3 hover:border-n-surface-1 hover:bg-n-alpha-1 dark:hover:bg-n-alpha-3 group hover:z-[1] before:content-[none] before:absolute before:-top-px before:inset-x-0 before:h-px before:bg-n-surface-1 before:pointer-events-none hover:before:content-['']"
     :class="{
-      'active animate-card-select bg-n-background !border-n-surface-1':
+      'active animate-card-select bg-n-alpha-2 !border-n-surface-1':
         isActiveChat,
       'selected bg-n-slate-2 !border-n-surface-1': selected,
       'px-0': compact,
@@ -117,6 +110,10 @@ watch(
     @click="$emit('click', $event)"
     @contextmenu="$emit('contextmenu', $event)"
   >
+    <span
+      v-if="isActiveChat"
+      class="absolute inset-y-0 start-0 w-[0.1875rem] bg-n-brand"
+    />
     <div
       class="relative"
       @mouseenter="onThumbnailHover"
@@ -145,11 +142,7 @@ watch(
             </label>
           </template>
         </Avatar>
-        <UnreadBadge
-          v-if="hasUnread"
-          :count="unreadCount"
-          class="absolute -top-1.5 -start-1.5 z-20"
-        />
+        <CardChannelBadge :chat="chat" class="absolute -bottom-1 -end-1 z-20" />
       </div>
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
@@ -168,16 +161,6 @@ watch(
             'flex-1 justify-between': !showInboxName,
           }"
         >
-          <span
-            v-if="showAssignee && assignee.name"
-            class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center gap-px truncate"
-          >
-            <Icon
-              :icon="isAIAssignee ? 'i-lucide-bot' : 'i-lucide-user-round'"
-              class="size-3 text-n-slate-11 flex-shrink-0"
-            />
-            <span class="truncate">{{ assignee.name }}</span>
-          </span>
           <CardPriorityIcon
             :priority="chat.priority"
             class="flex-shrink-0 !size-3.5"
@@ -186,7 +169,7 @@ watch(
       </div>
       <h4
         class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
-        :class="hasUnread ? 'font-semibold' : 'font-medium'"
+        :class="hasUnread ? 'font-extrabold' : 'font-medium'"
       >
         {{ currentContact.name }}
       </h4>
@@ -223,17 +206,23 @@ watch(
         class="absolute flex flex-col ltr:right-3 rtl:left-3"
         :class="showMetaSection ? 'top-8' : 'top-4'"
       >
-        <span class="ml-auto font-normal leading-4 text-xxs">
-          <TimeAgo
-            :last-activity-timestamp="chat.timestamp"
-            :created-at-timestamp="chat.created_at"
-            :conversation-id="chat.id"
-          />
-        </span>
+        <ListRowTime
+          :last-activity-timestamp="chat.timestamp"
+          :created-at-timestamp="chat.created_at"
+          class="ms-auto font-normal leading-4 text-xxs text-n-slate-11"
+        />
+      </div>
+      <div class="flex items-center gap-1.5 mt-0.5 mx-2 min-w-0">
+        <CardTagRow :chat="chat" :assignee="assignee" class="flex-1" />
         <ReplyCountdown
           :reply-due-at="chat.reply_due_at"
           :status="chat.status"
-          class="ltr:ml-auto rtl:mr-auto mt-1"
+          class="flex-shrink-0"
+        />
+        <AutoTransitionCountdown :chat="chat" class="flex-shrink-0" />
+        <span
+          v-if="hasUnread"
+          class="size-2 rounded-full bg-n-ruby-9 flex-shrink-0"
         />
       </div>
       <CardLabels
