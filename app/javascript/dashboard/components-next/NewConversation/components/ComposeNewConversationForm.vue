@@ -418,6 +418,7 @@ useKeyboardEvents({
         :has-errors="validationStates.isMessageInvalid"
         :channel-type="inboxChannelType"
         :medium="targetInbox?.medium || ''"
+        :inbox-id="targetInbox?.id"
         :copilot="copilot"
       />
 

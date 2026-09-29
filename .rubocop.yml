@@ -31,6 +31,9 @@ Metrics/ClassLength:
     # One handler per broadcast event; it sat at the cap before the reply-deadline
     # broadcast, so any further event here trips the cop.
     - 'app/listeners/action_cable_listener.rb'
+    # One section per widget on the CDP dashboard card, sharing one set of started chats; it
+    # sat at the cap before top topics and average duration, so any further widget trips the cop.
+    - 'app/builders/v2/reports/cdp_dashboard_builder.rb'
 
 Metrics/MethodLength:
   Max: 19

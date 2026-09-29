@@ -10,9 +10,11 @@ export const findPendingMessageIndex = (chat, message) => {
 // "active" is every conversation still being worked on, as the API returns for status=active.
 export const ACTIVE_STATUSES = ['open', 'pending', 'snoozed'];
 
-export const filterByStatus = (chatStatus, filterStatus) => {
+// "missed" is a flag in any status; the payload sends missed_at as 0 when it is not set.
+export const filterByStatus = (chatStatus, filterStatus, missedAt = 0) => {
   if (filterStatus === 'all') return true;
   if (filterStatus === 'active') return ACTIVE_STATUSES.includes(chatStatus);
+  if (filterStatus === 'missed') return Boolean(missedAt);
   return chatStatus === filterStatus;
 };
 
@@ -50,11 +52,12 @@ export const applyPageFilters = (conversation, filters) => {
     meta = {},
     first_reply_created_at: firstReplyOn,
     waiting_since: waitingSince,
+    missed_at: missedAt,
   } = conversation;
   const team = meta.team || {};
   const { id: chatTeamId } = team;
 
-  let shouldFilter = filterByStatus(chatStatus, status);
+  let shouldFilter = filterByStatus(chatStatus, status, missedAt);
   shouldFilter = filterByInbox(shouldFilter, inboxId, chatInboxId);
   shouldFilter = filterByTeam(shouldFilter, teamId, chatTeamId);
   shouldFilter = filterByLabel(shouldFilter, labels, chatLabels);

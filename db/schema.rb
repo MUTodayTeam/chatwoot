@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_29_200000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_29_310000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -405,6 +405,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_200000) do
     t.text "content"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.bigint "project_id"
+    t.index ["project_id"], name: "index_canned_responses_on_project_id"
   end
 
   create_table "captain_assistant_responses", force: :cascade do |t|
@@ -1703,6 +1705,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_200000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "canned_responses", "projects", on_delete: :nullify
   add_foreign_key "cases", "case_categories", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify

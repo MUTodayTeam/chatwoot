@@ -2,12 +2,42 @@ import axios from 'axios';
 import { actions } from '../../inboxes';
 import * as types from '../../../mutation-types';
 import inboxList from './fixtures';
+import InboxesAPI from '../../../../api/inboxes';
 
 const commit = vi.fn();
 global.axios = axios;
 vi.mock('axios');
 
 describe('#actions', () => {
+  describe('#revalidate', () => {
+    const dispatch = vi.fn();
+
+    beforeEach(() => {
+      commit.mockClear();
+      dispatch.mockClear();
+      vi.spyOn(InboxesAPI, 'refetchAndCommit').mockResolvedValue({
+        data: { payload: inboxList },
+      });
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('refetches the projects when the inboxes changed', async () => {
+      vi.spyOn(InboxesAPI, 'validateCacheKey').mockResolvedValue(false);
+      await actions.revalidate({ commit, dispatch }, { newKey: 'new' });
+      expect(commit).toHaveBeenCalledWith(types.default.SET_INBOXES, inboxList);
+      expect(dispatch).toHaveBeenCalledWith('projects/get', null, {
+        root: true,
+      });
+    });
+
+    it('keeps the projects when the inboxes did not change', async () => {
+      vi.spyOn(InboxesAPI, 'validateCacheKey').mockResolvedValue(true);
+      await actions.revalidate({ commit, dispatch }, { newKey: 'same' });
+      expect(dispatch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('#get', () => {
     it('sends correct actions if API is success', async () => {
       const mockedGet = vi.fn(url => {

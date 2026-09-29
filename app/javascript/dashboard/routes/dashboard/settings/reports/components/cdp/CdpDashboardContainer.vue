@@ -17,6 +17,11 @@ import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
 import { useLiveRefresh } from 'dashboard/composables/useLiveRefresh';
 import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
+import {
+  BaseTable,
+  BaseTableRow,
+  BaseTableCell,
+} from 'dashboard/components-next/table';
 import BarChart from 'shared/components/charts/BarChart.vue';
 import HeatmapDateRangeSelector from '../heatmaps/HeatmapDateRangeSelector.vue';
 import IntervalTable from '../interval/IntervalTable.vue';
@@ -24,6 +29,7 @@ import MetricCard from '../overview/MetricCard.vue';
 import {
   DELTA_TONES,
   buildDailyChannelChart,
+  buildTopTopicRows,
   formatCount,
   formatDayWithWeekday,
   formatDeltaPercent,
@@ -59,6 +65,11 @@ const KPIS = [
   {
     key: 'firstResponseTime',
     label: 'OVERVIEW_REPORTS.CDP_DASHBOARD.KPIS.FIRST_RESPONSE_TIME',
+    duration: true,
+  },
+  {
+    key: 'avgDuration',
+    label: 'OVERVIEW_REPORTS.CDP_DASHBOARD.KPIS.AVG_DURATION',
     duration: true,
   },
 ];
@@ -215,6 +226,19 @@ const dailyChart = computed(() =>
   buildDailyChannelChart(dashboard.value.dailyChannels, channelSeries.value)
 );
 
+const topTopicHeaders = computed(() => [
+  t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.TOPIC'),
+  t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.CHATS'),
+  t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.CONTACTS'),
+]);
+
+const topTopics = computed(() =>
+  buildTopTopicRows(
+    dashboard.value.topTopics,
+    t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.OTHER')
+  )
+);
+
 const agentLoad = computed(() =>
   dashboard.value.agentLoad.map(agent => ({
     ...agent,
@@ -338,7 +362,9 @@ onMounted(() => {
       <div v-if="dashboard" class="flex flex-col w-full min-w-0 gap-6">
         <p class="mb-0 text-body-main text-n-slate-11">{{ comparedWith }}</p>
 
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <div
+          class="grid grid-cols-2 gap-4 md:grid-cols-[repeat(auto-fit,minmax(11.25rem,1fr))]"
+        >
           <div
             v-for="card in kpiCards"
             :key="card.key"
@@ -362,9 +388,9 @@ onMounted(() => {
         </div>
 
         <div
-          class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+          class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]"
         >
-          <div class="flex flex-col min-w-0 gap-3">
+          <div class="flex flex-col min-w-0 gap-3 lg:col-span-2 xl:col-span-1">
             <h6 class="mb-0 text-heading-3 text-n-slate-12">
               {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.DAILY_CHANNELS.HEADER') }}
             </h6>
@@ -394,6 +420,49 @@ onMounted(() => {
                 {{ series.label }}
               </span>
             </div>
+          </div>
+
+          <div class="flex flex-col min-w-0 gap-3">
+            <h6 class="mb-0 text-heading-3 text-n-slate-12">
+              {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.HEADER') }}
+            </h6>
+            <BaseTable
+              v-if="topTopics.length"
+              :headers="topTopicHeaders"
+              :items="topTopics"
+            >
+              <template #header-1="{ header }">
+                <span class="block text-end">{{ header }}</span>
+              </template>
+              <template #header-2="{ header }">
+                <span class="block text-end">{{ header }}</span>
+              </template>
+              <template #row="{ items }">
+                <BaseTableRow
+                  v-for="topic in items"
+                  :key="topic.key"
+                  :item="topic"
+                >
+                  <BaseTableCell>
+                    <span
+                      v-tooltip.top="topic.path"
+                      class="block truncate max-w-48 text-n-slate-12"
+                    >
+                      {{ topic.name }}
+                    </span>
+                  </BaseTableCell>
+                  <BaseTableCell align="end" class="tabular-nums">
+                    {{ formatCount(topic.chats, locale) }}
+                  </BaseTableCell>
+                  <BaseTableCell align="end" class="tabular-nums">
+                    {{ formatCount(topic.contacts, locale) }}
+                  </BaseTableCell>
+                </BaseTableRow>
+              </template>
+            </BaseTable>
+            <span v-else class="text-body-main text-n-slate-10">
+              {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.TOP_TOPICS.NO_DATA') }}
+            </span>
           </div>
 
           <div class="flex flex-col min-w-0 gap-3">

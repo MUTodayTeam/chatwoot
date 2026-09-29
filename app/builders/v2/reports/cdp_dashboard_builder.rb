@@ -2,6 +2,8 @@ class V2::Reports::CdpDashboardBuilder
   include DateRangeHelper
   include TimezoneHelper
 
+  TOP_TOPICS_LIMIT = 8
+  TOP_TOPIC_FIELDS = %i[id c1 c2 c3 chats contacts].freeze
   # Anything from 20:00 to 06:59 counts as outside business hours.
   BUSINESS_HOURS = (7..19)
   CHANNEL_KEYS = { 'Channel::Line' => :line, 'Channel::FacebookPage' => :facebook }.freeze
@@ -38,6 +40,17 @@ class V2::Reports::CdpDashboardBuilder
     ) first_reply ON TRUE
   SQL
 
+  # Every agent turn on the conversation, including those after the period; an open turn runs until now.
+  # SUM over no turns is NULL, so AVG leaves out conversations no agent handled.
+  HANDLED_DURATION_SQL = <<~SQL.squish.freeze
+    LEFT JOIN LATERAL (
+      SELECT SUM(EXTRACT(EPOCH FROM COALESCE(handlers.ended_at, :now) - handlers.started_at)) AS seconds
+      FROM conversation_handlers handlers
+      WHERE handlers.conversation_id = started.conversation_id
+        AND handlers.account_id = :account_id
+    ) handled ON TRUE
+  SQL
+
   attr_reader :account, :params
 
   def initialize(account:, params:)
@@ -46,8 +59,8 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def build
-    { period: period, kpis: kpis, daily_channels: daily_channels, interval_summary: interval_summary, interval_heatmap: interval_heatmap,
-      agent_load: agent_load }
+    { period: period, kpis: kpis, daily_channels: daily_channels, top_topics: top_topics, interval_summary: interval_summary,
+      interval_heatmap: interval_heatmap, agent_load: agent_load }
   end
 
   private
@@ -70,7 +83,7 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def period_metrics(period_range)
-    total_chats, missed_chats, expired_chats, first_response_time = started_chat_stats(period_range)
+    total_chats, missed_chats, expired_chats, first_response_time, avg_duration = started_chat_stats(period_range)
     # Outgoing counts only agent (User) messages; bot, automation and Captain replies are left out.
     messages = account.messages.unscope(:order).where(inbox_id: inbox_ids, created_at: period_range, private: false)
     message_counts = messages.where(message_type: :incoming).or(messages.where(message_type: :outgoing, sender_type: 'User'))
@@ -82,18 +95,21 @@ class V2::Reports::CdpDashboardBuilder
       outgoing_messages: message_counts['outgoing'] || 0,
       missed_chats: missed_chats,
       expired_chats: expired_chats,
-      first_response_time: first_response_time&.round
+      first_response_time: first_response_time&.round,
+      avg_duration: avg_duration&.round
     }
   end
 
-  # AVG skips conversations without an agent reply, so they count as chats but not towards first response.
+  # AVG skips conversations without an agent reply, so they count as chats but not towards first response,
+  # and those no agent handled, so they do not count towards the average duration.
   # Missed and expired are flags the sweep sets whenever it happens, so a chat that started in the
   # period counts once flagged, even if that came after the period ended.
   def started_chat_stats(period_range)
     started_conversations(period_range)
       .joins(sanitize(FIRST_AGENT_REPLY_SQL, outgoing: Message.message_types[:outgoing]))
+      .joins(sanitize(HANDLED_DURATION_SQL, now: now))
       .pick(Arel.sql('COUNT(*)'), Arel.sql('COUNT(conversations.missed_at)'), Arel.sql('COUNT(conversations.expired_at)'),
-            Arel.sql('AVG(EXTRACT(EPOCH FROM first_reply.replied_at - started.started_at))'))
+            Arel.sql('AVG(EXTRACT(EPOCH FROM first_reply.replied_at - started.started_at))'), Arel.sql('AVG(handled.seconds)'))
   end
 
   def delta_percent(current, previous)
@@ -120,6 +136,22 @@ class V2::Reports::CdpDashboardBuilder
                       .each_with_object(Hash.new { |hash, day| hash[day] = Hash.new(0) }) do |((channel_type, day), count), result|
                         result[day][CHANNEL_KEYS.fetch(channel_type, :others)] += count
                       end
+  end
+
+  # The period's chats by their case's category. A solved case without one is "Other" (id nil); an unsolved one
+  # has no topic yet, and a chat without a case never got one, so both are left out.
+  def top_topics
+    started_conversations(range)
+      .joins(:case)
+      .joins('LEFT JOIN case_categories ON case_categories.id = cases.case_category_id')
+      .where('cases.case_category_id IS NOT NULL OR conversations.status IN (?)',
+             Conversation.statuses.values_at(*ConversationHandler::FINISHED_STATUSES))
+      .group('case_categories.id')
+      .order(Arel.sql('COUNT(*) DESC, COUNT(DISTINCT conversations.contact_id) DESC, case_categories.c3 NULLS LAST'))
+      .limit(TOP_TOPICS_LIMIT)
+      .pluck('case_categories.id', 'case_categories.c1', 'case_categories.c2', 'case_categories.c3',
+             Arel.sql('COUNT(*)'), Arel.sql('COUNT(DISTINCT conversations.contact_id)'))
+      .map { |row| TOP_TOPIC_FIELDS.zip(row).to_h }
   end
 
   def interval_summary
@@ -199,6 +231,11 @@ class V2::Reports::CdpDashboardBuilder
       last_day = (range.end - 1.second).in_time_zone(timezone).to_date
       (first_day..last_day).to_a
     end
+  end
+
+  # One clock for both periods, so an open turn is measured to the same moment in each.
+  def now
+    @now ||= Time.current
   end
 
   def timezone

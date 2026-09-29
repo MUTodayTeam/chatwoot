@@ -92,6 +92,17 @@ describe('useFilter', () => {
       ]);
     });
 
+    it('should leave the status out for the missed list', () => {
+      const { initializeStatusAndAssigneeFilterToModal } = useFilter({
+        filteri18nKey: 'TEST',
+        attributeModel: 'conversation',
+      });
+
+      expect(initializeStatusAndAssigneeFilterToModal('missed', {}, '')).toBe(
+        null
+      );
+    });
+
     it('should return null when no active filters', () => {
       const { initializeStatusAndAssigneeFilterToModal } = useFilter({
         filteri18nKey: 'TEST',

@@ -13,6 +13,8 @@ export default {
     CLOSED: 'closed',
     // open, pending and snoozed together: every conversation still being worked on
     ACTIVE: 'active',
+    // missed_at is set, in any status: nobody took the conversation in time
+    MISSED: 'missed',
     ALL: 'all',
   },
   CONVERSATION_TYPE: {

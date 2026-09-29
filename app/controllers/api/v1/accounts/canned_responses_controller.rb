@@ -43,3 +43,4 @@ class Api::V1::Accounts::CannedResponsesController < Api::V1::Accounts::BaseCont
     end
   end
 end
+Api::V1::Accounts::CannedResponsesController.prepend_mod_with('Api::V1::Accounts::CannedResponsesController')

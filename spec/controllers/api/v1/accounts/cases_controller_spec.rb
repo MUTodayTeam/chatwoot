@@ -62,6 +62,25 @@ RSpec.describe 'Cases API', type: :request do
       expect(response.parsed_body['payload'].pluck('id')).to eq([hidden_case.id])
     end
 
+    it 'counts the cases of the selected project only' do
+      create(:case, conversation: create(:conversation, account: account, inbox: other_inbox, status: :resolved))
+
+      get path, params: { project_id: project.id }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['meta']).to include('count' => 1, 'open_count' => 1)
+    end
+
+    it "gives the conversation's status clock for the auto-close countdown" do
+      conversation.resolved!
+      legacy = hidden_case.conversation
+      legacy.update_columns(status_changed_at: nil, updated_at: 3.hours.ago) # rubocop:disable Rails/SkipsModelValidations
+
+      get path, headers: admin.create_new_auth_token
+
+      clocks = response.parsed_body['payload'].to_h { |kase| [kase['id'], kase['conversation']['status_changed_at']] }
+      expect(clocks).to eq(agent_case.id => conversation.reload.status_changed_at.to_i, hidden_case.id => legacy.reload.updated_at.to_i)
+    end
+
     it 'counts the open cases apart from the Solved and Closed ones' do
       hidden_case.conversation.resolved!
 

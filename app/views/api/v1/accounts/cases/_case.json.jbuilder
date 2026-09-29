@@ -19,6 +19,8 @@ json.conversation do
   json.id conversation.display_id
   json.inbox_id conversation.inbox_id
   json.channel conversation.inbox.channel_type
+  # The sweep's status clock (LiveChatRules::SweepJob::STATUS_CLOCK), for the auto-close countdown
+  json.status_changed_at (conversation.status_changed_at || conversation.updated_at).to_i
 end
 json.contact do
   json.id conversation.contact.id

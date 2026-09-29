@@ -29,6 +29,8 @@ import PaginationFooter from 'dashboard/components-next/pagination/PaginationFoo
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import CaseSeverityLabel from 'dashboard/components-next/Cases/CaseSeverityLabel.vue';
 import CaseStatusLabel from 'dashboard/components-next/Cases/CaseStatusLabel.vue';
+import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
+import ContactProjectFilter from 'dashboard/components-next/Contacts/ContactProjectFilter.vue';
 import ChannelName from 'dashboard/routes/dashboard/settings/inbox/components/ChannelName.vue';
 
 // Matches CaseFinder::RESULTS_PER_PAGE
@@ -43,6 +45,7 @@ const openConversationThread = useOpenConversationThread();
 
 const teams = useMapGetter('teams/getTeams');
 const inboxGetter = useMapGetter('inboxes/getInbox');
+const liveChatRules = useMapGetter('liveChatRules/getLiveChatRules');
 
 const cases = ref([]);
 const meta = ref({ count: 0, open_count: 0 });
@@ -51,6 +54,8 @@ const hasLoaded = ref(false);
 // Seeded from the URL so a shared link, or the contact panel, opens the same view
 const activeTabKey = ref(route.query.tab || CASE_TABS.ALL);
 const contactId = ref(route.query.contact_id || null);
+// The header counts follow it: CaseFinder scopes count and open_count by project_id
+const projectId = ref(Number(route.query.project_id) || null);
 const currentPage = ref(Number(route.query.page) || 1);
 
 const tabLabel = tab => {
@@ -89,6 +94,15 @@ const summary = computed(
 
 const inboxMedium = inboxId => inboxGetter.value(inboxId)?.medium;
 
+// The countdown reads a case as the conversation it mirrors. Pending shows none, as in the
+// list row: the sweep skips pending conversations in an inbox with an active bot, which
+// the client cannot tell (see getAutoTransition).
+const countdownConversation = kase => ({
+  inbox_id: kase.conversation.inbox_id,
+  status: kase.status,
+  status_changed_at: kase.conversation.status_changed_at,
+});
+
 // Picked when the case was solved: a solved case without one is "Other", an open one has none yet
 const caseTopic = kase => {
   if (kase.category) return kase.category.c3;
@@ -102,6 +116,7 @@ const syncFiltersToUrl = () => {
     query: {
       ...(activeTabKey.value !== CASE_TABS.ALL && { tab: activeTabKey.value }),
       ...(contactId.value && { contact_id: contactId.value }),
+      ...(projectId.value && { project_id: projectId.value }),
       ...(currentPage.value > 1 && { page: currentPage.value }),
     },
   });
@@ -115,6 +130,7 @@ const fetchCases = async () => {
         {
           ...caseTabParams(activeTab.value),
           ...(contactId.value && { contact_id: contactId.value }),
+          ...(projectId.value && { project_id: projectId.value }),
           page: currentPage.value,
         },
         { signal }
@@ -139,7 +155,7 @@ const clearContactFilter = () => {
   contactId.value = null;
 };
 
-watch([activeTabKey, contactId], () => {
+watch([activeTabKey, contactId, projectId], () => {
   currentPage.value = 1;
   fetchCases();
 });
@@ -155,6 +171,7 @@ const openThread = kase =>
 onMounted(() => {
   store.dispatch('teams/get');
   store.dispatch('inboxes/get');
+  if (!liveChatRules.value.length) store.dispatch('liveChatRules/get');
   fetchCases();
 });
 </script>
@@ -177,6 +194,7 @@ onMounted(() => {
           :initial-active-tab="activeTabIndex"
           @tab-changed="onTabChange"
         />
+        <ContactProjectFilter v-model="projectId" />
         <div v-if="contactId" class="flex items-center gap-2">
           <span class="text-body-main text-n-slate-11">
             {{ t('CASES.CONTACT_FILTER') }}
@@ -262,6 +280,7 @@ onMounted(() => {
                 >
                   {{ t('CASES.REOPENED', { count: kase.reopened_count }) }}
                 </span>
+                <AutoTransitionCountdown :chat="countdownConversation(kase)" />
               </div>
             </BaseTableCell>
             <BaseTableCell>
