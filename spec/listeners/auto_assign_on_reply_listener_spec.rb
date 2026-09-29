@@ -90,5 +90,27 @@ describe AutoAssignOnReplyListener do
         expect(conversation.reload.assignee).to be_nil
       end
     end
+
+    context 'when the inbox belongs to a project with teams' do
+      let(:project) { Project.create!(account: account, name: 'Share') }
+      let(:team) { create(:team, account: account) }
+
+      before do
+        conversation.inbox.update!(project: project)
+        project.teams << team
+      end
+
+      it 'does not assign an inbox member outside those teams' do
+        listener.message_created(event)
+        expect(conversation.reload.assignee).to be_nil
+      end
+
+      it 'assigns a member of those teams' do
+        create(:team_member, team: team, user: agent)
+
+        listener.message_created(event)
+        expect(conversation.reload.assignee).to eq(agent)
+      end
+    end
   end
 end

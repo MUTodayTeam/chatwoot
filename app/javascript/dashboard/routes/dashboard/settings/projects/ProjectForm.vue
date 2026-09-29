@@ -9,6 +9,7 @@ import { getRandomColor } from 'dashboard/helper/labelColor';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
 
 const props = defineProps({
   project: {
@@ -33,10 +34,15 @@ const code = ref('');
 const description = ref('');
 const color = ref('#000000');
 const selectedInboxIds = ref([]);
+const selectedTeamIds = ref([]);
 const logo = ref(null);
 const logoUrl = ref('');
 
 const inboxes = useMapGetter('inboxes/getInboxes');
+const teams = useMapGetter('teams/getTeams');
+const teamOptions = computed(() =>
+  teams.value.map(team => ({ value: team.id, label: team.name }))
+);
 const uiFlags = useMapGetter('projects/getUIFlags');
 
 const rules = {
@@ -89,6 +95,7 @@ const toggleInbox = inboxId => {
 
 onMounted(() => {
   store.dispatch('inboxes/get');
+  store.dispatch('teams/get');
 
   if (isEditing.value) {
     name.value = props.project.name;
@@ -96,6 +103,7 @@ onMounted(() => {
     description.value = props.project.description ?? '';
     color.value = props.project.color || getRandomColor();
     selectedInboxIds.value = [...(props.project.inboxIds ?? [])];
+    selectedTeamIds.value = [...(props.project.teamIds ?? [])];
     logoUrl.value = props.project.avatarUrl ?? '';
   } else {
     color.value = getRandomColor();
@@ -109,6 +117,7 @@ const onSubmit = async () => {
     description: description.value,
     color: color.value,
     inboxIds: selectedInboxIds.value,
+    teamIds: selectedTeamIds.value,
     logo: logo.value,
   };
 
@@ -195,6 +204,20 @@ const isSaving = computed(
           {{ $t('PROJECT_MGMT.FORM.COLOR.LABEL') }}
           <woot-color-picker v-model="color" />
         </label>
+      </div>
+
+      <div class="w-full mt-2">
+        <label class="block mb-1">
+          {{ $t('PROJECT_MGMT.FORM.TEAMS.LABEL') }}
+        </label>
+        <TagMultiSelectComboBox
+          v-model="selectedTeamIds"
+          :options="teamOptions"
+          :placeholder="$t('PROJECT_MGMT.FORM.TEAMS.PLACEHOLDER')"
+          :search-placeholder="$t('PROJECT_MGMT.FORM.TEAMS.SEARCH_PLACEHOLDER')"
+          :empty-state="$t('PROJECT_MGMT.FORM.TEAMS.EMPTY')"
+          :message="$t('PROJECT_MGMT.FORM.TEAMS.HELP')"
+        />
       </div>
 
       <div class="w-full mt-2">

@@ -24,6 +24,17 @@ const selectedProject = ref(null);
 const records = useMapGetter('projects/getProjects');
 const uiFlags = useMapGetter('projects/getUIFlags');
 const inboxes = useMapGetter('inboxes/getInboxes');
+const teams = useMapGetter('teams/getTeams');
+
+const teamNamesFor = project => {
+  const ids = project.teamIds ?? [];
+  const names = teams.value
+    .filter(team => ids.includes(team.id))
+    .map(team => team.name);
+  return names.length
+    ? names.join(', ')
+    : t('PROJECT_MGMT.LIST.ALL_INBOX_MEMBERS');
+};
 
 const inboxNamesFor = project => {
   const ids = project.inboxIds ?? [];
@@ -73,6 +84,7 @@ const confirmDeletion = async () => {
 const tableHeaders = computed(() => [
   t('PROJECT_MGMT.LIST.TABLE_HEADER.NAME'),
   t('PROJECT_MGMT.LIST.TABLE_HEADER.DESCRIPTION'),
+  t('PROJECT_MGMT.LIST.TABLE_HEADER.TEAMS'),
   t('PROJECT_MGMT.LIST.TABLE_HEADER.INBOXES'),
   t('PROJECT_MGMT.LIST.TABLE_HEADER.ACTION'),
 ]);
@@ -80,6 +92,7 @@ const tableHeaders = computed(() => [
 onBeforeMount(() => {
   store.dispatch('projects/get');
   store.dispatch('inboxes/get');
+  store.dispatch('teams/get');
 });
 </script>
 
@@ -138,6 +151,12 @@ onBeforeMount(() => {
               <BaseTableCell>
                 <span class="text-body-main text-n-slate-11">
                   {{ project.description }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell>
+                <span class="text-body-main text-n-slate-11">
+                  {{ teamNamesFor(project) }}
                 </span>
               </BaseTableCell>
 

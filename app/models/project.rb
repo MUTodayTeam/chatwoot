@@ -22,6 +22,8 @@ class Project < ApplicationRecord
   belongs_to :account
   has_many :inboxes, dependent: :nullify
   has_many :live_chat_rules, dependent: :destroy
+  has_many :project_teams, dependent: :delete_all
+  has_many :teams, through: :project_teams
   has_many :cases, dependent: :nullify
 
   # The case number prefix, as in CK-858
@@ -29,4 +31,11 @@ class Project < ApplicationRecord
 
   validates :name, presence: true, uniqueness: { scope: :account_id }
   validates :code, length: { maximum: 10 }, format: { with: /\A[A-Z0-9]+\z/ }, allow_nil: true
+
+  # Members of the teams entitled to this project's chats, or nil when no team is set,
+  # in which case every inbox member stays entitled as in stock Chatwoot.
+  def entitled_user_ids
+    team_ids = project_teams.pluck(:team_id)
+    TeamMember.where(team_id: team_ids).distinct.pluck(:user_id) if team_ids.any?
+  end
 end

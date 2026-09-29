@@ -15,6 +15,20 @@ import EditAgent from './EditAgent.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
+import {
+  BaseTable,
+  BaseTableRow,
+  BaseTableCell,
+} from 'dashboard/components-next/table';
+import {
+  ALL_OPTIONS_VALUE,
+  filterAgents,
+  mapTeamIdsByAgent,
+  projectsForTeams,
+} from './helpers/agentAccessHelper';
+
+const ROLES = ['administrator', 'agent'];
 
 const getters = useStoreGetters();
 const store = useStore();
@@ -27,6 +41,8 @@ const showEditPopup = ref(false);
 const agentAPI = ref({ message: '' });
 const currentAgent = ref({});
 const searchQuery = ref('');
+const roleFilter = ref(ALL_OPTIONS_VALUE);
+const projectFilter = ref(ALL_OPTIONS_VALUE);
 
 const deleteConfirmText = computed(
   () => `${t('AGENT_MGMT.DELETE.CONFIRM.YES')} ${currentAgent.value.name}`
@@ -40,19 +56,90 @@ const deleteMessage = computed(() => {
 
 const agentList = computed(() => getters['agents/getAgents'].value);
 
+const teams = useMapGetter('teams/getTeams');
+const teamMembersOf = useMapGetter('teamMembers/getTeamMembers');
+const projects = useMapGetter('projects/getProjects');
+
+const teamIdsByAgent = computed(() =>
+  mapTeamIdsByAgent(teams.value, teamMembersOf.value)
+);
+const teamIdsOf = agent => teamIdsByAgent.value[agent.id] ?? [];
+const projectsOf = agent => projectsForTeams(projects.value, teamIdsOf(agent));
+
+const teamNamesOf = agent =>
+  teams.value
+    .filter(team => teamIdsOf(agent).includes(team.id))
+    .map(team => team.name)
+    .join(', ');
+const projectNamesOf = agent =>
+  projectsOf(agent)
+    .map(project => project.name)
+    .join(', ');
+
+const roleOptions = computed(() => [
+  { value: ALL_OPTIONS_VALUE, label: t('AGENT_MGMT.FILTER.ALL_ROLES') },
+  ...ROLES.map(role => ({
+    value: role,
+    label: t(`AGENT_MGMT.AGENT_TYPES.${role.toUpperCase()}`),
+  })),
+]);
+const projectOptions = computed(() => [
+  { value: ALL_OPTIONS_VALUE, label: t('AGENT_MGMT.FILTER.ALL_PROJECTS') },
+  ...projects.value.map(project => ({
+    value: project.id,
+    label: project.name,
+  })),
+]);
+
+const isFiltering = computed(
+  () =>
+    Boolean(searchQuery.value.trim()) ||
+    roleFilter.value !== ALL_OPTIONS_VALUE ||
+    projectFilter.value !== ALL_OPTIONS_VALUE
+);
+
 const filteredAgentList = computed(() => {
   const query = searchQuery.value.trim();
-  if (!query) return agentList.value;
-  return picoSearch(agentList.value, query, ['name', 'email']);
+  const searched = query
+    ? picoSearch(agentList.value, query, ['name', 'email'])
+    : agentList.value;
+  return filterAgents(
+    searched,
+    { role: roleFilter.value, projectId: projectFilter.value },
+    agent => projectsOf(agent).map(project => project.id)
+  );
 });
+
+const tableHeaders = computed(() => [
+  t('AGENT_MGMT.LIST.NAME'),
+  t('AGENT_MGMT.LIST.EMAIL'),
+  t('AGENT_MGMT.LIST.ROLE'),
+  t('AGENT_MGMT.LIST.TEAMS'),
+  t('AGENT_MGMT.LIST.PROJECTS'),
+  t('AGENT_MGMT.LIST.STATUS'),
+  t('AGENT_MGMT.LIST.ACTIONS'),
+]);
 
 const uiFlags = computed(() => getters['agents/getUIFlags'].value);
 const currentUserId = computed(() => getters.getCurrentUserID.value);
 const customRoles = useMapGetter('customRole/getCustomRoles');
 
+// Team membership is loaded per team, so the list can show each agent's teams and the
+// projects those teams are entitled to.
+const fetchTeamMembers = async () => {
+  await store.dispatch('teams/get');
+  await Promise.all(
+    teams.value.map(team =>
+      store.dispatch('teamMembers/get', { teamId: team.id })
+    )
+  );
+};
+
 onMounted(() => {
   store.dispatch('agents/get');
   store.dispatch('customRole/getCustomRole');
+  store.dispatch('projects/get');
+  fetchTeamMembers();
 });
 
 const findCustomRole = agent =>
@@ -166,6 +253,16 @@ const confirmDeletion = () => {
           </span>
         </template>
         <template #actions>
+          <Select
+            v-model="projectFilter"
+            :options="projectOptions"
+            :aria-label="$t('AGENT_MGMT.FILTER.PROJECT')"
+          />
+          <Select
+            v-model="roleFilter"
+            :options="roleOptions"
+            :aria-label="$t('AGENT_MGMT.FILTER.ROLE')"
+          />
           <Button
             :label="$t('AGENT_MGMT.HEADER_BTN_TXT')"
             size="sm"
@@ -176,36 +273,37 @@ const confirmDeletion = () => {
     </template>
     <template #body>
       <span
-        v-if="!filteredAgentList.length && searchQuery"
+        v-if="!filteredAgentList.length && isFiltering"
         class="flex-1 flex items-center justify-center py-20 text-center text-body-main !text-base text-n-slate-11"
       >
         {{ $t('AGENT_MGMT.NO_RESULTS') }}
       </span>
-      <div v-else class="divide-y divide-n-weak border-t border-n-weak">
-        <div
-          v-for="(agent, index) in filteredAgentList"
-          :key="agent.email"
-          class="flex justify-between flex-row items-start gap-4 py-4"
-        >
-          <div class="flex items-center gap-4">
-            <Avatar
-              :src="agent.thumbnail"
-              :name="agent.name"
-              :status="agent.availability_status"
-              :size="40"
-              hide-offline-status
-            />
-            <div class="flex flex-col gap-1.5 items-start">
-              <span class="block text-heading-3 text-n-slate-12 capitalize">
-                {{ agent.name }}
-              </span>
-              <div class="flex items-center gap-2">
-                <span class="text-body-main text-n-slate-11">
-                  {{ agent.email }}
-                </span>
-                <div class="w-px h-3 bg-n-strong rounded-lg" />
+      <div v-else class="overflow-x-auto">
+        <BaseTable :headers="tableHeaders" :items="filteredAgentList">
+          <template #row="{ items }">
+            <BaseTableRow
+              v-for="agent in items"
+              :key="agent.email"
+              :item="agent"
+            >
+              <BaseTableCell>
+                <div class="flex items-center gap-3">
+                  <Avatar
+                    :src="agent.thumbnail"
+                    :name="agent.name"
+                    :status="agent.availability_status"
+                    :size="32"
+                    hide-offline-status
+                  />
+                  <span class="text-body-main text-n-slate-12 capitalize">
+                    {{ agent.name }}
+                  </span>
+                </div>
+              </BaseTableCell>
+              <BaseTableCell>{{ agent.email }}</BaseTableCell>
+              <BaseTableCell>
                 <span
-                  class="block w-fit text-body-main text-n-slate-11 relative"
+                  class="block w-fit relative"
                   :class="{
                     'hover:text-n-slate-12 group cursor-pointer':
                       agent.custom_role_id,
@@ -214,14 +312,14 @@ const confirmDeletion = () => {
                   {{ getAgentRoleName(agent) }}
 
                   <div
-                    class="absolute ltr:left-0 rtl:right-0 z-10 hidden w-[300px] bg-n-alpha-3 backdrop-blur-[100px] rounded-xl outline outline-1 outline-n-container shadow-lg top-14 md:top-12"
+                    class="absolute start-0 z-10 hidden w-[300px] bg-n-alpha-3 backdrop-blur-[100px] rounded-xl outline outline-1 outline-n-container shadow-lg top-8"
                     :class="{ 'group-hover:block': agent.custom_role_id }"
                   >
                     <div class="flex flex-col gap-1 p-4">
                       <span class="text-heading-3 text-n-slate-12">
                         {{ $t('AGENT_MGMT.LIST.AVAILABLE_CUSTOM_ROLE') }}
                       </span>
-                      <ul class="ltr:pl-4 rtl:pr-4 mb-0 list-disc">
+                      <ul class="ps-4 mb-0 list-disc">
                         <li
                           v-for="permission in getAgentRolePermissions(agent)"
                           :key="permission"
@@ -237,43 +335,41 @@ const confirmDeletion = () => {
                     </div>
                   </div>
                 </span>
-                <div class="w-px h-3 bg-n-strong rounded-lg" />
-                <span
-                  v-if="agent.confirmed"
-                  class="text-body-main text-n-slate-11"
-                >
-                  {{ $t('AGENT_MGMT.LIST.VERIFIED') }}
-                </span>
-                <span
-                  v-if="!agent.confirmed"
-                  class="text-body-main text-n-slate-11"
-                >
-                  {{ $t('AGENT_MGMT.LIST.VERIFICATION_PENDING') }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3">
-            <Button
-              v-if="showEditAction(agent)"
-              v-tooltip.top="$t('AGENT_MGMT.EDIT.BUTTON_TEXT')"
-              icon="i-woot-edit-pen"
-              slate
-              sm
-              @click="openEditPopup(agent)"
-            />
-            <Button
-              v-if="showDeleteAction(agent)"
-              v-tooltip.top="$t('AGENT_MGMT.DELETE.BUTTON_TEXT')"
-              icon="i-woot-bin"
-              slate
-              sm
-              class="hover:enabled:text-n-ruby-11 hover:enabled:bg-n-ruby-2"
-              :is-loading="loading[agent.id]"
-              @click="openDeletePopup(agent, index)"
-            />
-          </div>
-        </div>
+              </BaseTableCell>
+              <BaseTableCell>{{ teamNamesOf(agent) }}</BaseTableCell>
+              <BaseTableCell>{{ projectNamesOf(agent) }}</BaseTableCell>
+              <BaseTableCell>
+                {{
+                  agent.confirmed
+                    ? $t('AGENT_MGMT.LIST.VERIFIED')
+                    : $t('AGENT_MGMT.LIST.VERIFICATION_PENDING')
+                }}
+              </BaseTableCell>
+              <BaseTableCell align="end">
+                <div class="flex justify-end gap-3">
+                  <Button
+                    v-if="showEditAction(agent)"
+                    v-tooltip.top="$t('AGENT_MGMT.EDIT.BUTTON_TEXT')"
+                    icon="i-woot-edit-pen"
+                    slate
+                    sm
+                    @click="openEditPopup(agent)"
+                  />
+                  <Button
+                    v-if="showDeleteAction(agent)"
+                    v-tooltip.top="$t('AGENT_MGMT.DELETE.BUTTON_TEXT')"
+                    icon="i-woot-bin"
+                    slate
+                    sm
+                    class="hover:enabled:text-n-ruby-11 hover:enabled:bg-n-ruby-2"
+                    :is-loading="loading[agent.id]"
+                    @click="openDeletePopup(agent)"
+                  />
+                </div>
+              </BaseTableCell>
+            </BaseTableRow>
+          </template>
+        </BaseTable>
       </div>
     </template>
 

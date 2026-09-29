@@ -1,24 +1,26 @@
 class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
-  # inbox_ids is not a column, so the default wrapper would drop it from params[:project]
-  # and the client's inbox selection would be silently ignored.
-  wrap_parameters :project, include: Project.attribute_names + ['inbox_ids']
+  # inbox_ids and team_ids are not columns, so the default wrapper would drop them from
+  # params[:project] and the client's selection would be silently ignored.
+  wrap_parameters :project, include: Project.attribute_names + %w[inbox_ids team_ids]
 
   before_action :fetch_project, only: [:show, :update, :destroy, :avatar]
   before_action :check_authorization
 
   def index
-    @projects = Current.account.projects.order(:name)
+    @projects = Current.account.projects.includes(:inboxes, :project_teams).order(:name)
   end
 
   def show; end
 
   def create
     @project = Current.account.projects.create!(project_params)
+    sync_teams
     sync_inboxes
   end
 
   def update
     @project.update!(project_params)
+    sync_teams
     sync_inboxes
   end
 
@@ -36,6 +38,14 @@ class Api::V1::Accounts::ProjectsController < Api::V1::Accounts::BaseController
 
   def fetch_project
     @project = Current.account.projects.find(params[:id])
+  end
+
+  # Same blank-entry convention as inbox_ids below.
+  def sync_teams
+    team_ids = params[:project][:team_ids]
+    return if team_ids.nil?
+
+    @project.teams = Current.account.teams.where(id: Array(team_ids).compact_blank)
   end
 
   # Which inboxes belong to a project is edited from the project itself, so the

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_28_100001) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_28_300000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1429,6 +1429,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_100001) do
     t.index ["user_id"], name: "index_portals_members_on_user_id"
   end
 
+  create_table "project_teams", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "team_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "team_id"], name: "index_project_teams_on_project_id_and_team_id", unique: true
+    t.index ["team_id"], name: "index_project_teams_on_team_id"
+  end
+
   create_table "projects", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "name", limit: 255, null: false
@@ -1664,6 +1673,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_28_100001) do
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "inboxes", "portals"
   add_foreign_key "live_chat_rules", "teams", column: "transfer_team_id", on_delete: :nullify
+  add_foreign_key "project_teams", "projects", on_delete: :cascade
+  add_foreign_key "project_teams", "teams", on_delete: :cascade
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
