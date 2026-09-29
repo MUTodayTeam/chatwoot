@@ -281,6 +281,7 @@ onMounted(() => {
               <ContactConversations
                 :contact-id="contact.id"
                 :conversation-id="conversationId"
+                finished-only
               />
             </AccordionItem>
           </div>

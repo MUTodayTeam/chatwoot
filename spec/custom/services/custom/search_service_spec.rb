@@ -62,4 +62,35 @@ RSpec.describe Custom::SearchService do
       expect(conversations.map(&:id)).to eq([hotel_conversation.id])
     end
   end
+
+  describe 'contact search' do
+    subject(:contacts) do
+      SearchService.new(current_user: agent, current_account: account, params: { q: query }, search_type: 'Contact').perform[:contacts]
+    end
+
+    let(:query) { 'nadol' }
+
+    it 'finds a contact by company name' do
+      hotel_contact.update!(email: 'jane@example.com')
+
+      expect(contacts.map(&:id)).to eq([hotel_contact.id])
+    end
+
+    it 'finds a contact by Partner ID' do
+      hotel_contact.update!(email: 'jane@example.com')
+
+      expect(SearchService.new(current_user: agent, current_account: account, params: { q: 'ck-4471' },
+                               search_type: 'Contact').perform[:contacts].map(&:id)).to eq([hotel_contact.id])
+    end
+
+    it 'lists a contact with no email, phone or identifier when the agent can see its conversation' do
+      expect(contacts.map(&:id)).to eq([hotel_contact.id])
+    end
+
+    it 'hides that contact when the conversation is in an inbox the agent cannot see' do
+      hotel_conversation.update!(inbox: create(:inbox, account: account))
+
+      expect(contacts).to be_empty
+    end
+  end
 end

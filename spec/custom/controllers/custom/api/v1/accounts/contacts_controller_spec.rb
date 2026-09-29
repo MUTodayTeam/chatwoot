@@ -62,4 +62,64 @@ RSpec.describe 'Contacts filtered by project', type: :request do
 
     expect(response.parsed_body['payload']).to be_empty
   end
+
+  context 'with a contact that only has a LINE-style source id' do
+    let(:line_only) { create(:contact, account: account, name: 'Jane Tester', email: nil, phone_number: nil, identifier: nil) }
+
+    before { create(:conversation, account: account, inbox: project_inbox, contact: line_only) }
+
+    it 'lists it for an administrator' do
+      get "/api/v1/accounts/#{account.id}/contacts", headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to include(line_only.id)
+    end
+
+    it 'keeps the label filter applied' do
+      get "/api/v1/accounts/#{account.id}/contacts", params: { labels: ['vip'] }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to be_empty
+    end
+
+    it 'hides it from an agent who cannot see its conversation' do
+      agent = create(:user, account: account, role: :agent)
+
+      get "/api/v1/accounts/#{account.id}/contacts", headers: agent.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).not_to include(line_only.id)
+    end
+
+    it 'lists it for an agent in the inbox' do
+      agent = create(:user, account: account, role: :agent)
+      create(:inbox_member, inbox: project_inbox, user: agent)
+
+      get "/api/v1/accounts/#{account.id}/contacts", headers: agent.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to include(line_only.id)
+    end
+  end
+
+  context 'when searching by hotel' do
+    let!(:partner) do
+      create(:contact, account: account, name: 'Somchai', additional_attributes: { company_name: 'Nadol Resort' },
+                       custom_attributes: { partner_id: 'CK-4471' })
+    end
+
+    it 'finds the contact by company name' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'nadol' }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to eq([partner.id])
+    end
+
+    it 'finds the contact by Partner ID' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'ck-4471' }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to eq([partner.id])
+    end
+
+    it 'still asks for a search string' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
 end

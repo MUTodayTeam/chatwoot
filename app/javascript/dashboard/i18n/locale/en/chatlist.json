@@ -25,13 +25,13 @@
         "TEXT": "Open"
       },
       "resolved": {
-        "TEXT": "Resolved"
+        "TEXT": "Solved"
       },
       "pending": {
         "TEXT": "Pending"
       },
       "snoozed": {
-        "TEXT": "Snoozed"
+        "TEXT": "On Hold"
       },
       "closed": {
         "TEXT": "Closed"

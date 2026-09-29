@@ -18,6 +18,7 @@ import ComposeConversation from 'dashboard/components-next/NewConversation/Compo
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import VoiceCallButton from 'dashboard/components-next/Contacts/VoiceCallButton.vue';
 import InlineInput from 'dashboard/components-next/inline-input/InlineInput.vue';
+import ContactChannels from './ContactChannels.vue';
 import Contact360Link from 'dashboard/components-next/Contacts/Contact360/Contact360Link.vue';
 
 export default {
@@ -34,6 +35,7 @@ export default {
     VoiceCallButton,
     InlineInput,
     Contact360Link,
+    ContactChannels,
   },
   props: {
     contact: {
@@ -339,6 +341,7 @@ export default {
             emoji="🌍"
             :title="$t('CONTACT_PANEL.LOCATION')"
           />
+          <ContactChannels v-if="contact.id" :contact-id="contact.id" />
           <SocialIcons :social-profiles="socialProfiles" />
           <Contact360Link :contact="contact" />
         </div>

@@ -6,6 +6,7 @@ import { useAgentsList } from 'dashboard/composables/useAgentsList';
 import ContactDetailsItem from './ContactDetailsItem.vue';
 import MultiselectDropdown from 'shared/components/ui/MultiselectDropdown.vue';
 import ConversationLabels from './labels/LabelBox.vue';
+import ContactLabels from 'dashboard/components-next/Contacts/ContactLabels/ContactLabels.vue';
 import { CONVERSATION_PRIORITY } from '../../../../shared/constants/messages';
 import { CONVERSATION_EVENTS } from '../../../helper/AnalyticsHelper/events';
 import { useTrack } from 'dashboard/composables';
@@ -16,6 +17,7 @@ export default {
     ContactDetailsItem,
     MultiselectDropdown,
     ConversationLabels,
+    ContactLabels,
     NextButton,
   },
   props: {
@@ -69,6 +71,9 @@ export default {
       currentUser: 'getCurrentUser',
       teams: 'teams/getTeams',
     }),
+    contactId() {
+      return this.currentChat?.meta?.sender?.id;
+    },
     hasAnAssignedTeam() {
       return !!this.currentChat?.meta?.team;
     },
@@ -300,6 +305,13 @@ export default {
         @select="onClickAssignPriority"
       />
     </div>
+    <template v-if="contactId">
+      <ContactDetailsItem
+        compact
+        :title="$t('CONVERSATION_SIDEBAR.ACCORDION.CONTACT_TAGS')"
+      />
+      <ContactLabels :key="contactId" :contact-id="contactId" />
+    </template>
     <ContactDetailsItem
       compact
       :title="$t('CONVERSATION_SIDEBAR.ACCORDION.CONVERSATION_LABELS')"
