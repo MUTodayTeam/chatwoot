@@ -45,6 +45,8 @@ import wootConstants, {
 } from 'dashboard/constants/globals';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
+import { CASE_FINISHED_STATUSES } from 'dashboard/helper/caseHelper';
+import { READ_ONLY_QUERY } from 'dashboard/composables/useOpenConversationThread';
 
 export default {
   components: {
@@ -131,6 +133,14 @@ export default {
     // Spec §5: every day of the thread opens with "Today / date · project · channel"
     dayDividerParts() {
       return [this.project?.name, this.inbox.name];
+    },
+    // Closed is always read-only; a thread opened from Contact 360's history stays read-only until it is reopened
+    isReadOnly() {
+      return (
+        this.isClosed ||
+        (this.$route?.query[READ_ONLY_QUERY] === 'true' &&
+          CASE_FINISHED_STATUSES.includes(this.currentChat?.status))
+      );
     },
     shouldShowLabelSuggestions() {
       return (
@@ -593,7 +603,7 @@ export default {
       </div>
       <ConversationEndBar v-if="isChatEnded" :chat="currentChat" />
       <ResizableEditorWrapper
-        v-if="!isClosed"
+        v-if="!isReadOnly"
         ref="resizableEditorWrapperRef"
         :container-height="Math.max(0, containerHeight - topBannerHeight)"
       >

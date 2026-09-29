@@ -56,6 +56,12 @@ RSpec.describe 'Cases API', type: :request do
       expect(response.parsed_body['payload']).to be_empty
     end
 
+    it "lists a contact's cases on their own for Contact 360" do
+      get path, params: { contact_id: hidden_case.conversation.contact_id }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to eq([hidden_case.id])
+    end
+
     it 'counts the open cases apart from the Solved and Closed ones' do
       hidden_case.conversation.resolved!
 

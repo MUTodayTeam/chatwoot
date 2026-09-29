@@ -57,7 +57,6 @@ const state = {
     uiFlags: {
       isFetchingAccountConversationMetric: false,
       isFetchingAccountConversationsHeatmap: false,
-      isFetchingAccountConversationInterval: false,
       isFetchingAgentDailyMatrix: false,
       isFetchingAccountResolutionsHeatmap: false,
       isFetchingAgentConversationMetric: false,
@@ -65,7 +64,6 @@ const state = {
     },
     accountConversationMetric: {},
     accountConversationHeatmap: [],
-    accountConversationInterval: [],
     agentDailyMatrix: { agents: [], days: [], matrix: [] },
     accountResolutionHeatmap: [],
     agentConversationMetric: [],
@@ -94,9 +92,6 @@ const getters = {
   },
   getAccountConversationHeatmapData(_state) {
     return _state.overview.accountConversationHeatmap;
-  },
-  getAccountConversationIntervalData(_state) {
-    return _state.overview.accountConversationInterval;
   },
   getAgentDailyMatrixData(_state) {
     return _state.overview.agentDailyMatrix;
@@ -143,16 +138,6 @@ export const actions = {
 
       commit(types.default.SET_HEATMAP_DATA, data);
       commit(types.default.TOGGLE_HEATMAP_LOADING, false);
-    });
-  },
-  fetchAccountConversationInterval({ commit }, reportObj) {
-    commit(types.default.TOGGLE_CONVERSATION_INTERVAL_LOADING, true);
-    Report.getReports({ ...reportObj, groupBy: 'hour' }).then(intervalData => {
-      let { data } = intervalData;
-      data = clampDataBetweenTimeline(data, reportObj.from, reportObj.to);
-
-      commit(types.default.SET_CONVERSATION_INTERVAL_DATA, data);
-      commit(types.default.TOGGLE_CONVERSATION_INTERVAL_LOADING, false);
     });
   },
   fetchAgentDailyMatrix({ commit }, reportObj) {
@@ -342,9 +327,6 @@ const mutations = {
   [types.default.SET_HEATMAP_DATA](_state, heatmapData) {
     _state.overview.accountConversationHeatmap = heatmapData;
   },
-  [types.default.SET_CONVERSATION_INTERVAL_DATA](_state, intervalData) {
-    _state.overview.accountConversationInterval = intervalData;
-  },
   [types.default.SET_AGENT_DAILY_MATRIX](_state, matrixData) {
     _state.overview.agentDailyMatrix = matrixData;
   },
@@ -362,9 +344,6 @@ const mutations = {
   },
   [types.default.TOGGLE_HEATMAP_LOADING](_state, flag) {
     _state.overview.uiFlags.isFetchingAccountConversationsHeatmap = flag;
-  },
-  [types.default.TOGGLE_CONVERSATION_INTERVAL_LOADING](_state, flag) {
-    _state.overview.uiFlags.isFetchingAccountConversationInterval = flag;
   },
   [types.default.TOGGLE_AGENT_DAILY_MATRIX_LOADING](_state, flag) {
     _state.overview.uiFlags.isFetchingAgentDailyMatrix = flag;

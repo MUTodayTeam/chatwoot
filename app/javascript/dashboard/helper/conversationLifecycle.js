@@ -17,7 +17,7 @@ export const LIFECYCLE_STATUS = {
 };
 
 // The assignee types the conversation payload reports for an agent bot or a Captain assistant.
-const AI_ASSIGNEE_TYPES = ['AgentBot', 'Captain::Assistant'];
+export const AI_ASSIGNEE_TYPES = ['AgentBot', 'Captain::Assistant'];
 
 export const BOT_STATUS_ICON = 'i-lucide-bot';
 

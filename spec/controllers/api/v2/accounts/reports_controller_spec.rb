@@ -311,9 +311,10 @@ RSpec.describe Api::V2::Accounts::ReportsController, type: :request do
 
         expect(response).to have_http_status(:success)
         body = response.parsed_body
-        expect(body.keys).to contain_exactly('period', 'kpis', 'daily_channels', 'interval_summary', 'agent_load')
+        expect(body.keys).to contain_exactly('period', 'kpis', 'daily_channels', 'interval_summary', 'interval_heatmap', 'agent_load')
         expect(body['period'].keys).to contain_exactly('since', 'until', 'previous_since', 'previous_until')
-        expect(body['kpis'].keys).to contain_exactly('total_chats', 'incoming_messages', 'outgoing_messages', 'first_response_time')
+        expect(body['kpis'].keys).to contain_exactly('total_chats', 'incoming_messages', 'outgoing_messages', 'missed_chats', 'expired_chats',
+                                                     'first_response_time')
         expect(body['kpis']['total_chats']).to eq('current' => 1, 'previous' => 0, 'delta_percent' => nil)
         expect(body['daily_channels'].first.keys).to contain_exactly('date', 'line', 'facebook', 'others', 'total')
         expect(body['interval_summary'].keys).to contain_exactly('total', 'peak_hour', 'busiest_day', 'busiest_weekday', 'outside_business_hours')
