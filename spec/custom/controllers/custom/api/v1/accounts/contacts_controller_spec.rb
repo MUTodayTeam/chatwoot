@@ -100,8 +100,8 @@ RSpec.describe 'Contacts filtered by project', type: :request do
 
   context 'when searching by hotel' do
     let!(:partner) do
-      create(:contact, account: account, name: 'Somchai', additional_attributes: { company_name: 'Nadol Resort' },
-                       custom_attributes: { partner_id: 'CK-4471' })
+      create(:contact, :with_email, account: account, name: 'Somchai', additional_attributes: { company_name: 'Nadol Resort' },
+                                    custom_attributes: { partner_id: 'CK-4471' })
     end
 
     it 'finds the contact by company name' do
@@ -116,10 +116,81 @@ RSpec.describe 'Contacts filtered by project', type: :request do
       expect(response.parsed_body['payload'].pluck('id')).to eq([partner.id])
     end
 
-    it 'still asks for a search string' do
+    it 'answers an empty search like stock' do
       get "/api/v1/accounts/#{account.id}/contacts/search", headers: admin.create_new_auth_token
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['payload']).to be_empty
+    end
+  end
+
+  context 'with a LINE-only contact whose chat is in an inbox the agent is not a member of' do
+    let(:agent) { create(:user, account: account, role: :agent) }
+    let!(:line_only) do
+      create(:contact, account: account, name: 'Jane Tester', email: nil, phone_number: nil, identifier: nil,
+                       additional_attributes: { company_name: 'Sample Resort' }, custom_attributes: { partner_id: 'ZZ-0001' })
+    end
+
+    before do
+      create(:inbox_member, inbox: project_inbox, user: agent)
+      create(:conversation, account: account, inbox: other_inbox, contact: line_only)
+    end
+
+    %w[jane sample zz-0001].each do |query|
+      it "keeps it out of the search for #{query}" do
+        get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: query }, headers: agent.create_new_auth_token
+
+        expect(response.parsed_body['payload'].pluck('id')).not_to include(line_only.id)
+      end
+    end
+
+    it 'finds it once the agent joins the inbox' do
+      create(:inbox_member, inbox: other_inbox, user: agent)
+
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'sample' }, headers: agent.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to eq([line_only.id])
+    end
+  end
+
+  context 'with crm_v2 enabled' do
+    let!(:lead) { create(:contact, account: account, name: 'Lead Tester', email: nil, phone_number: nil, identifier: nil, contact_type: :lead) }
+    let!(:customer) { create(:contact, :with_email, account: account, name: 'Lead Customer', contact_type: :customer) }
+
+    before { account.enable_features!('crm_v2') }
+
+    it 'lists leads, not every contact with an email' do
+      get "/api/v1/accounts/#{account.id}/contacts", headers: admin.create_new_auth_token
+
+      ids = response.parsed_body['payload'].pluck('id')
+      expect(ids).to include(lead.id)
+      expect(ids).not_to include(customer.id)
+    end
+
+    it 'searches the same way' do
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'lead' }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].pluck('id')).to eq([lead.id])
+    end
+  end
+
+  context 'with a custom role that only manages the chats it takes part in', if: ChatwootApp.enterprise? do
+    let(:agent) { create(:user, account: account, role: :agent) }
+    let!(:line_only) { create(:contact, account: account, name: 'Jane Tester', email: nil, phone_number: nil, identifier: nil) }
+
+    before do
+      create(:inbox_member, inbox: project_inbox, user: agent)
+      create(:conversation, account: account, inbox: project_inbox, contact: line_only, assignee: admin)
+      role = create(:custom_role, account: account, permissions: ['conversation_participating_manage'])
+      AccountUser.find_by(account: account, user: agent).update!(custom_role: role)
+    end
+
+    it 'hides a contact whose only chat belongs to someone else from the list and the search' do
+      get "/api/v1/accounts/#{account.id}/contacts", headers: agent.create_new_auth_token
+      expect(response.parsed_body['payload'].pluck('id')).not_to include(line_only.id)
+
+      get "/api/v1/accounts/#{account.id}/contacts/search", params: { q: 'jane' }, headers: agent.create_new_auth_token
+      expect(response.parsed_body['payload'].pluck('id')).not_to include(line_only.id)
     end
   end
 end

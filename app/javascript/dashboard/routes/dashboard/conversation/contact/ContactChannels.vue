@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useMapGetter } from 'dashboard/composables/store';
 import ContactAPI from 'dashboard/api/contacts';
 import ChannelIcon from 'dashboard/components-next/icon/ChannelIcon.vue';
 
@@ -7,19 +8,25 @@ const props = defineProps({
   contactId: { type: [Number, String], required: true },
 });
 
-const contactInboxes = ref([]);
+// The store holds only the inboxes the user can access, so an inbox the user is not a member of stays hidden
+const accessibleInboxes = useMapGetter('inboxes/getInboxes');
+const linkedInboxIds = ref([]);
 
 // One row per inbox the contact has written to, however many times it did
-const inboxes = computed(() => [
-  ...new Map(contactInboxes.value.map(ci => [ci.inbox.id, ci.inbox])).values(),
-]);
+const inboxes = computed(() =>
+  accessibleInboxes.value.filter(inbox =>
+    linkedInboxIds.value.includes(inbox.id)
+  )
+);
 
 const fetchChannels = async id => {
   try {
     const { data } = await ContactAPI.getChannels(id);
-    contactInboxes.value = data.contact_inboxes || [];
+    linkedInboxIds.value = data.payload.contact_inboxes.map(
+      contactInbox => contactInbox.inbox.id
+    );
   } catch (error) {
-    contactInboxes.value = [];
+    linkedInboxIds.value = [];
   }
 };
 

@@ -13,10 +13,9 @@ import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 const props = defineProps({
   contactId: { type: [String, Number], required: true },
   conversationId: { type: [String, Number], required: true },
-  // The last chats that ended (Solved or Closed), each with the topic picked when it was solved
-  finishedOnly: { type: Boolean, default: false },
 });
 
+// The last chats that ended (Solved or Closed), each with the topic picked when it was solved
 const FINISHED_STATUSES = ['resolved', 'closed'];
 const FINISHED_LIMIT = 6;
 
@@ -44,22 +43,20 @@ const conversations = computed(() =>
   contactConversationGetter.value(props.contactId)
 );
 
-const previousConversations = computed(() => {
-  const others = conversations.value.filter(
-    c => c.id !== Number(props.conversationId)
-  );
-  if (!props.finishedOnly) return others;
-
-  return others
-    .filter(c => FINISHED_STATUSES.includes(c.status))
+const previousConversations = computed(() =>
+  conversations.value
+    .filter(
+      c =>
+        c.id !== Number(props.conversationId) &&
+        FINISHED_STATUSES.includes(c.status)
+    )
     .sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0))
-    .slice(0, FINISHED_LIMIT);
-});
+    .slice(0, FINISHED_LIMIT)
+);
 
 const topics = ref({});
 
 const fetchTopics = async contactId => {
-  if (!props.finishedOnly) return;
   try {
     const { data } = await CasesAPI.get({ contact_id: contactId });
     topics.value = Object.fromEntries(

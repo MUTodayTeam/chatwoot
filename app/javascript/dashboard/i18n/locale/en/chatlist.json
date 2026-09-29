@@ -31,7 +31,7 @@
         "TEXT": "Pending"
       },
       "snoozed": {
-        "TEXT": "On Hold"
+        "TEXT": "Snoozed"
       },
       "closed": {
         "TEXT": "Closed"

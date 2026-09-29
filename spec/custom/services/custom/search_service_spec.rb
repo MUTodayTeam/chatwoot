@@ -92,5 +92,13 @@ RSpec.describe Custom::SearchService do
 
       expect(contacts).to be_empty
     end
+
+    it 'hides it from a custom role that only manages the chats it takes part in', if: ChatwootApp.enterprise? do
+      hotel_conversation.update!(assignee: create(:user, account: account, role: :agent))
+      role = create(:custom_role, account: account, permissions: ['conversation_participating_manage'])
+      AccountUser.find_by(account: account, user: agent).update!(custom_role: role)
+
+      expect(contacts).to be_empty
+    end
   end
 end
