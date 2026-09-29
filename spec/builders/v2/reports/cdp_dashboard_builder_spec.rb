@@ -94,6 +94,22 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
       expect(report[:kpis][:first_response_time]).to eq(current: 600, previous: 1200, delta_percent: -50.0)
     end
 
+    it 'counts started conversations flagged missed or expired, whenever the flag was set' do
+      # rubocop:disable Rails/SkipsModelValidations
+      line_conversation.update_columns(missed_at: Time.current)
+      unanswered_conversation.update_columns(missed_at: Time.utc(2026, 9, 17, 11, 30), expired_at: Time.utc(2026, 9, 17, 11, 30))
+      facebook_conversation.update_columns(expired_at: Time.utc(2026, 9, 8, 10))
+      # rubocop:enable Rails/SkipsModelValidations
+
+      expect(report[:kpis][:missed_chats]).to eq(current: 2, previous: 0, delta_percent: nil)
+      expect(report[:kpis][:expired_chats]).to eq(current: 1, previous: 1, delta_percent: 0.0)
+    end
+
+    it 'counts no missed or expired chats when nothing was flagged' do
+      expect(report[:kpis][:missed_chats]).to eq(current: 0, previous: 0, delta_percent: nil)
+      expect(report[:kpis][:expired_chats]).to eq(current: 0, previous: 0, delta_percent: nil)
+    end
+
     it 'leaves the delta empty when the previous period has nothing to compare against' do
       params[:since] = Time.utc(2026, 9, 6).to_i.to_s
       params[:until] = Time.utc(2026, 9, 13).to_i.to_s
@@ -150,6 +166,33 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
       params[:until] = Time.utc(2026, 8, 8).to_i.to_s
 
       expect(report[:interval_summary]).to eq(total: 0, peak_hour: nil, busiest_day: nil, busiest_weekday: nil, outside_business_hours: nil)
+    end
+  end
+
+  describe 'interval_heatmap' do
+    let(:heatmap) { report[:interval_heatmap].to_h { |bucket| [bucket[:timestamp], bucket[:value]] } }
+
+    it 'fills every hour of the period, counting conversations by their first incoming message' do
+      expect(report[:interval_heatmap].size).to eq(7 * 24)
+      expect(report[:interval_heatmap].first).to eq(timestamp: Time.utc(2026, 9, 13).to_i, value: 0)
+      expect(heatmap.select { |_timestamp, value| value.positive? }).to eq(
+        Time.utc(2026, 9, 14, 10).to_i => 1, Time.utc(2026, 9, 14, 18).to_i => 1, Time.utc(2026, 9, 17, 10).to_i => 1
+      )
+    end
+
+    it 'includes every inbox of the account when no project is selected' do
+      params.delete(:project_id)
+
+      expect(heatmap[Time.utc(2026, 9, 16, 12).to_i]).to eq(1)
+      expect(heatmap.values.sum).to eq(4)
+    end
+
+    it 'buckets hours in the requested timezone' do
+      # Local hours start on the half hour in UTC, so 10:00 UTC falls in the 15:00 local bucket.
+      params[:timezone_offset] = '5.5'
+
+      expect(heatmap[Time.utc(2026, 9, 14, 9, 30).to_i]).to eq(1)
+      expect(heatmap.values.sum).to eq(3)
     end
   end
 

@@ -1,8 +1,13 @@
 import format from 'date-fns/format';
 import parseISO from 'date-fns/parseISO';
 
-// A shorter first response is an improvement; every other KPI improves as it grows.
-export const LOWER_IS_BETTER_KPIS = ['firstResponseTime'];
+// Fewer missed or expired chats and a shorter first response are improvements;
+// every other KPI improves as it grows.
+export const LOWER_IS_BETTER_KPIS = [
+  'missedChats',
+  'expiredChats',
+  'firstResponseTime',
+];
 
 // With the default limit of 10 this marks an agent from 9 conversations on.
 export const AGENT_LOAD_WARNING_RATIO = 0.9;

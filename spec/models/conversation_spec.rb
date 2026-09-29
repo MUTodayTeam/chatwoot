@@ -281,7 +281,8 @@ RSpec.describe Conversation do
       expect(Conversations::ActivityMessageJob)
         .to(have_been_enqueued.at_least(:once)
         .with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id, message_type: :activity,
-                              content: "Assigned to #{new_assignee.name} by #{old_assignee.name}" }))
+                              content: "Assigned to #{new_assignee.name} by #{old_assignee.name}",
+                              content_attributes: { activity: { type: 'assignee_changed' } } }))
     end
 
     it 'adds a message for system auto resolution if marked resolved by system' do
@@ -618,7 +619,45 @@ RSpec.describe Conversation do
       expect(Conversations::ActivityMessageJob)
         .to(have_been_enqueued.with(conversation, { account_id: conversation.account_id, inbox_id: conversation.inbox_id,
                                                     message_type: :activity,
-                                                    content: "#{user.name} extended the reply deadline by 15 minutes" }))
+                                                    content: "#{user.name} extended the reply deadline by 15 minutes",
+                                                    content_attributes: { activity: { type: 'reply_deadline_extended' } } }))
+    end
+
+    it 'tells the agents watching the conversation about the new deadline' do
+      allow(Rails.configuration.dispatcher).to receive(:dispatch)
+
+      extend_reply_deadline!
+
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+        .with(Events::Types::CONVERSATION_REPLY_DEADLINE_CHANGED, kind_of(Time), conversation: conversation)
+      expect(Rails.configuration.dispatcher).not_to have_received(:dispatch).with(Events::Types::CONVERSATION_UPDATED, any_args)
+      expect(conversation.reply_due_at).to eq(described_class.find(conversation.id).reply_due_at)
+      expect(conversation.changes).not_to include('reply_due_at', 'updated_at')
+    end
+
+    context 'when a customer message restarted the deadline after this object was loaded' do
+      it 'adds the extension to the restarted deadline instead of the stale one' do
+        stale = described_class.find(conversation.id)
+        message = travel_to(10.minutes.from_now) do
+          create(:message, conversation: conversation, account: account, inbox: conversation.inbox, message_type: :incoming)
+        end
+
+        expect(stale.extend_reply_deadline!).to be(true)
+        expect(stale.reply_due_at).to eq(message.reload.created_at + 60.minutes + 15.minutes)
+        expect(conversation.reload.reply_due_at).to eq(stale.reply_due_at)
+      end
+    end
+
+    context 'when a customer message arrives after the extension' do
+      it 'restarts the deadline from that message, dropping the extension' do
+        stale = described_class.find(conversation.id)
+        extend_reply_deadline!
+        message = travel_to(10.minutes.from_now) do
+          create(:message, conversation: stale, account: account, inbox: stale.inbox, message_type: :incoming)
+        end
+
+        expect(conversation.reload.reply_due_at).to eq(message.reload.created_at + 60.minutes)
+      end
     end
 
     context 'when nobody is waiting on a reply' do
@@ -630,8 +669,12 @@ RSpec.describe Conversation do
         expect(extend_reply_deadline!).to be(false)
       end
 
-      it 'does not enqueue an activity message' do
+      it 'does not enqueue an activity message or tell anyone' do
+        allow(Rails.configuration.dispatcher).to receive(:dispatch)
+
         expect { extend_reply_deadline! }.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+        expect(Rails.configuration.dispatcher).not_to have_received(:dispatch).with(Events::Types::CONVERSATION_REPLY_DEADLINE_CHANGED, any_args)
+        expect(conversation.reload.reply_due_at).to be_nil
       end
     end
   end
@@ -750,6 +793,7 @@ RSpec.describe Conversation do
         updated_at: conversation.updated_at.to_f,
         waiting_since: conversation.waiting_since.to_i,
         reply_due_at: conversation.reply_due_at.to_i,
+        status_changed_at: conversation.status_changed_at.to_i,
         priority: nil,
         unread_count: 0
       }

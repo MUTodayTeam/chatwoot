@@ -192,6 +192,10 @@ export const mutations = {
   ) {
     const conversation =
       getters.getConversationById(_state)(conversationId) || {};
+    // Restart the end bar's auto-close countdown before conversation.status_changed arrives
+    if (conversation.status !== status) {
+      conversation.status_changed_at = Math.floor(Date.now() / 1000);
+    }
     conversation.snoozed_until = snoozedUntil;
     conversation.status = status;
   },

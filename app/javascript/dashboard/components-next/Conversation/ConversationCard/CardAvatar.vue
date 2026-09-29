@@ -2,14 +2,14 @@
 import { ref, computed } from 'vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
-import UnreadBadge from './UnreadBadge.vue';
+import CardChannelBadge from './CardChannelBadge.vue';
 
 const props = defineProps({
   contact: { type: Object, required: true },
   selected: { type: Boolean, default: false },
   enableSelection: { type: Boolean, default: true },
   hideThumbnail: { type: Boolean, default: false },
-  unreadCount: { type: Number, default: 0 },
+  chat: { type: Object, default: null },
 });
 
 const emit = defineEmits(['selectConversation']);
@@ -56,10 +56,10 @@ const selectedModel = computed({
           </div>
         </template>
       </Avatar>
-      <UnreadBadge
-        v-if="unreadCount > 0"
-        :count="unreadCount"
-        class="absolute -top-1.5 -start-1.5 z-20"
+      <CardChannelBadge
+        v-if="chat"
+        :chat="chat"
+        class="absolute -bottom-1.5 -end-1.5 z-20"
       />
     </div>
   </div>

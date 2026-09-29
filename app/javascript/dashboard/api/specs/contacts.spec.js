@@ -31,6 +31,26 @@ describe('#ContactsAPI', () => {
       window.axios = originalAxios;
     });
 
+    it('#getOverview', () => {
+      contactAPI.getOverview(1);
+      expect(axiosMock.get).toHaveBeenCalledWith(
+        '/api/v1/contacts/1/overview',
+        { signal: undefined }
+      );
+    });
+
+    it('#get with a project', () => {
+      contactAPI.get(1, 'name', '', 4);
+      expect(axiosMock.get).toHaveBeenCalledWith('/api/v1/contacts', {
+        params: {
+          include_contact_inboxes: false,
+          page: 1,
+          sort: 'name',
+          project_id: 4,
+        },
+      });
+    });
+
     it('#get', () => {
       contactAPI.get(1, 'name', 'customer-support');
       expect(axiosMock.get).toHaveBeenCalledWith('/api/v1/contacts', {
@@ -188,6 +208,12 @@ describe('#buildContactParams', () => {
       sort: 'name',
       q: 'message-content',
       labels: ['customer-support'],
+    });
+    expect(buildContactParams(1, 'name', '', '', 4)).toEqual({
+      include_contact_inboxes: false,
+      page: 1,
+      sort: 'name',
+      project_id: 4,
     });
   });
 });
