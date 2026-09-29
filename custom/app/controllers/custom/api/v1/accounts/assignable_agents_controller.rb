@@ -8,7 +8,8 @@ module Custom::Api::V1::Accounts::AssignableAgentsController
     end
     # The Assign dialog shows each agent's load across the whole project, not just this inbox (CDP spec §7.1).
     @agent_loads = Agents::ConversationLoadService.new(account: Current.account, inbox_ids: project_inbox_ids,
-                                                       user_ids: @assignable_agents.map(&:id)).perform
+                                                       user_ids: @assignable_agents.map(&:id),
+                                                       project: @inboxes.first&.project).perform
   end
 
   private

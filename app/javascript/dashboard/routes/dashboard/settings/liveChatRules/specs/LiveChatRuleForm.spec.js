@@ -71,6 +71,7 @@ describe('LiveChatRuleForm', () => {
     expect(input(wrapper, 'WAITING_TIME').element.value).toBe('15');
     expect(input(wrapper, 'AUTO_SOLVE').element.value).toBe('12');
     expect(input(wrapper, 'AUTO_CLOSE').element.value).toBe('36');
+    expect(input(wrapper, 'CHAT_LIMIT').element.value).toBe('10');
   });
 
   it('sends the lifecycle settings when saving', async () => {
@@ -88,6 +89,7 @@ describe('LiveChatRuleForm', () => {
       waitingTimeMinutes: 60,
       autoSolveHours: 6,
       autoCloseHours: 48,
+      chatLimit: 10,
       transferTeamId: null,
       assistedWeight: 0.5,
       transferPenalty: 0.2,

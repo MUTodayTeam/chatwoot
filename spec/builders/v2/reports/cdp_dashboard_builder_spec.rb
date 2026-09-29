@@ -296,6 +296,22 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
     end
   end
 
+  describe 'agent_load with a chat limit' do
+    it 'measures agents against the project rule' do
+      account.live_chat_rules.create!(project: project, chat_limit: 2)
+
+      expect(report[:agent_load].pluck(:limit)).to eq([2, 2])
+    end
+
+    it 'lists the members of the project teams instead of the inbox members when it has teams' do
+      team = create(:team, account: account)
+      create(:team_member, team: team, user: bob)
+      project.teams << team
+
+      expect(report[:agent_load].pluck(:id)).to eq([bob.id])
+    end
+  end
+
   it 'raises when the project belongs to another account' do
     params[:project_id] = Project.create!(account: create(:account), name: 'Other').id
 

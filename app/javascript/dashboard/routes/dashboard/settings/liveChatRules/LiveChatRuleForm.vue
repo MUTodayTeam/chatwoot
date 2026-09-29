@@ -34,6 +34,7 @@ const extensionMinutes = ref(60);
 const waitingTimeMinutes = ref(60);
 const autoSolveHours = ref(24);
 const autoCloseHours = ref(48);
+const chatLimit = ref(10);
 const transferTeamId = ref(null);
 const assistedWeight = ref(DEFAULT_ASSISTED_WEIGHT);
 const transferPenalty = ref(DEFAULT_TRANSFER_PENALTY);
@@ -83,6 +84,7 @@ const isValid = computed(
     waitingTimeMinutes.value > 0 &&
     autoSolveHours.value > 0 &&
     autoCloseHours.value > 0 &&
+    chatLimit.value > 0 &&
     (!isAccountScope.value ||
       (isValidWeight(assistedWeight.value) &&
         isValidWeight(transferPenalty.value))) &&
@@ -95,6 +97,7 @@ onMounted(() => {
   waitingTimeMinutes.value = props.rule.waitingTimeMinutes ?? 60;
   autoSolveHours.value = props.rule.autoSolveHours ?? 24;
   autoCloseHours.value = props.rule.autoCloseHours ?? 48;
+  chatLimit.value = props.rule.chatLimit ?? 10;
   transferTeamId.value = props.rule.transferTeamId ?? null;
   assistedWeight.value = props.rule.assistedWeight ?? DEFAULT_ASSISTED_WEIGHT;
   transferPenalty.value =
@@ -119,6 +122,7 @@ const onSubmit = async () => {
     waitingTimeMinutes: Number(waitingTimeMinutes.value),
     autoSolveHours: Number(autoSolveHours.value),
     autoCloseHours: Number(autoCloseHours.value),
+    chatLimit: Number(chatLimit.value),
     transferTeamId: transferTeamId.value || null,
     ...(isAccountScope.value && {
       assistedWeight: Number(assistedWeight.value),
@@ -216,6 +220,14 @@ const isSaving = computed(
         class="w-full"
         :label="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.LABEL')"
         :help-text="$t('LIVE_CHAT_RULES.FORM.AUTO_CLOSE.HELP')"
+      />
+
+      <woot-input
+        v-model="chatLimit"
+        type="number"
+        class="w-full"
+        :label="$t('LIVE_CHAT_RULES.FORM.CHAT_LIMIT.LABEL')"
+        :help-text="$t('LIVE_CHAT_RULES.FORM.CHAT_LIMIT.HELP')"
       />
 
       <div class="w-full">

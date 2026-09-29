@@ -7,7 +7,7 @@ RSpec.describe 'Live chat rules API', type: :request do
   let(:team) { create(:team, account: account) }
   let(:lifecycle_params) do
     { waiting_time_minutes: 15, auto_solve_hours: 12, auto_close_hours: 36, transfer_team_id: team.id,
-      assisted_weight: 0.25, transfer_penalty: 0.1 }
+      assisted_weight: 0.25, transfer_penalty: 0.1, chat_limit: 3 }
   end
 
   describe 'POST /api/v1/accounts/{account.id}/live_chat_rules' do
@@ -25,7 +25,7 @@ RSpec.describe 'Live chat rules API', type: :request do
       post "/api/v1/accounts/#{account.id}/live_chat_rules", params: { reply_timeout_minutes: 30 }, headers: admin.create_new_auth_token, as: :json
 
       expect(response.parsed_body).to include('waiting_time_minutes' => 60, 'auto_solve_hours' => 24, 'auto_close_hours' => 48,
-                                              'transfer_team_id' => nil, 'assisted_weight' => 0.5, 'transfer_penalty' => 0.2)
+                                              'chat_limit' => 10, 'transfer_team_id' => nil, 'assisted_weight' => 0.5, 'transfer_penalty' => 0.2)
     end
 
     it 'rejects a transfer team from another account' do

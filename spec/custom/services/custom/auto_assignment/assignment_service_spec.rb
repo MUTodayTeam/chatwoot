@@ -28,6 +28,27 @@ RSpec.describe Custom::AutoAssignment::AssignmentService do
     expect(assign_with_online(outsider)).to eq(outsider)
   end
 
+  context 'when an agent holds the chat limit of the project rule' do
+    before do
+      account.live_chat_rules.create!(project: project, chat_limit: 1)
+      create(:conversation, account: account, inbox: create(:inbox, account: account, project: project), assignee: outsider, status: :open)
+    end
+
+    it 'skips that agent and assigns another online one' do
+      expect(assign_with_online(outsider, team_agent)).to eq(team_agent)
+    end
+
+    it 'leaves the conversation unassigned when every online agent is at the limit' do
+      expect(assign_with_online(outsider)).to be_nil
+    end
+
+    it 'ignores resolved conversations' do
+      Conversation.where(assignee: outsider).update_all(status: Conversation.statuses[:resolved]) # rubocop:disable Rails/SkipsModelValidations
+
+      expect(assign_with_online(outsider)).to eq(outsider)
+    end
+  end
+
   context 'when the project has teams' do
     before { project.teams << team }
 

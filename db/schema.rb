@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_29_310000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_29_400000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1289,6 +1289,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_310000) do
     t.bigint "transfer_team_id"
     t.decimal "assisted_weight", precision: 4, scale: 2, default: "0.5", null: false
     t.decimal "transfer_penalty", precision: 4, scale: 2, default: "0.2", null: false
+    t.integer "chat_limit", default: 10, null: false
     t.index ["account_id", "project_id"], name: "index_live_chat_rules_on_account_id_and_project_id", unique: true
     t.index ["account_id"], name: "index_live_chat_rules_on_account_id"
     t.index ["account_id"], name: "index_live_chat_rules_on_account_id_default", unique: true, where: "(project_id IS NULL)"
