@@ -8,7 +8,8 @@ const props = defineProps({
   contactId: { type: [Number, String], required: true },
 });
 
-// The store holds only the inboxes the user can access, so an inbox the user is not a member of stays hidden
+// Channels come from the contact's conversations the user may see (the endpoint applies the permission
+// filter), so an inbox the user cannot open never reaches the browser. The store only adds name and icon.
 const accessibleInboxes = useMapGetter('inboxes/getInboxes');
 const linkedInboxIds = ref([]);
 
@@ -21,9 +22,9 @@ const inboxes = computed(() =>
 
 const fetchChannels = async id => {
   try {
-    const { data } = await ContactAPI.getChannels(id);
-    linkedInboxIds.value = data.payload.contact_inboxes.map(
-      contactInbox => contactInbox.inbox.id
+    const { data } = await ContactAPI.getConversations(id);
+    linkedInboxIds.value = data.payload.map(
+      conversation => conversation.inbox_id
     );
   } catch (error) {
     linkedInboxIds.value = [];

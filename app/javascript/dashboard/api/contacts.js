@@ -32,11 +32,6 @@ class ContactAPI extends ApiClient {
     return axios.get(`${this.url}/${id}?include_contact_inboxes=false`);
   }
 
-  // The contact with the inboxes it is linked to
-  getChannels(id) {
-    return axios.get(`${this.url}/${id}?include_contact_inboxes=true`);
-  }
-
   update(id, data) {
     return axios.patch(`${this.url}/${id}?include_contact_inboxes=false`, data);
   }
