@@ -19,33 +19,26 @@ vi.mock('dashboard/composables/store', () => ({
   useMapGetter: () => ref([lineInbox, facebookInbox]),
 }));
 vi.mock('dashboard/api/contacts', () => ({
-  default: { getChannels: vi.fn() },
+  default: { getConversations: vi.fn(), show: vi.fn() },
 }));
 
-const contactInbox = (id, name) => ({
-  source_id: `src-${id}`,
-  inbox: { id, name },
-});
-
 describe('ContactChannels', () => {
-  it('lists each accessible inbox the contact is linked to once and hides the rest', async () => {
-    ContactAPI.getChannels.mockResolvedValue({
+  it('lists each inbox of the conversations the user may see, once', async () => {
+    // The endpoint already drops conversations the user cannot see
+    ContactAPI.getConversations.mockResolvedValue({
       data: {
-        payload: {
-          id: 7,
-          contact_inboxes: [
-            contactInbox(1, 'Sample LINE OA'),
-            contactInbox(1, 'Sample LINE OA'),
-            contactInbox(3, 'Inbox the agent cannot open'),
-          ],
-        },
+        payload: [
+          { id: 11, inbox_id: 1 },
+          { id: 12, inbox_id: 1 },
+        ],
       },
     });
 
     const wrapper = mount(ContactChannels, { props: { contactId: 7 } });
     await flushPromises();
 
-    expect(ContactAPI.getChannels).toHaveBeenCalledWith(7);
+    expect(ContactAPI.getConversations).toHaveBeenCalledWith(7);
+    expect(ContactAPI.show).not.toHaveBeenCalled();
     expect(wrapper.findAll('span.truncate').map(row => row.text())).toEqual([
       'Sample LINE OA',
     ]);
