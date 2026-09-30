@@ -1,6 +1,9 @@
 import { openDB } from 'idb';
 import { DATA_VERSION, INBOX_CACHE_INVALIDATION_VERSION } from './version';
 
+// How long to wait for the cache before reading from the network instead
+export const CACHE_OPEN_TIMEOUT_MS = 3000;
+
 export class DataManager {
   constructor(accountId) {
     this.modelsToSync = ['inbox', 'label', 'team', 'canned_response'];
@@ -12,11 +15,17 @@ export class DataManager {
     if (this.db) return this.db;
     const dbName = `cw-store-${this.accountId}`;
     // A tab still running the previous build keeps the old version open, and an upgrade waits
-    // for it to close, which can be forever. Give up on the cache then, so the caller reads
-    // from the network instead of hanging on "loading inboxes".
+    // for it to close, which can be forever. A request queued behind another tab's pending
+    // upgrade never even gets a blocked event. Give up on the cache in both cases, so the
+    // caller reads from the network instead of hanging on "loading inboxes".
     let rejectBlocked;
+    let timeout;
     const blocked = new Promise((_resolve, reject) => {
       rejectBlocked = reject;
+      timeout = setTimeout(
+        () => reject(new Error('IndexedDB did not open in time')),
+        CACHE_OPEN_TIMEOUT_MS
+      );
     });
     const opening = openDB(dbName, DATA_VERSION, {
       blocked: () =>
@@ -56,7 +65,11 @@ export class DataManager {
       },
       () => {}
     );
-    this.db = await Promise.race([opening, blocked]);
+    try {
+      this.db = await Promise.race([opening, blocked]);
+    } finally {
+      clearTimeout(timeout);
+    }
 
     // Store the database name in LocalStorage
     const dbNames = JSON.parse(localStorage.getItem('cw-idb-names') || '[]');
