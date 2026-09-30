@@ -11,7 +11,21 @@ export class DataManager {
   async initDb() {
     if (this.db) return this.db;
     const dbName = `cw-store-${this.accountId}`;
-    this.db = await openDB(`cw-store-${this.accountId}`, DATA_VERSION, {
+    // A tab still running the previous build keeps the old version open, and an upgrade waits
+    // for it to close, which can be forever. Give up on the cache then, so the caller reads
+    // from the network instead of hanging on "loading inboxes".
+    let rejectBlocked;
+    const blocked = new Promise((_resolve, reject) => {
+      rejectBlocked = reject;
+    });
+    const opening = openDB(dbName, DATA_VERSION, {
+      blocked: () =>
+        rejectBlocked(new Error('IndexedDB upgrade blocked by another tab')),
+      // A newer build wants to upgrade: close this connection so it is not the one blocking it.
+      blocking: () => {
+        this.db?.close();
+        this.db = null;
+      },
       upgrade(db, oldVersion, _newVersion, transaction) {
         const shouldInvalidateInboxCache =
           oldVersion > 0 && oldVersion < INBOX_CACHE_INVALIDATION_VERSION;
@@ -35,6 +49,14 @@ export class DataManager {
         createStore('canned_response', { keyPath: 'id' });
       },
     });
+    // Once the other tab lets go, the upgraded connection serves later reads.
+    opening.then(
+      db => {
+        this.db = this.db || db;
+      },
+      () => {}
+    );
+    this.db = await Promise.race([opening, blocked]);
 
     // Store the database name in LocalStorage
     const dbNames = JSON.parse(localStorage.getItem('cw-idb-names') || '[]');
