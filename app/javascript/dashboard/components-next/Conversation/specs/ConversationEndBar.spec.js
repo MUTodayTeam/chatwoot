@@ -99,6 +99,41 @@ describe('ConversationEndBar', () => {
     expect(wrapper.find('button').text()).toBe('Reopen');
   });
 
+  it.each([
+    'Channel::Line',
+    'Channel::FacebookPage',
+    'Channel::Instagram',
+    'Channel::Tiktok',
+  ])(
+    'says a closed %s conversation starts anew when the customer writes',
+    channel => {
+      const wrapper = mountBar({ status: 'closed', meta: { channel } });
+
+      expect(wrapper.text()).toContain(
+        'If the customer writes again, a new conversation and case start'
+      );
+      expect(wrapper.text()).not.toContain('reopens');
+    }
+  );
+
+  it('keeps the reopen note on a closed email conversation', () => {
+    const wrapper = mountBar({
+      status: 'closed',
+      meta: { channel: 'Channel::Email' },
+    });
+
+    expect(wrapper.text()).toContain('case #CK-858 reopens');
+  });
+
+  it('keeps the reopen note on a solved LINE conversation', () => {
+    const wrapper = mountBar({
+      status: 'resolved',
+      meta: { channel: 'Channel::Line' },
+    });
+
+    expect(wrapper.text()).toContain('case #CK-858 reopens');
+  });
+
   it('talks about the conversation when it has no case', () => {
     const wrapper = mountBar({ status: 'closed', case: null });
 

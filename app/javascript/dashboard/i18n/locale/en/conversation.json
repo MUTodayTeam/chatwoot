@@ -59,6 +59,7 @@
       "CLOSES_IN": "→ Closed in {time}",
       "REOPEN_NOTE": "If the customer writes back, case {display} reopens with its full history",
       "REOPEN_NOTE_NO_CASE": "If the customer writes back, the conversation reopens with its full history",
+      "NEW_CONVERSATION_NOTE": "If the customer writes again, a new conversation and case start",
       "REOPEN": "Reopen"
     },
     "DAY_DIVIDER": {

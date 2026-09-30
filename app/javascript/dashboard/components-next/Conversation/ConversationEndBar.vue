@@ -5,6 +5,7 @@ import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useInboxProject } from 'dashboard/composables/useInboxProject';
 import { CONVERSATION_STATUS } from 'shared/constants/messages';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import {
   DEFAULT_AUTO_CLOSE_HOURS,
   autoCloseRemainingSeconds,
@@ -22,6 +23,14 @@ const props = defineProps({
 });
 
 const TICK_INTERVAL_MS = 1000;
+// These channels start a new conversation after Closed (Custom::Message#reopen_conversation), so the
+// customer's next message there does not reopen this one; Email and the web widget still do.
+const NEW_CONVERSATION_AFTER_CLOSED = [
+  INBOX_TYPES.LINE,
+  INBOX_TYPES.FB,
+  INBOX_TYPES.INSTAGRAM,
+  INBOX_TYPES.TIKTOK,
+];
 
 const { t } = useI18n();
 const store = useStore();
@@ -75,13 +84,19 @@ const closesIn = computed(() => {
   return formatCountdown(seconds);
 });
 
-const reopenNote = computed(() =>
-  props.chat.case
+const reopenNote = computed(() => {
+  if (
+    !isSolved.value &&
+    NEW_CONVERSATION_AFTER_CLOSED.includes(props.chat.meta?.channel)
+  ) {
+    return t('CONVERSATION.END_BAR.NEW_CONVERSATION_NOTE');
+  }
+  return props.chat.case
     ? t('CONVERSATION.END_BAR.REOPEN_NOTE', {
         display: props.chat.case.display,
       })
-    : t('CONVERSATION.END_BAR.REOPEN_NOTE_NO_CASE')
-);
+    : t('CONVERSATION.END_BAR.REOPEN_NOTE_NO_CASE');
+});
 
 // The reopen endpoint gives the conversation back to an agent and opens their turn (spec 7.4)
 const reopen = async () => {
