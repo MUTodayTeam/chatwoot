@@ -31,7 +31,9 @@
     "CONVERSATIONS": {
       "NO_RECORDS_FOUND": "There are no previous conversations associated to this contact.",
       "TITLE": "Previous Conversations",
-      "VIEW_ALL": "View all conversations"
+      "VIEW_ALL": "View all conversations",
+      "TOPIC": "Topic: {topic}",
+      "TOPIC_OTHER": "Other"
     },
     "LABELS": {
       "CONTACT": {

@@ -1,12 +1,22 @@
 module Custom::Api::V1::Accounts::ContactsController
   private
 
-  # project_id narrows the list and the search to contacts with a conversation the user can see in one of the project's inboxes
+  # Custom::ContactScope also lists the contacts reached only through LINE, Facebook or Instagram that the user can see;
+  # project_id narrows the list to contacts with a conversation the user can see in one of the project's inboxes.
   def resolved_contacts
-    @resolved_contacts ||= in_project(super)
+    return @resolved_contacts if @resolved_contacts
+
+    contacts = Custom::ContactScope.visible(Current.account.contacts, Current.user, Current.account)
+    contacts = contacts.tagged_with(params[:labels], any: true) if params[:labels].present?
+    @resolved_contacts = in_project(contacts)
   end
 
+  # Only search calls this: it also matches the hotel. Administrators search every contact like stock; an agent finds
+  # only the contacts the Contacts list shows them.
   def fetch_contacts_with_has_more(contacts)
+    hotel = Current.account.contacts.where(Custom::ContactScope::HOTEL_SEARCH_CONDITION, search: "%#{params[:q].strip}%")
+    contacts = contacts.or(hotel)
+    contacts = Custom::ContactScope.visible(contacts, Current.user, Current.account) unless Current.account_user.administrator?
     super(in_project(contacts))
   end
 
