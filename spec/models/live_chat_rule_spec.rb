@@ -16,6 +16,13 @@ RSpec.describe LiveChatRule do
     expect(rule.errors.attribute_names).to contain_exactly(:auto_close_hours, :waiting_time_minutes)
   end
 
+  it 'defaults the chat limit to 10 and rejects a non-positive or oversized one' do
+    expect(account.live_chat_rules.new.chat_limit).to eq(10)
+    expect(account.live_chat_rules.new(chat_limit: 0)).not_to be_valid
+    expect(account.live_chat_rules.new(chat_limit: 1_001)).not_to be_valid
+    expect(account.live_chat_rules.new(chat_limit: 1_000)).to be_valid
+  end
+
   it 'rejects a transfer team that does not exist' do
     rule = account.live_chat_rules.new(transfer_team_id: 999_999)
 

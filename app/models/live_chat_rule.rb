@@ -5,6 +5,7 @@
 #  id                    :bigint           not null, primary key
 #  assisted_weight       :decimal(4, 2)    default(0.5), not null
 #  auto_close_hours      :integer          default(48), not null
+#  chat_limit            :integer          default(10), not null
 #  auto_solve_hours      :integer          default(24), not null
 #  extension_minutes     :integer          default(60), not null
 #  reply_timeout_minutes :integer          default(60), not null
@@ -41,6 +42,9 @@ class LiveChatRule < ApplicationRecord
   validates :reply_timeout_minutes, :extension_minutes, :waiting_time_minutes,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_MINUTES }
   validates :auto_solve_hours, :auto_close_hours, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_HOURS }
+  MAX_CHAT_LIMIT = 1_000
+
+  validates :chat_limit, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_CHAT_LIMIT }
   validates :assisted_weight, :transfer_penalty, numericality: { greater_than_or_equal_to: 0, less_than: 100 }
   validates :project_id, uniqueness: { scope: :account_id }
   validate :transfer_team_in_account

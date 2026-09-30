@@ -5,6 +5,7 @@ json.extension_minutes live_chat_rule.extension_minutes
 json.waiting_time_minutes live_chat_rule.waiting_time_minutes
 json.auto_solve_hours live_chat_rule.auto_solve_hours
 json.auto_close_hours live_chat_rule.auto_close_hours
+json.chat_limit live_chat_rule.chat_limit
 json.transfer_team_id live_chat_rule.transfer_team_id
 json.assisted_weight live_chat_rule.assisted_weight.to_f
 json.transfer_penalty live_chat_rule.transfer_penalty.to_f

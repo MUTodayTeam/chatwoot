@@ -26,6 +26,27 @@ RSpec.describe Custom::Inbox do
     end
   end
 
+  context 'when an agent holds the chat limit of the project rule' do
+    before do
+      account.live_chat_rules.create!(project: project, chat_limit: 2)
+      # The second conversation sits in another inbox of the project: the load counts the whole project.
+      create(:conversation, account: account, inbox: inbox, assignee: other_agent, status: :open)
+      create(:conversation, account: account, inbox: create(:inbox, account: account, project: project), assignee: other_agent, status: :pending)
+      create(:conversation, account: account, inbox: inbox, assignee: team_agent, status: :open)
+    end
+
+    it 'drops that agent from the auto-assignment candidates' do
+      expect(inbox.member_ids_with_assignment_capacity).to contain_exactly(team_agent.id, team_admin.id)
+    end
+
+    it 'falls back to the account default rule when the project has none' do
+      account.live_chat_rules.find_by(project: project).destroy!
+      account.live_chat_rules.create!(project_id: nil, chat_limit: 1)
+
+      expect(inbox.member_ids_with_assignment_capacity).to contain_exactly(team_admin.id)
+    end
+  end
+
   context 'when the project has teams' do
     before { project.teams << team }
 

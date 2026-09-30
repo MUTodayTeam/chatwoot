@@ -201,11 +201,16 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def agent_load
-    agents = account.users.where(id: InboxMember.where(inbox_id: inbox_ids).select(:user_id)).pluck(:id, :name)
-    loads = Agents::ConversationLoadService.new(account: account, inbox_ids: inbox_ids, user_ids: agents.map(&:first)).perform
+    agents = account.users.where(id: agent_load_user_ids).pluck(:id, :name)
+    loads = Agents::ConversationLoadService.new(account: account, inbox_ids: inbox_ids, user_ids: agents.map(&:first), project: project).perform
 
     rows = agents.map { |id, name| { id: id, name: name, **loads[id] } }
     rows.sort_by { |row| [-row[:assigned_count], row[:name]] }
+  end
+
+  # The project's entitled teams decide who can take its chats; without any, its inbox members do.
+  def agent_load_user_ids
+    project&.entitled_user_ids || InboxMember.where(inbox_id: inbox_ids).select(:user_id)
   end
 
   def started_conversations(period_range)
@@ -218,11 +223,14 @@ class V2::Reports::CdpDashboardBuilder
     ActiveRecord::Base.sanitize_sql_array([sql, values.merge(account_id: account.id)])
   end
 
+  def project
+    return if params[:project_id].blank?
+
+    @project ||= account.projects.find(params[:project_id])
+  end
+
   def inbox_ids
-    @inbox_ids ||= begin
-      inboxes = params[:project_id].present? ? account.projects.find(params[:project_id]).inboxes : account.inboxes
-      inboxes.pluck(:id)
-    end
+    @inbox_ids ||= (project ? project.inboxes : account.inboxes).pluck(:id)
   end
 
   def days

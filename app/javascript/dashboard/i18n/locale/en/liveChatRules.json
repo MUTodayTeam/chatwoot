@@ -48,6 +48,10 @@
         "LABEL": "Close resolved after (hours)",
         "HELP": "A resolved conversation is closed after this time and can no longer be replied to."
       },
+      "CHAT_LIMIT": {
+        "LABEL": "Chats per agent",
+        "HELP": "Most open, pending and snoozed conversations an agent can hold across the project. Auto-assignment skips an agent who is at the limit."
+      },
       "TRANSFER_TEAM": {
         "LABEL": "Transfer team",
         "NONE": "No transfer team",
