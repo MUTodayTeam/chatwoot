@@ -29,6 +29,7 @@ import PaginationFooter from 'dashboard/components-next/pagination/PaginationFoo
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import CaseSeverityLabel from 'dashboard/components-next/Cases/CaseSeverityLabel.vue';
 import CaseStatusLabel from 'dashboard/components-next/Cases/CaseStatusLabel.vue';
+import CaseEditDialog from 'dashboard/components-next/Cases/CaseEditDialog.vue';
 import AutoTransitionCountdown from 'dashboard/components-next/Conversation/AutoTransitionCountdown.vue';
 import ContactProjectFilter from 'dashboard/components-next/Contacts/ContactProjectFilter.vue';
 import ChannelName from 'dashboard/routes/dashboard/settings/inbox/components/ChannelName.vue';
@@ -47,6 +48,7 @@ const teams = useMapGetter('teams/getTeams');
 const inboxGetter = useMapGetter('inboxes/getInbox');
 const liveChatRules = useMapGetter('liveChatRules/getLiveChatRules');
 
+const editDialogRef = ref(null);
 const cases = ref([]);
 const meta = ref({ count: 0, open_count: 0 });
 const hasLoaded = ref(false);
@@ -252,7 +254,15 @@ onMounted(() => {
               </div>
             </BaseTableCell>
             <BaseTableCell>
-              <span class="text-n-slate-12">{{ kase.contact.name }}</span>
+              <div class="flex flex-col">
+                <span class="text-n-slate-12">{{ kase.contact.name }}</span>
+                <span
+                  v-if="kase.contact.company_name"
+                  class="text-label-small text-n-slate-11"
+                >
+                  {{ kase.contact.company_name }}
+                </span>
+              </div>
             </BaseTableCell>
             <BaseTableCell>
               <span class="block max-w-60 truncate text-n-slate-12">
@@ -300,12 +310,20 @@ onMounted(() => {
               <span v-else>{{ t('CASES.UNASSIGNED') }}</span>
             </BaseTableCell>
             <BaseTableCell>
-              <Button
-                :label="t('CASES.OPEN_THREAD')"
-                variant="link"
-                size="sm"
-                @click="openThread(kase)"
-              />
+              <div class="flex items-center gap-3">
+                <Button
+                  :label="t('CASES.OPEN_THREAD')"
+                  variant="link"
+                  size="sm"
+                  @click="openThread(kase)"
+                />
+                <Button
+                  :label="t('CASES.EDIT.BUTTON')"
+                  variant="link"
+                  size="sm"
+                  @click="editDialogRef?.open(kase.id)"
+                />
+              </div>
             </BaseTableCell>
             <BaseTableCell>
               <span class="whitespace-nowrap">
@@ -324,5 +342,6 @@ onMounted(() => {
         @update:current-page="onPageChange"
       />
     </footer>
+    <CaseEditDialog ref="editDialogRef" @updated="fetchCases" />
   </section>
 </template>

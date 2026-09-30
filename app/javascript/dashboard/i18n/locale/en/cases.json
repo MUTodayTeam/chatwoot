@@ -45,6 +45,17 @@
       "closed": "Closed"
     },
     "HEADER_CHIP": "Case {display}",
+    "HEADER_NO_CASE": "Case opens automatically",
+    "EDIT": {
+      "BUTTON": "Edit case",
+      "TITLE": "Edit case {display}",
+      "DESCRIPTION": "Change the subject, severity or team. The status and owner follow the chat.",
+      "SAVE": "Save",
+      "CANCEL": "Cancel",
+      "SUCCESS": "Case updated",
+      "ERROR": "Could not update the case, please try again",
+      "FETCH_ERROR": "Could not load the case, please try again"
+    },
     "RELATED": {
       "EMPTY": "No cases yet. One opens automatically when an agent takes this chat."
     },

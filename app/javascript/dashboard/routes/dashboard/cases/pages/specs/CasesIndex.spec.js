@@ -45,7 +45,7 @@ const buildCase = (id, status, statusChangedAt = NOW - HOUR) => ({
   team: null,
   category: null,
   owner: null,
-  contact: { id: 1, name: 'Nadol Resort' },
+  contact: { id: 1, name: 'Jane Tester', company_name: 'Nadol Resort' },
   conversation: {
     id,
     inbox_id: 1,
@@ -57,6 +57,13 @@ const buildCase = (id, status, statusChangedAt = NOW - HOUR) => ({
 const respondWith = (payload, meta) =>
   CasesAPI.get.mockResolvedValueOnce({ data: { payload, meta } });
 
+const openEdit = vi.fn();
+const CaseEditDialogStub = {
+  name: 'CaseEditDialog',
+  methods: { open: openEdit },
+  template: '<div />',
+};
+
 const mountPage = async () => {
   const wrapper = mount(CasesIndex, {
     global: {
@@ -65,6 +72,7 @@ const mountPage = async () => {
         ContactProjectFilter: true,
         PaginationFooter: true,
         ChannelName: true,
+        CaseEditDialog: CaseEditDialogStub,
       },
     },
   });
@@ -137,6 +145,30 @@ describe('CasesIndex', () => {
       const wrapper = await mountPage();
 
       expect(wrapper.text()).not.toContain('→');
+    });
+
+    it("shows the contact's company under the name", async () => {
+      respondWith([buildCase(1, 'open')], { count: 1, open_count: 1 });
+      const wrapper = await mountPage();
+
+      expect(rowOf(wrapper, '#1').text()).toContain('Jane Tester');
+      expect(rowOf(wrapper, '#1').text()).toContain('Nadol Resort');
+    });
+
+    it('opens the edit dialog for the row and reloads once it saved', async () => {
+      respondWith([buildCase(1, 'open')], { count: 1, open_count: 1 });
+      const wrapper = await mountPage();
+      const edit = rowOf(wrapper, '#1')
+        .findAll('button')
+        .find(button => button.text() === 'Edit case');
+
+      await edit.trigger('click');
+      expect(openEdit).toHaveBeenCalledWith(1);
+
+      respondWith([buildCase(1, 'open')], { count: 1, open_count: 1 });
+      wrapper.findComponent({ name: 'CaseEditDialog' }).vm.$emit('updated');
+      await flushPromises();
+      expect(CasesAPI.get).toHaveBeenCalledTimes(2);
     });
 
     it('loads the live chat rules when the store has none', async () => {

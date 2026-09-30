@@ -47,6 +47,7 @@ const {
 } = useUISettings();
 
 const dragging = ref(false);
+const relatedCasesCount = ref(0);
 const conversationSidebarItems = ref([]);
 
 const shopifyIntegration = useFunctionGetter(
@@ -234,7 +235,7 @@ onMounted(() => {
           <div v-else-if="element.name === 'related_cases'">
             <AccordionItem
               v-if="contact.id"
-              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.RELATED_CASES')"
+              :title="`${$t('CONVERSATION_SIDEBAR.ACCORDION.RELATED_CASES')} (${relatedCasesCount})`"
               :is-open="isContactSidebarItemOpen('is_related_cases_open')"
               compact
               @toggle="
@@ -244,6 +245,7 @@ onMounted(() => {
               <RelatedCases
                 :contact-id="contact.id"
                 :case-id="currentChat.case?.id"
+                @count="count => (relatedCasesCount = count)"
               />
             </AccordionItem>
           </div>

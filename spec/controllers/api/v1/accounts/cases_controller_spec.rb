@@ -98,16 +98,34 @@ RSpec.describe 'Cases API', type: :request do
       expect(response.parsed_body['meta']).to include('count' => 2, 'open_count' => 1)
     end
 
-    it 'lists as mine the cases I own and the ones whose conversation I replied in' do
-      replied = create(:case, conversation: create(:conversation, account: account, inbox: other_inbox))
-      create(:message, account: account, conversation: replied.conversation, sender: admin, message_type: :outgoing)
-      noted = create(:case, conversation: create(:conversation, account: account, inbox: other_inbox))
-      create(:message, account: account, conversation: noted.conversation, sender: admin, message_type: :outgoing, private: true)
+    it 'lists as mine the cases I own and the ones I had a turn on' do
+      handled = create(:case, conversation: create(:conversation, account: account, inbox: other_inbox))
+      ConversationHandler.open_for!(handled.conversation, admin)
+      replied_only = create(:case, conversation: create(:conversation, account: account, inbox: other_inbox))
+      create(:message, account: account, conversation: replied_only.conversation, sender: admin, message_type: :outgoing)
       conversation.update!(assignee: admin)
 
       get path, params: { mine: true }, headers: admin.create_new_auth_token
 
-      expect(response.parsed_body['payload'].pluck('id')).to contain_exactly(agent_case.id, replied.id)
+      expect(response.parsed_body['payload'].pluck('id')).to contain_exactly(agent_case.id, handled.id)
+    end
+
+    it "shows the contact's company and reads a chat the bot holds as open" do
+      contact.update!(additional_attributes: { 'company_name' => 'Nadol Resort' })
+      conversation.pending!
+      create(:agent_bot_inbox, inbox: inbox, account: account)
+
+      get path, params: { project_id: project.id }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].first).to include('status' => 'open', 'contact' => include('company_name' => 'Nadol Resort'))
+    end
+
+    it 'keeps pending as pending when no bot is active' do
+      conversation.pending!
+
+      get path, params: { project_id: project.id }, headers: admin.create_new_auth_token
+
+      expect(response.parsed_body['payload'].first).to include('status' => 'pending')
     end
 
     it 'pages the list' do
@@ -166,6 +184,14 @@ RSpec.describe 'Cases API', type: :request do
       expect(response).to have_http_status(:success)
       expect(agent_case.reload).to have_attributes(subject: 'Refund', severity: 'p1', team_id: other_team.id, reopened_count: 0,
                                                    display_id: 858)
+    end
+
+    it 'tells the screens showing the conversation when the case is edited' do
+      allow(ActionCableListener.instance).to receive(:conversation_updated)
+
+      patch path, params: { severity: 'p1' }, headers: agent.create_new_auth_token, as: :json
+
+      expect(ActionCableListener.instance).to have_received(:conversation_updated).once
     end
 
     it 'rejects an unknown severity and a team of another account' do
