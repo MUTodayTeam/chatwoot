@@ -13,6 +13,10 @@ import { vOnClickOutside } from '@vueuse/components';
 import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
+const props = defineProps({
+  defaultRange: { type: String, default: '' },
+});
+
 const emit = defineEmits(['rangeTypeChange', 'monthOffsetChange']);
 
 const fromModel = defineModel('from', { type: Date, default: null });
@@ -98,7 +102,10 @@ const menuItems = computed(() => {
   );
 });
 
-selectedDateRangeValue.value = menuItems.value[0]?.value || '';
+selectedDateRangeValue.value =
+  menuItems.value.find(item => item.value === props.defaultRange)?.value ||
+  menuItems.value[0]?.value ||
+  '';
 
 const menuSections = computed(() => {
   const dayItems = menuItems.value.filter(

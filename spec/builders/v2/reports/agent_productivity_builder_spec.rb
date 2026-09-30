@@ -143,6 +143,36 @@ RSpec.describe V2::Reports::AgentProductivityBuilder do
     expect(agents).to contain_exactly(include(id: toon.id, resolved: 0, assisted: 1))
   end
 
+  it 'counts a plain reassignment as transfer out and in, but not a reopen turn of the same agent' do
+    conversation = start_chat
+    travel_to(started_at + 10.minutes) do
+      Conversations::AssignmentService.new(conversation: Conversation.find(conversation.id), assignee_id: poy.id).perform
+    end
+    solve(conversation, by: poy, after: 20.minutes)
+    travel_to(started_at + 30.minutes) do
+      Current.user = poy
+      Conversations::ReopenService.new(conversation: Conversation.find(conversation.id), user: poy).perform
+      Conversations::AssignmentService.new(conversation: Conversation.find(conversation.id), assignee_id: poy.id).perform
+    end
+    solve(conversation, by: poy, after: 40.minutes)
+
+    expect(row_for(toon)).to include(transfer_out: 1, transfer_in: 0, general_transfers: 0)
+    expect(row_for(poy)).to include(transfer_out: 0, transfer_in: 1)
+  end
+
+  it 'takes the weights from the rule of the selected project, else the account default' do
+    project = account.projects.create!(name: 'Checkin+')
+    account.live_chat_rules.create!(project: project, assisted_weight: 0.9, transfer_penalty: 0.4)
+    default_weights = { resolved: 1.0, assisted: described_class.new(account: account, params: params).build[:weights][:assisted] }
+
+    params[:project_id] = project.id
+    expect(described_class.new(account: account, params: params).build[:weights])
+      .to eq(resolved: 1.0, assisted: 0.9, transfer_penalty: 0.4)
+
+    params[:project_id] = account.projects.create!(name: 'Other').id
+    expect(described_class.new(account: account, params: params).build[:weights]).to include(default_weights)
+  end
+
   it 'leaves out conversations that are open again or solved outside the period' do
     reopened = start_chat
     solve(reopened, by: toon, after: 10.minutes)
