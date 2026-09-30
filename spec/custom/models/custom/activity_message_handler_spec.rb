@@ -57,6 +57,17 @@ RSpec.describe Custom::ActivityMessageHandler do
       Current.user = nil
     end
 
+    it 'tags a transfer apart from an assignment' do
+      Current.user = agent
+      conversation.transfer_reason = ConversationHandler::TRANSFER_REASONS.first
+
+      expect { conversation.update!(assignee: agent) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content_attributes: { activity: { type: 'transferred' } }))
+    ensure
+      Current.user = nil
+    end
+
     it 'tags a team assignment that assigns an agent in the same save' do
       Current.user = agent
       team = create(:team, account: conversation.account)
@@ -88,6 +99,55 @@ RSpec.describe Custom::ActivityMessageHandler do
         .with(conversation, hash_excluding(:content_attributes))
     ensure
       Current.user = nil
+    end
+  end
+
+  describe 'marking a conversation pending' do
+    let(:agent) { create(:user, account: conversation.account) }
+
+    before { Current.user = agent }
+
+    after { Current.user = nil }
+
+    it 'says when the live chat rules will solve it' do
+      conversation.account.live_chat_rules.create!(auto_solve_hours: 24)
+
+      expect { conversation.update!(status: :pending) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation,
+              hash_including(content: "Conversation was marked as pending by #{agent.name} · it will be solved automatically in 24 hours"))
+    end
+
+    it 'keeps the stock copy in a bot inbox, where pending is not solved automatically' do
+      create(:agent_bot_inbox, inbox: conversation.inbox, agent_bot: create(:agent_bot, account: conversation.account))
+
+      expect { conversation.update!(status: :pending) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: "Conversation was marked as pending by #{agent.name}"))
+    end
+  end
+
+  describe 'a customer reopening a conversation' do
+    let(:contact) { conversation.contact }
+
+    before { conversation.update!(status: :resolved) }
+
+    it 'names the case it reopens' do
+      kase = create(:case, conversation: conversation)
+      Current.executed_by = contact
+
+      expect { conversation.update!(status: :open) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: "The customer wrote back · case #{kase.display} reopened, with its history",
+                                           content_attributes: { activity: { type: 'conversation_status_changed', status: 'open' } }))
+    end
+
+    it 'keeps the stock copy for a conversation without a case' do
+      Current.executed_by = contact
+
+      expect { conversation.update!(status: :open) }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: 'System reopened the conversation due to a new incoming message.'))
     end
   end
 

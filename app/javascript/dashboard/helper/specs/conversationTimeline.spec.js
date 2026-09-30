@@ -35,7 +35,7 @@ describe('buildConversationTimeline', () => {
   it('colours each event by what it is', () => {
     const tones = build([
       activity(1, 110, { type: 'assignee_changed' }),
-      activity(2, 120, { type: 'assignee_changed' }),
+      activity(2, 120, { type: 'transferred' }),
       activity(3, 130, { type: 'team_changed' }),
       activity(4, 140, {
         type: 'conversation_status_changed',
@@ -72,7 +72,7 @@ describe('buildConversationTimeline', () => {
       [5, TIMELINE_TONES.SYSTEM],
       [4, TIMELINE_TONES.ACTION],
       [3, TIMELINE_TONES.ACTION],
-      [2, TIMELINE_TONES.ACTION],
+      [2, TIMELINE_TONES.ACCENT],
       [1, TIMELINE_TONES.ACTION],
       [ARRIVED_EVENT_ID, TIMELINE_TONES.SYSTEM],
     ]);
