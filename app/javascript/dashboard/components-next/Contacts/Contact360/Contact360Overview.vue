@@ -167,7 +167,7 @@ watch(
           :key="entry.id"
           type="button"
           class="flex flex-col w-full gap-1 px-3 py-2 border rounded-lg text-start border-n-weak hover:bg-n-alpha-1"
-          @click="openConversationThread(entry, { readOnly: true })"
+          @click="openConversationThread(entry)"
         >
           <span class="flex items-center w-full min-w-0 gap-2">
             <span
