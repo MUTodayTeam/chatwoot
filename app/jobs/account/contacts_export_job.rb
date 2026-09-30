@@ -105,3 +105,5 @@ class Account::ContactsExportJob < ApplicationJob
     %w[id name email phone_number labels]
   end
 end
+
+Account::ContactsExportJob.prepend_mod_with('Account::ContactsExportJob')
