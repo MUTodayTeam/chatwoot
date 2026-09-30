@@ -32,6 +32,38 @@ describe('DataManager', () => {
       expect(db1).toBe(db2);
     });
 
+    it('gives up instead of waiting while another tab holds an older version open', async () => {
+      const dbName = 'cw-store-blocked-account';
+      await deleteDB(dbName);
+      // A tab still on the previous build, which never closes on versionchange
+      const oldTab = await openDB(dbName, 1, {
+        upgrade(db) {
+          db.createObjectStore('cache-keys');
+          db.createObjectStore('inbox', { keyPath: 'id' });
+        },
+      });
+
+      const manager = new DataManager('blocked-account');
+      await expect(manager.initDb()).rejects.toThrow('blocked');
+
+      oldTab.close();
+      await vi.waitFor(() => expect(manager.db).not.toBeNull());
+      expect([...manager.db.objectStoreNames]).toContain('canned_response');
+      manager.db.close();
+    });
+
+    it('closes its connection when a newer build needs to upgrade', async () => {
+      const newerBuild = await openDB(
+        `cw-store-${accountId}`,
+        dataManager.db.version + 1
+      );
+
+      expect(dataManager.db).toBeNull();
+      newerBuild.close();
+      await deleteDB(`cw-store-${accountId}`);
+      await dataManager.initDb();
+    });
+
     it('should add new stores and invalidate stale inbox data from an earlier version', async () => {
       const legacyAccountId = 'legacy-account';
       const dbName = `cw-store-${legacyAccountId}`;
