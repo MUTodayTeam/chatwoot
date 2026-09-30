@@ -43,14 +43,17 @@ export const findLiveChatRule = (rules, projectId) =>
   rules.find(rule => !rule.projectId) ||
   null;
 
+// The column default on live_chat_rules.auto_solve_hours, as DEFAULT_AUTO_CLOSE_HOURS.
+export const DEFAULT_AUTO_SOLVE_HOURS = 24;
+
 /**
  * When LiveChatRules::SweepJob moves the conversation on by itself: Solved to Closed
- * after auto_close_hours.
+ * after auto_close_hours, and Pending to Solved after auto_solve_hours.
  *
- * Pending to Solved is left out. The sweep skips pending conversations in an inbox
- * with an active bot (Inbox#active_bot?: an agent bot, Dialogflow, or Captain with
- * responses left), whoever they are assigned to, and nothing the client loads says
- * which inboxes those are, so a countdown there would run out with nothing happening.
+ * Pending counts down only in an inbox known to have no active bot (inbox.active_bot
+ * is false). The sweep skips pending conversations in an inbox with an active bot, and
+ * an inbox from an older cache carries no flag, so a countdown there could run out
+ * with nothing happening. A pending conversation held by a bot is Bot, not Pending.
  *
  * The clock starts at status_changed_at. Conversations from before v4.18.0 never had
  * it set, and the sweep counts those from updated_at instead (its STATUS_CLOCK).
@@ -58,16 +61,26 @@ export const findLiveChatRule = (rules, projectId) =>
  * @returns {{ target: string, dueAt: number } | null} target lifecycle status and the
  *   unix time in seconds it is due
  */
-export const getAutoTransition = (conversation, rule) => {
-  if (getLifecycleStatus(conversation) !== LIFECYCLE_STATUS.SOLVED) return null;
-
+export const getAutoTransition = (conversation, rule, inbox) => {
+  const lifecycle = getLifecycleStatus(conversation);
   const since =
     conversation.status_changed_at || Math.floor(conversation.updated_at);
-  const hours = rule?.autoCloseHours ?? DEFAULT_AUTO_CLOSE_HOURS;
-  return {
-    target: LIFECYCLE_STATUS.CLOSED,
-    dueAt: since + hours * SECONDS_PER_HOUR,
-  };
+
+  if (lifecycle === LIFECYCLE_STATUS.SOLVED) {
+    const hours = rule?.autoCloseHours ?? DEFAULT_AUTO_CLOSE_HOURS;
+    return {
+      target: LIFECYCLE_STATUS.CLOSED,
+      dueAt: since + hours * SECONDS_PER_HOUR,
+    };
+  }
+  if (lifecycle === LIFECYCLE_STATUS.PENDING && inbox?.active_bot === false) {
+    const hours = rule?.autoSolveHours ?? DEFAULT_AUTO_SOLVE_HOURS;
+    return {
+      target: LIFECYCLE_STATUS.SOLVED,
+      dueAt: since + hours * SECONDS_PER_HOUR,
+    };
+  }
+  return null;
 };
 
 const pad = value => String(value).padStart(2, '0');

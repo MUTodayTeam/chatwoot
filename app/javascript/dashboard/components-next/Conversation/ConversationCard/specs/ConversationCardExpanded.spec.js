@@ -6,6 +6,7 @@ import ConversationCardExpanded from '../ConversationCardExpanded.vue';
 withFullI18n();
 
 const getters = {
+  'inboxes/getInbox': ref(() => ({ active_bot: false })),
   'projects/getProjects': ref([{ id: 5, name: 'Checkin', inboxIds: [1] }]),
   'liveChatRules/getLiveChatRules': ref([
     { id: 2, projectId: 5, autoSolveHours: 2, autoCloseHours: 4 },

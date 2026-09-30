@@ -155,6 +155,7 @@
     "CARD": {
       "UNASSIGNED": "— Unassigned",
       "AUTO_TRANSITION": {
+        "solved": "→ Solved in {time}",
         "closed": "→ Closed in {time}"
       }
     }

@@ -18,6 +18,8 @@ json.resolved_by record.resolved_by && { id: record.resolved_by.id, name: record
 json.conversation do
   json.id conversation.display_id
   json.inbox_id conversation.inbox_id
+  # Set while an agent bot or Captain assistant holds the conversation, for the pending countdown
+  json.assignee_type conversation.ai_assignee_type
   json.channel conversation.inbox.channel_type
   # The sweep's status clock (LiveChatRules::SweepJob::STATUS_CLOCK), for the auto-close countdown
   json.status_changed_at (conversation.status_changed_at || conversation.updated_at).to_i

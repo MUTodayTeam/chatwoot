@@ -90,6 +90,14 @@ RSpec.describe 'Inboxes API', type: :request do
         create(:inbox_member, user: agent, inbox: inbox)
       end
 
+      it 'tells whether an inbox has an active bot' do
+        get "/api/v1/accounts/#{account.id}/inboxes",
+            headers: admin.create_new_auth_token,
+            as: :json
+
+        expect(response.parsed_body['payload'].pluck('active_bot')).to all(be(false))
+      end
+
       it 'returns all inboxes of current_account as administrator' do
         get "/api/v1/accounts/#{account.id}/inboxes",
             headers: admin.create_new_auth_token,
@@ -1320,6 +1328,13 @@ RSpec.describe 'Inboxes API', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(inbox.reload.agent_bot.id).to eq agent_bot.id
+      end
+
+      it 'bumps the inbox cache key so cached inbox lists refetch active_bot' do
+        expect do
+          post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
+               headers: admin.create_new_auth_token, params: valid_params, as: :json
+        end.to(change { account.reload.cache_keys[:inbox] })
       end
 
       it 'throw error when invalid agent bot id' do

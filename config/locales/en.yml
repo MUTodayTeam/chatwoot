@@ -408,6 +408,8 @@ en:
       muted: '%{user_name} has muted the conversation'
       unmuted: '%{user_name} has unmuted the conversation'
       reply_deadline_extended: '%{user_name} extended the reply deadline by %{minutes} minutes'
+      missed: 'Missed: no agent picked up this conversation in time'
+      expired: 'Expired: the reply deadline passed without a reply'
       case_opened: 'Case %{display} opened automatically'
       case_opened_for_team: 'Case %{display} opened automatically → %{team}'
       solved:

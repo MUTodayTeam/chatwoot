@@ -1,5 +1,6 @@
 import {
   DEFAULT_AUTO_CLOSE_HOURS,
+  DEFAULT_AUTO_SOLVE_HOURS,
   findLiveChatRule,
   findProjectForInbox,
   formatCountdown,
@@ -141,20 +142,64 @@ describe('getAutoTransition', () => {
     ).toBe(CHANGED_AT + 4 * HOUR);
   });
 
-  // The sweep leaves pending alone in an inbox with an active bot, whoever holds the
-  // conversation, and the client cannot tell those inboxes apart.
+  describe('pending', () => {
+    const noBot = { active_bot: false };
+
+    it('counts to Solved on the project rule in an inbox without an active bot', () => {
+      expect(
+        getAutoTransition(
+          conversation({ status: 'pending' }),
+          projectRule,
+          noBot
+        )
+      ).toEqual({ target: 'solved', dueAt: CHANGED_AT + 2 * HOUR });
+    });
+
+    it('uses the column default when the account saved no rule', () => {
+      expect(
+        getAutoTransition(conversation({ status: 'pending' }), null, noBot)
+          .dueAt
+      ).toBe(CHANGED_AT + DEFAULT_AUTO_SOLVE_HOURS * HOUR);
+    });
+
+    // The sweep leaves pending alone in an inbox with an active bot, and an inbox from
+    // an older cache has no flag to tell.
+    it.each([
+      ['an inbox with an active bot', { active_bot: true }],
+      ['an inbox that carries no flag', {}],
+      ['no inbox', undefined],
+    ])('has no transition in %s', (_, inbox) => {
+      expect(
+        getAutoTransition(
+          conversation({ status: 'pending' }),
+          projectRule,
+          inbox
+        )
+      ).toBeNull();
+    });
+
+    it('has no transition while a bot holds it', () => {
+      expect(
+        getAutoTransition(
+          conversation({
+            status: 'pending',
+            meta: { assignee_type: 'AgentBot' },
+          }),
+          projectRule,
+          noBot
+        )
+      ).toBeNull();
+    });
+  });
+
   it.each([
-    [
-      'pending with an agent',
-      { status: 'pending', meta: { assignee_type: 'User' } },
-    ],
-    ['pending with nobody', { status: 'pending', meta: {} }],
-    ['bot', { status: 'pending', meta: { assignee_type: 'AgentBot' } }],
     ['open', { status: 'open' }],
     ['on hold', { status: 'snoozed' }],
     ['closed', { status: 'closed' }],
   ])('has no transition for a %s conversation', (_, attrs) => {
-    expect(getAutoTransition(conversation(attrs), projectRule)).toBeNull();
+    expect(
+      getAutoTransition(conversation(attrs), projectRule, { active_bot: false })
+    ).toBeNull();
   });
 });
 

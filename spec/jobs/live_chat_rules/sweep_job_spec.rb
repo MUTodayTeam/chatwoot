@@ -7,6 +7,8 @@ RSpec.describe LiveChatRules::SweepJob do
   let(:inbox) { create(:inbox, account: account) }
   let(:conversation) { create(:conversation, account: account, inbox: inbox) }
 
+  before { allow(Rails.configuration.dispatcher).to receive(:dispatch).and_call_original }
+
   it 'runs every minute on the scheduled jobs queue' do
     schedule = YAML.load_file(Rails.root.join('config/schedule.yml'))['live_chat_rules_sweep_job']
 
@@ -27,6 +29,18 @@ RSpec.describe LiveChatRules::SweepJob do
 
       expect(missed_at).to be_present
       expect(conversation.reload.missed_at).to be_within(1.second).of(missed_at)
+    end
+
+    it 'writes a missed activity once and broadcasts the update' do
+      conversation.update_columns(created_at: 61.minutes.ago, status_changed_at: 61.minutes.ago)
+
+      expect { 2.times { described_class.perform_now } }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: 'Missed: no agent picked up this conversation in time',
+                                           content_attributes: { activity: hash_including(type: 'missed', automated: true) }))
+        .exactly(:once)
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+        .with(Events::Types::CONVERSATION_UPDATED, anything, hash_including(conversation: conversation)).once
     end
 
     it 'leaves a conversation that is still within the waiting time' do
@@ -73,6 +87,18 @@ RSpec.describe LiveChatRules::SweepJob do
 
       expect(expired_at).to be_present
       expect(conversation.reload.expired_at).to be_within(1.second).of(expired_at)
+    end
+
+    it 'writes an expired activity once and broadcasts the update' do
+      conversation.update_columns(waiting_since: 2.hours.ago, reply_due_at: 1.minute.ago)
+
+      expect { 2.times { described_class.perform_now } }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation, hash_including(content: 'Expired: the reply deadline passed without a reply',
+                                           content_attributes: { activity: hash_including(type: 'expired') }))
+        .exactly(:once)
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+        .with(Events::Types::CONVERSATION_UPDATED, anything, hash_including(conversation: conversation)).once
     end
 
     it 'leaves a conversation that is still within its deadline' do
