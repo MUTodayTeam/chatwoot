@@ -4,9 +4,9 @@ module Custom::ConversationFinder
 
   private
 
-  # Every conversation in the list shows its case number
+  # Every conversation in the list shows its case number and topic
   def conversations_base_query
-    super.preload(case: :project)
+    super.preload(case: [:project, :case_category])
   end
 
   # "Missed" is a flag the sweep sets, not a status, so it lists missed conversations in any status

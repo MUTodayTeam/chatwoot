@@ -53,9 +53,10 @@ const statusLabel = computed(() =>
     : t('CONVERSATION.END_BAR.CLOSED')
 );
 
-// Seam for the categories PR: show the category picked at Solved here. Until a
-// conversation carries one, every topic is Other, as bulk Solved records it.
-const topic = computed(() => t('CONVERSATION.END_BAR.OTHER_TOPIC'));
+// The category picked at Solved; a case solved without one (list menu, bulk, auto-solve) is Other
+const topic = computed(
+  () => props.chat.case?.topic || t('CONVERSATION.END_BAR.OTHER_TOPIC')
+);
 
 const closesIn = computed(() => {
   if (!isSolved.value) return '';
@@ -82,13 +83,12 @@ const reopenNote = computed(() =>
     : t('CONVERSATION.END_BAR.REOPEN_NOTE_NO_CASE')
 );
 
-// Seam for the handlers PR: switch to its dedicated reopen endpoint once it lands.
+// The reopen endpoint gives the conversation back to an agent and opens their turn (spec 7.4)
 const reopen = async () => {
   isReopening.value = true;
   try {
-    await store.dispatch('toggleStatus', {
+    await store.dispatch('reopenConversation', {
       conversationId: props.chat.id,
-      status: CONVERSATION_STATUS.OPEN,
     });
     useAlert(t('CONVERSATION.CHANGE_STATUS'));
   } catch (error) {
@@ -118,7 +118,6 @@ const reopen = async () => {
     </span>
     <span class="ms-auto text-label-small">{{ reopenNote }}</span>
     <Button
-      v-if="isSolved"
       :label="t('CONVERSATION.END_BAR.REOPEN')"
       slate
       faded

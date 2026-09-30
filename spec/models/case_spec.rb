@@ -34,6 +34,18 @@ RSpec.describe Case do
       expect(described_class.ensure_for!(conversation, agent).team_id).to eq(teams.first.id)
     end
 
+    it "prefers the agent's team entitled to the project" do
+      teams = create_list(:team, 2, account: account)
+      teams.each { |team| create(:team_member, team: team, user: agent) }
+      project.project_teams.create!(team: teams.last)
+
+      expect(described_class.ensure_for!(conversation, agent).team_id).to eq(teams.last.id)
+    end
+
+    it 'opens the case without a team when nobody took the conversation' do
+      expect(described_class.ensure_for!(conversation, nil)).to have_attributes(team_id: nil, display_id: 1)
+    end
+
     it 'writes the activity message once however often it is called' do
       2.times { described_class.ensure_for!(conversation, agent) }
 

@@ -456,7 +456,8 @@ describe AutomationRuleListener do
         listener.conversation_opened(event)
         conversation.reload
 
-        expect(conversation.messages.first.content).to eq('Send this message.')
+        # Muting resolves the conversation the rule just assigned, which opens its case; that activity is not what this counts
+        expect(conversation.messages.outgoing.first.content).to eq('Send this message.')
       end
     end
   end

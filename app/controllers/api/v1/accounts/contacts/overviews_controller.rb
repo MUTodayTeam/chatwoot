@@ -14,7 +14,7 @@ class Api::V1::Accounts::Contacts::OverviewsController < Api::V1::Accounts::Cont
     @first_contact_at = conversations.minimum(:created_at)
     @latest_conversation = conversations.order(created_at: :desc, id: :desc).first
     @history = conversations.where(status: HISTORY_STATUSES)
-                            .includes(:assignee, { inbox: [:project, :channel] }, case: [:resolved_by, :project])
+                            .includes(:assignee, { inbox: [:project, :channel] }, case: [:resolved_by, :project, :case_category])
                             .order(created_at: :desc, id: :desc)
                             .limit(HISTORY_LIMIT)
                             .to_a

@@ -54,9 +54,10 @@ class Case < ApplicationRecord
 
   after_create_commit :create_opened_activity
 
-  # Opens the case for a conversation the first time an agent takes it. Assignment
-  # events can arrive twice or race each other, so the unique conversation_id index
-  # decides who wins and the loser returns the winner's case.
+  # Opens the case for a conversation the first time an agent takes it, or when it is resolved
+  # before anyone did (user is then nil and so is the team). Assignment events can arrive twice
+  # or race each other, so the unique conversation_id index decides who wins and the loser
+  # returns the winner's case.
   def self.ensure_for!(conversation, user)
     find_by(conversation_id: conversation.id) || open_for!(conversation, user)
   rescue ActiveRecord::RecordNotUnique
@@ -64,21 +65,32 @@ class Case < ApplicationRecord
   end
 
   # display_id runs across the whole account, so the account row serialises the
-  # max + 1 read with the insert.
+  # max + 1 read with the insert. The row is locked through a fresh read: a resolve opens
+  # cases too, and the conversation's account may carry unsaved changes by then.
   def self.open_for!(conversation, user)
     account = conversation.account
-    account.with_lock(requires_new: true) do
+    transaction(requires_new: true) do
+      Account.lock.find(account.id)
       create!(
         account: account,
         conversation: conversation,
         project_id: conversation.inbox.project_id,
-        team_id: user.teams.where(account_id: account.id).order(:id).pick(:id),
+        team_id: team_id_for(user, conversation),
         display_id: where(account_id: account.id).maximum(:display_id).to_i + 1,
         subject: subject_from(conversation.messages.incoming.reorder(:created_at, :id).first)
       )
     end
   end
   private_class_method :open_for!
+
+  # The opener's first team entitled to the project, else their first team in the account
+  def self.team_id_for(user, conversation)
+    return if user.nil?
+
+    teams = user.teams.where(account_id: conversation.account_id).order(:id)
+    teams.where(id: ProjectTeam.where(project_id: conversation.inbox.project_id).select(:team_id)).pick(:id) || teams.pick(:id)
+  end
+  private_class_method :team_id_for
 
   def self.subject_from(message)
     message&.content.to_s.squish.truncate(SUBJECT_LENGTH)
@@ -91,7 +103,7 @@ class Case < ApplicationRecord
 
   # What a conversation carries about its case
   def push_event_data
-    { id: id, display: display, severity: severity, case_category_id: case_category_id }
+    { id: id, display: display, severity: severity, case_category_id: case_category_id, topic: case_category&.c3 }
   end
 
   private
