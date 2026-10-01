@@ -256,7 +256,23 @@
     "SUPER_ADMIN_CONSOLE": "SuperAdmin console",
     "DOCS": "Read documentation",
     "CHANGELOG": "Changelog",
-    "LOGOUT": "Log out"
+    "LOGOUT": "Log out",
+    "AGENT_STATUS": {
+      "TITLE": "สถานะของฉัน",
+      "SUMMARY_TITLE": "สรุปเวลาวันนี้",
+      "ONLINE_TOTAL": "ออนไลน์รวม",
+      "FOOTNOTE": "Only Ready receives cases automatically.",
+      "PILL": "{status} · {active}/{limit} cases",
+      "STATUS": {
+        "READY": "Ready",
+        "BUSY": "Busy",
+        "MINI_BREAK": "Mini break",
+        "LUNCH": "Lunch",
+        "BRIEFING": "Briefing / Coaching",
+        "REST_ROOM": "Rest room",
+        "OFFLINE": "Offline"
+      }
+    }
   },
   "APP_GLOBAL": {
     "TRIAL_MESSAGE": "days trial remaining.",

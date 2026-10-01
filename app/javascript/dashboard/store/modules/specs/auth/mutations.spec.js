@@ -57,6 +57,28 @@ describe('#mutations', () => {
       );
     });
   });
+  describe('#SET_CURRENT_USER_AGENT_STATUS', () => {
+    const state = {
+      currentUser: {
+        id: 1,
+        accounts: [
+          { id: 1, availability: 'online', availability_status: 'online' },
+          { id: 2, availability: 'online', availability_status: 'online' },
+        ],
+        account_id: 1,
+      },
+    };
+    it('sets the status and the availability it derives to, in the current account only', () => {
+      mutations[types.SET_CURRENT_USER_AGENT_STATUS](state, 'lunch');
+      expect(state.currentUser.accounts[0]).toEqual({
+        id: 1,
+        agent_status: 'lunch',
+        availability: 'busy',
+        availability_status: 'busy',
+      });
+      expect(state.currentUser.accounts[1].availability).toEqual('online');
+    });
+  });
   describe('#RESET_ONBOARDING', () => {
     it('removes onboarding_step from the targeted account', () => {
       const state = {

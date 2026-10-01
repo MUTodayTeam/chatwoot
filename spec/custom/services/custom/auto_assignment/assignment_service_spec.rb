@@ -60,4 +60,27 @@ RSpec.describe Custom::AutoAssignment::AssignmentService do
       expect(assign_with_online(outsider, team_agent)).to eq(team_agent)
     end
   end
+
+  context 'when agents are connected with different statuses' do
+    before do
+      [team_agent, outsider].each { |user| OnlineStatusTracker.update_presence(account.id, 'User', user.id) }
+    end
+
+    def assigned_agent
+      AutoAssignment::AssignmentService.new(inbox: inbox).perform_bulk_assignment(limit: 5)
+      conversation.reload.assignee
+    end
+
+    it 'assigns the ready agent and skips the one on lunch' do
+      account.account_users.find_by(user: outsider).update!(agent_status: :lunch)
+
+      expect(assigned_agent).to eq(team_agent)
+    end
+
+    it 'leaves the conversation unassigned when every connected agent is away' do
+      [team_agent, outsider].each { |user| account.account_users.find_by(user: user).update!(agent_status: :busy) }
+
+      expect(assigned_agent).to be_nil
+    end
+  end
 end

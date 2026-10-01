@@ -17,6 +17,9 @@ const getters = {
   'conversationUnreadCounts/getInboxUnreadCount': ref(inboxId =>
     inboxId === 11 ? 4 : 0
   ),
+  'agentStatus/getAgentStatus': ref('ready'),
+  'agentStatus/getLoad': ref({ active: 3, limit: 10 }),
+  'agentStatus/getFetchedAt': ref(1),
 };
 
 vi.mock('vue-router', () => ({ useRoute: () => route }));
@@ -34,6 +37,9 @@ describe('SidebarProjectStatus', () => {
     getters['agents/getAgents'].value = [];
     getters['agents/getAgentStatus'].value = { online: 3, busy: 1, offline: 2 };
     getters.getChatListFilters.value = {};
+    getters['agentStatus/getAgentStatus'].value = 'ready';
+    getters['agentStatus/getLoad'].value = { active: 3, limit: 10 };
+    getters['agentStatus/getFetchedAt'].value = 1;
   });
 
   it('counts the agents online and fetches agents when none are loaded', () => {
@@ -50,7 +56,7 @@ describe('SidebarProjectStatus', () => {
     const wrapper = mountStatus();
 
     expect(wrapper.text()).not.toContain('Checkin+');
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalledWith('agents/get');
   });
 
   it("shows the project's open count on its own open list", () => {
@@ -71,5 +77,38 @@ describe('SidebarProjectStatus', () => {
 
     expect(wrapper.text()).toContain('Checkin+');
     expect(wrapper.text()).toContain('SIDEBAR.PROJECT_STATUS.UNREAD');
+  });
+
+  it("shows the agent's status and load as a pill", () => {
+    const wrapper = mountStatus();
+
+    expect(wrapper.text()).toContain('SIDEBAR_ITEMS.AGENT_STATUS.PILL');
+    expect(dispatch).toHaveBeenCalledWith('agentStatus/fetch', null);
+  });
+
+  it("measures the load against the current project's chat limit", () => {
+    route.params = { projectId: '1' };
+
+    mountStatus();
+
+    expect(dispatch).toHaveBeenCalledWith('agentStatus/fetch', 1);
+  });
+
+  it('shows only the status until the load has been fetched', () => {
+    getters['agentStatus/getLoad'].value = { active: 0, limit: 0 };
+
+    const wrapper = mountStatus();
+
+    expect(wrapper.text()).toContain('SIDEBAR_ITEMS.AGENT_STATUS.STATUS.READY');
+    expect(wrapper.text()).not.toContain('SIDEBAR_ITEMS.AGENT_STATUS.PILL');
+  });
+
+  it('hides the pill until the first fetch lands', () => {
+    const pill = () => mountStatus().find('button').element.parentElement;
+
+    expect(pill().classList.contains('hidden')).toBe(false);
+
+    getters['agentStatus/getFetchedAt'].value = 0;
+    expect(pill().classList.contains('hidden')).toBe(true);
   });
 });

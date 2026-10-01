@@ -2,6 +2,8 @@ json.id resource.id
 # could be nil for a deleted agent hence the safe operator before account id
 json.account_id Current.account&.id
 json.availability_status resource.availability_status
+# the status the agent picked, offline when they are not connected
+json.agent_status resource.availability_status == 'offline' ? 'offline' : resource.current_account_user&.agent_status
 json.auto_offline resource.auto_offline
 json.confirmed resource.confirmed?
 json.email resource.email

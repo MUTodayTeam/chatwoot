@@ -32,6 +32,12 @@ live_chat_rules_sweep_job:
   class: 'LiveChatRules::SweepJob'
   queue: scheduled_jobs
 
+# executed every minute: agents who stopped pinging go Offline, and pick Ready again on return
+agent_status_auto_offline_job:
+  cron: '*/1 * * * *'
+  class: 'AgentStatus::AutoOfflineJob'
+  queue: scheduled_jobs
+
 # executed daily at 2230 UTC
 # which is our lowest traffic time
 remove_stale_contact_inboxes_job.rb:

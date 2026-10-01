@@ -86,14 +86,33 @@ describe('AssignDialog', () => {
       expect.stringContaining('Arm'),
     ]);
     expect(rows[0].text()).toContain('CRM');
-    expect(rows[0].text()).toContain(
-      'CONVERSATION.ASSIGN_DIALOG.PRESENCE.ONLINE'
-    );
+    expect(rows[0].text()).toContain('SIDEBAR_ITEMS.AGENT_STATUS.STATUS.READY');
     expect(rows[0].text()).toContain('3/10');
     expect(rows[1].text()).toContain(
-      'CONVERSATION.ASSIGN_DIALOG.PRESENCE.OFFLINE'
+      'SIDEBAR_ITEMS.AGENT_STATUS.STATUS.OFFLINE'
     );
     expect(rows[1].find('.text-n-ruby-11').text()).toBe('10/10');
+  });
+
+  it('names the status an agent picked while it matches their live presence', async () => {
+    const agents = getters['agents/getAgents'].value;
+    getters['agents/getAgents'].value = [
+      { id: 2, availability_status: 'busy' },
+    ];
+    const assignable = getters['inboxAssignableAgents/getAssignableAgents'];
+    const original = assignable.value;
+    assignable.value = () => [
+      { ...original()[0], agent_status: 'lunch' },
+      original()[1],
+    ];
+
+    const wrapper = await mountDialog();
+
+    expect(agentRows(wrapper)[0].text()).toContain(
+      'SIDEBAR_ITEMS.AGENT_STATUS.STATUS.LUNCH'
+    );
+    getters['agents/getAgents'].value = agents;
+    assignable.value = original;
   });
 
   it('hides the previous load while it refetches on reopen', async () => {
