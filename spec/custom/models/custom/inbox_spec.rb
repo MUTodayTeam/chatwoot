@@ -47,6 +47,19 @@ RSpec.describe Custom::Inbox do
     end
   end
 
+  context 'when an inbox member is a developer' do
+    before { account.account_users.find_by(user: other_agent).update!(developer: true) }
+
+    it 'drops the developer from the auto-assignment candidates' do
+      expect(inbox.member_ids_with_assignment_capacity).to contain_exactly(team_agent.id, team_admin.id)
+    end
+
+    it 'still offers the developer for a manual assignment' do
+      expect(inbox.entitled_assignable_agents).to include(other_agent)
+      expect(inbox.assignable_agents).to include(other_agent)
+    end
+  end
+
   context 'when the project has teams' do
     before { project.teams << team }
 

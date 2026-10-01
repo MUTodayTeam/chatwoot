@@ -100,7 +100,8 @@ module Custom::Message
   end
 
   def unassigned_for_entitled_sender?
-    conversation.assignee.blank? && conversation.inbox.entitled_assignable_agents.include?(sender)
+    conversation.assignee.blank? && conversation.inbox.entitled_assignable_agents.include?(sender) &&
+      conversation.account.developer_user_ids.exclude?(sender.id)
   end
 
   # Written the way Enterprise writes an agent taking a conversation from Captain: one

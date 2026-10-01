@@ -76,4 +76,30 @@ RSpec.describe Custom::Conversation do
       expect(conversation.reload).to be_closed
     end
   end
+
+  describe 'automatic assignment and a developer' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account, enable_auto_assignment: true) }
+    let(:developer) { create(:user, account: account, role: :agent) }
+
+    before do
+      create(:inbox_member, inbox: inbox, user: developer)
+      developer.account_users.first.update!(auto_offline: false, availability: :online, developer: true)
+      inbox.reload
+    end
+
+    it 'leaves a new conversation unassigned when only a developer is online' do
+      expect(create(:conversation, account: account, inbox: inbox).assignee).to be_nil
+    end
+
+    it 'leaves a conversation unassigned when its team is picked and only a developer is on it' do
+      team = create(:team, account: account, allow_auto_assign: true)
+      create(:team_member, team: team, user: developer)
+      conversation = create(:conversation, account: account, inbox: inbox)
+
+      conversation.update!(team: team)
+
+      expect(conversation.reload.assignee).to be_nil
+    end
+  end
 end

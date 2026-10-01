@@ -62,6 +62,32 @@ describe('#getters', () => {
     });
   });
 
+  describe('#getCurrentUserDeveloper', () => {
+    it('returns true when the current account marks the user as a developer', () => {
+      expect(
+        getters.getCurrentUserDeveloper(
+          { currentUser: { accounts: [{ id: 1, developer: true }] } },
+          { getCurrentAccountId: 1 }
+        )
+      ).toEqual(true);
+    });
+
+    it('returns false if the mark is missing or the account is not available', () => {
+      expect(
+        getters.getCurrentUserDeveloper(
+          { currentUser: { accounts: [{ id: 1, developer: true }] } },
+          { getCurrentAccountId: 2 }
+        )
+      ).toEqual(false);
+      expect(
+        getters.getCurrentUserDeveloper(
+          { currentUser: { accounts: [{ id: 1 }] } },
+          { getCurrentAccountId: 1 }
+        )
+      ).toEqual(false);
+    });
+  });
+
   describe('#getCurrentUserAvailability', () => {
     it('returns correct availability status', () => {
       expect(

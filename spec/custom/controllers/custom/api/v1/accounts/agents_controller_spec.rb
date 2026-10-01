@@ -28,4 +28,39 @@ RSpec.describe 'Agents list with conversation load', type: :request do
     expect(response).to have_http_status(:success)
     expect(response.parsed_body).to all(satisfy { |user| !user.key?('conversation_load') })
   end
+
+  describe 'marking an agent as a developer' do
+    let(:path) { "/api/v1/accounts/#{account.id}/agents/#{agent.id}" }
+
+    it 'lets an administrator mark and unmark an agent' do
+      put path, params: { developer: true }, headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['developer']).to be(true)
+      expect(agent.account_users.first.reload).to be_developer
+
+      put path, params: { developer: false }, headers: admin.create_new_auth_token, as: :json
+
+      expect(response.parsed_body['developer']).to be(false)
+      expect(agent.account_users.first.reload).not_to be_developer
+    end
+
+    it 'refuses an agent' do
+      put path, params: { developer: true }, headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(agent.account_users.first.reload).not_to be_developer
+    end
+
+    it 'carries the mark in the agents list and in the profile' do
+      agent.account_users.first.update!(developer: true)
+
+      get "/api/v1/accounts/#{account.id}/agents", headers: admin.create_new_auth_token, as: :json
+      marks = response.parsed_body.to_h { |user| [user['id'], user['developer']] }
+      get '/api/v1/profile', headers: agent.create_new_auth_token, as: :json
+
+      expect(marks).to eq(agent.id => true, admin.id => false)
+      expect(response.parsed_body['accounts'].first['developer']).to be(true)
+    end
+  end
 end

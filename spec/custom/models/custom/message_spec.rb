@@ -126,6 +126,15 @@ RSpec.describe Custom::Message do
       expect(conversation.assignee).to eq(agent)
     end
 
+    it 'does not hand it to an online developer teammate' do
+      teammate.account_users.first.update!(auto_offline: false, availability: :online, developer: true)
+
+      create(:message, message_type: :incoming, conversation: conversation)
+
+      expect(conversation.reload).to be_open
+      expect(conversation.assignee).to eq(agent)
+    end
+
     it 'reopens and hands it over once for a burst of customer messages' do
       other_teammate = create(:user, account: conversation.account)
       create(:inbox_member, inbox: inbox, user: other_teammate)
@@ -204,6 +213,23 @@ RSpec.describe Custom::Message do
 
       expect(conversation.reload).to be_open
       expect(conversation.assignee).to eq(agent)
+    end
+
+    it 'does not give it to a developer who replied, the round robin picks someone else' do
+      inbox = conversation.inbox
+      inbox.update!(enable_auto_assignment: true)
+      teammate = create(:user, account: conversation.account)
+      create(:inbox_member, inbox: inbox, user: agent)
+      create(:inbox_member, inbox: inbox, user: teammate)
+      inbox.reload
+      agent.account_users.first.update!(auto_offline: false, availability: :online, developer: true)
+      teammate.account_users.first.update!(auto_offline: false, availability: :online)
+      Current.user = agent
+
+      create(:message, message_type: :outgoing, sender: agent, conversation: conversation)
+
+      expect(conversation.reload).to be_open
+      expect(conversation.assignee).to eq(teammate)
     end
 
     it 'leaves it with the bot for a private note' do

@@ -10,7 +10,6 @@ const getters = {
     { id: 1, name: 'Checkin+', color: '#ff0000', inboxIds: [11, 12] },
   ]),
   'agents/getAgents': ref([]),
-  'agents/getAgentStatus': ref({ online: 0, busy: 0, offline: 0 }),
   getChatListFilters: ref({}),
   getAppliedConversationFilters: ref([]),
   'conversationStats/getStats': ref({ allCount: 17 }),
@@ -32,16 +31,28 @@ describe('SidebarProjectStatus', () => {
     dispatch.mockReset();
     route.params = {};
     getters['agents/getAgents'].value = [];
-    getters['agents/getAgentStatus'].value = { online: 3, busy: 1, offline: 2 };
     getters.getChatListFilters.value = {};
   });
 
-  it('counts the agents online and fetches agents when none are loaded', () => {
+  it('fetches agents when none are loaded', () => {
     const wrapper = mountStatus();
 
     expect(wrapper.text()).toContain('SIDEBAR.PROJECT_STATUS.AGENTS_ONLINE');
-    expect(wrapper.find('.tabular-nums').text()).toBe('3');
+    expect(wrapper.find('.tabular-nums').text()).toBe('0');
     expect(dispatch).toHaveBeenCalledWith('agents/get');
+  });
+
+  it('counts the online agents and leaves developers out', () => {
+    getters['agents/getAgents'].value = [
+      { id: 1, availability_status: 'online', developer: true },
+      { id: 2, availability_status: 'online', developer: false },
+      { id: 3, availability_status: 'busy', developer: false },
+      { id: 4, availability_status: 'online' },
+    ];
+
+    const wrapper = mountStatus();
+
+    expect(wrapper.find('.tabular-nums').text()).toBe('2');
   });
 
   it('shows no project on a list that spans every project', () => {

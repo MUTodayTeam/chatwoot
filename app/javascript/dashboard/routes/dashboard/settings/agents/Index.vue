@@ -15,6 +15,7 @@ import EditAgent from './EditAgent.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Label from 'dashboard/components-next/label/Label.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import {
   BaseTable,
@@ -319,6 +320,13 @@ const confirmDeletion = () => {
                   }"
                 >
                   {{ getAgentRoleName(agent) }}
+                  <Label
+                    v-if="agent.developer"
+                    :label="$t('AGENT_MGMT.DEVELOPER_BADGE')"
+                    color="slate"
+                    compact
+                    class="ms-2"
+                  />
 
                   <div
                     class="absolute start-0 z-10 hidden w-[300px] bg-n-alpha-3 backdrop-blur-[100px] rounded-xl outline outline-1 outline-n-container shadow-lg top-8"
@@ -420,6 +428,7 @@ const confirmDeletion = () => {
         :email="currentAgent.email"
         :availability="currentAgent.availability_status"
         :custom-role-id="currentAgent.custom_role_id"
+        :developer="currentAgent.developer"
         @close="hideEditPopup"
       />
     </woot-modal>

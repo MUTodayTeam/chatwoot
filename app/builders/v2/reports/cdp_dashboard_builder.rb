@@ -201,7 +201,7 @@ class V2::Reports::CdpDashboardBuilder
   end
 
   def agent_load
-    agents = account.users.where(id: agent_load_user_ids).pluck(:id, :name)
+    agents = account.users.where(id: agent_load_user_ids).where.not(id: account.developer_user_ids).pluck(:id, :name)
     loads = Agents::ConversationLoadService.new(account: account, inbox_ids: inbox_ids, user_ids: agents.map(&:first), project: project).perform
 
     rows = agents.map { |id, name| { id: id, name: name, **loads[id] } }

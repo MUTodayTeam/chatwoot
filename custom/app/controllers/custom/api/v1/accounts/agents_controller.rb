@@ -8,4 +8,15 @@ module Custom::Api::V1::Accounts::AgentsController
     @agent_loads = Agents::ConversationLoadService.new(account: Current.account, inbox_ids: Current.account.inboxes.pluck(:id),
                                                        user_ids: @agents.map(&:id)).perform
   end
+
+  private
+
+  # Only administrators reach update (UserPolicy), so only they can mark a developer.
+  def account_user_attributes
+    super + [:developer]
+  end
+
+  def allowed_agent_params
+    super + [:developer]
+  end
 end

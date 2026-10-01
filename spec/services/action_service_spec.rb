@@ -86,6 +86,21 @@ describe ActionService do
         expect(conversation.reload.assignee).to eq(agent)
       end
 
+      it 'skips the reply of a developer and takes the agent who replied before' do
+        developer = create(:user, account: account, role: :agent)
+        developer.account_users.first.update!(developer: true)
+        inbox_member
+        create(:inbox_member, inbox: conversation.inbox, user: developer)
+        create(:message, message_type: :outgoing, account: account,
+                         inbox: conversation.inbox, conversation: conversation, sender: agent)
+        create(:message, message_type: :outgoing, account: account,
+                         inbox: conversation.inbox, conversation: conversation, sender: developer)
+
+        action_service.assign_agent(['last_responding_agent'])
+
+        expect(conversation.reload.assignee).to eq(agent)
+      end
+
       it 'does not assign the conversation when there is no public agent reply' do
         inbox_member
         original_assignee = conversation.assignee

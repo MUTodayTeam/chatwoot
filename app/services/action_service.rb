@@ -98,7 +98,7 @@ class ActionService
   private
 
   def last_responding_agent_id
-    @conversation.messages.outgoing.where(sender_type: 'User', private: false).last&.sender_id
+    @conversation.messages.outgoing.where(sender_type: 'User', private: false).where.not(sender_id: @account.developer_user_ids).last&.sender_id
   end
 
   def agent_belongs_to_inbox?(agent_ids)
