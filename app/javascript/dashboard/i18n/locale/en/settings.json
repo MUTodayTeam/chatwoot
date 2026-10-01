@@ -258,9 +258,8 @@
     "CHANGELOG": "Changelog",
     "LOGOUT": "Log out",
     "AGENT_STATUS": {
-      "TITLE": "สถานะของฉัน",
-      "SUMMARY_TITLE": "สรุปเวลาวันนี้",
-      "ONLINE_TOTAL": "ออนไลน์รวม",
+      "TITLE": "Status",
+      "ONLINE_TOTAL": "Online today",
       "FOOTNOTE": "Only Ready receives cases automatically.",
       "PILL": "{status} · {active}/{limit} cases",
       "STATUS": {
