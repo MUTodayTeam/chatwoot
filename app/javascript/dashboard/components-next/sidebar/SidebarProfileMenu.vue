@@ -4,6 +4,7 @@ import Auth from 'dashboard/api/auth';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import Avatar from 'next/avatar/Avatar.vue';
+import Label from 'next/label/Label.vue';
 import SidebarProfileMenuStatus from './SidebarProfileMenuStatus.vue';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
@@ -29,6 +30,7 @@ const { t } = useI18n();
 
 const currentUser = useMapGetter('getCurrentUser');
 const currentUserAvailability = useMapGetter('getCurrentUserAvailability');
+const currentUserDeveloper = useMapGetter('getCurrentUserDeveloper');
 const accountId = useMapGetter('getCurrentAccountId');
 const globalConfig = useMapGetter('globalConfig/get');
 const isFeatureEnabledonAccount = useMapGetter(
@@ -151,8 +153,16 @@ const allowedMenuItems = computed(() => {
           class="flex-shrink-0"
         />
         <div v-if="!isCollapsed" class="min-w-0">
-          <div class="text-sm font-medium leading-4 truncate text-n-slate-12">
-            {{ currentUser.available_name }}
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="text-sm font-medium leading-4 truncate text-n-slate-12">
+              {{ currentUser.available_name }}
+            </div>
+            <Label
+              v-if="currentUserDeveloper"
+              :label="t('AGENT_MGMT.DEVELOPER_BADGE')"
+              color="slate"
+              compact
+            />
           </div>
           <div class="text-xs truncate text-n-slate-11">
             {{ currentUser.email }}

@@ -47,6 +47,15 @@ describe AutoAssignOnReplyListener do
       end
     end
 
+    context 'when the sender is a developer' do
+      before { agent.account_users.first.update!(developer: true) }
+
+      it 'does not assign' do
+        listener.message_created(event)
+        expect(conversation.reload.assignee).to be_nil
+      end
+    end
+
     context 'when the sender has no access to the inbox' do
       let(:message) do
         create(:message, account: account, conversation: conversation, message_type: :outgoing,

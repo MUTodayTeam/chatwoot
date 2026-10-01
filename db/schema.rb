@@ -52,6 +52,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_01_200001) do
     t.boolean "auto_offline", default: true, null: false
     t.bigint "custom_role_id"
     t.bigint "agent_capacity_policy_id"
+    t.boolean "developer", default: false, null: false
     t.integer "agent_status", default: 0, null: false
     t.index ["account_id", "user_id"], name: "uniq_user_id_per_account_id", unique: true
     t.index ["account_id"], name: "index_account_users_on_account_id"

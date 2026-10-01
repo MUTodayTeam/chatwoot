@@ -216,8 +216,12 @@ const isSaving = computed(
           :placeholder="$t('PROJECT_MGMT.FORM.TEAMS.PLACEHOLDER')"
           :search-placeholder="$t('PROJECT_MGMT.FORM.TEAMS.SEARCH_PLACEHOLDER')"
           :empty-state="$t('PROJECT_MGMT.FORM.TEAMS.EMPTY')"
-          :message="$t('PROJECT_MGMT.FORM.TEAMS.HELP')"
         />
+        <!-- Rendered here rather than as the combobox message, which stays on one line and
+             widened the form past the modal -->
+        <p class="mt-2 mb-0 text-sm text-n-slate-11">
+          {{ $t('PROJECT_MGMT.FORM.TEAMS.HELP') }}
+        </p>
       </div>
 
       <div class="w-full mt-2">
