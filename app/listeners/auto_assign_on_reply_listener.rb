@@ -5,6 +5,7 @@ class AutoAssignOnReplyListener < BaseListener
 
     return unless agent_reply?(message)
     return if conversation.assignee_id.present?
+    return if conversation.account.developer_user_ids.include?(message.sender.id)
     return unless conversation.inbox.entitled_assignable_agents.include?(message.sender)
 
     assign(conversation, message.sender)

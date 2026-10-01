@@ -295,6 +295,14 @@ RSpec.describe V2::Reports::CdpDashboardBuilder do
     end
   end
 
+  describe 'agent_load with a developer' do
+    it 'leaves the developer out' do
+      alice.account_users.first.update!(developer: true)
+
+      expect(report[:agent_load].pluck(:id)).to eq([bob.id])
+    end
+  end
+
   describe 'agent_load with a chat limit' do
     it 'measures agents against the project rule' do
       account.live_chat_rules.create!(project: project, chat_limit: 2)

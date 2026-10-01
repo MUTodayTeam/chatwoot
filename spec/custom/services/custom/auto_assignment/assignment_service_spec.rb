@@ -49,6 +49,18 @@ RSpec.describe Custom::AutoAssignment::AssignmentService do
     end
   end
 
+  context 'when an inbox member is a developer' do
+    before { account.account_users.find_by(user: outsider).update!(developer: true) }
+
+    it 'leaves the conversation unassigned when only the developer is online' do
+      expect(assign_with_online(outsider)).to be_nil
+    end
+
+    it 'assigns another online agent instead' do
+      expect(assign_with_online(outsider, team_agent)).to eq(team_agent)
+    end
+  end
+
   context 'when the project has teams' do
     before { project.teams << team }
 

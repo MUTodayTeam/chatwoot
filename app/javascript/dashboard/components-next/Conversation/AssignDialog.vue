@@ -14,6 +14,7 @@ import {
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
+import Label from 'dashboard/components-next/label/Label.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 // Assign (spec 7.1): the agents entitled to the conversation's project, with their team,
@@ -159,8 +160,16 @@ const assignTo = async agent => {
               :status="agent.availability_status"
             />
             <span class="flex flex-col flex-1 min-w-0">
-              <span class="truncate text-body-main text-n-slate-12">
-                {{ agent.available_name || agent.name }}
+              <span class="flex items-center gap-2 min-w-0">
+                <span class="truncate text-body-main text-n-slate-12">
+                  {{ agent.available_name || agent.name }}
+                </span>
+                <Label
+                  v-if="agent.developer"
+                  :label="t('AGENT_MGMT.DEVELOPER_BADGE')"
+                  color="slate"
+                  compact
+                />
               </span>
               <span
                 v-if="agent.teamNames.length"

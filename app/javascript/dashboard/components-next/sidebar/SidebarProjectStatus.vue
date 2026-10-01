@@ -17,7 +17,6 @@ const route = useRoute();
 
 const projects = useMapGetter('projects/getProjects');
 const agents = useMapGetter('agents/getAgents');
-const agentStatus = useMapGetter('agents/getAgentStatus');
 const chatListFilters = useMapGetter('getChatListFilters');
 const appliedFilters = useMapGetter('getAppliedConversationFilters');
 const conversationStats = useMapGetter('conversationStats/getStats');
@@ -29,6 +28,14 @@ const inboxUnreadCountOf = useMapGetter(
 onMounted(() => {
   if (!agents.value.length) store.dispatch('agents/get');
 });
+
+// Developers are on the team to build, not to take chats, so they are not counted
+const onlineAgentCount = computed(
+  () =>
+    agents.value.filter(
+      agent => !agent.developer && agent.availability_status === 'online'
+    ).length
+);
 
 const project = computed(() =>
   resolveCurrentProject(projects.value, {
@@ -80,7 +87,7 @@ const projectCount = computed(() => {
       <span class="rounded-full size-2 bg-n-teal-10" />
       {{ t('SIDEBAR.PROJECT_STATUS.AGENTS_ONLINE') }}
       <span class="font-semibold text-n-slate-12 tabular-nums">
-        {{ agentStatus.online }}
+        {{ onlineAgentCount }}
       </span>
     </span>
   </div>

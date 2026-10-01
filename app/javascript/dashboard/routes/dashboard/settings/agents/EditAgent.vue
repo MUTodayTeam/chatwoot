@@ -6,6 +6,7 @@ import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
+import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import Auth from '../../../../api/auth';
 import wootConstants from 'dashboard/constants/globals';
 
@@ -38,6 +39,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  developer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['close']);
@@ -50,6 +55,7 @@ const { t } = useI18n();
 const agentName = ref(props.name);
 const agentAvailability = ref(props.availability);
 const selectedRoleId = ref(props.customRoleId || props.type);
+const isDeveloper = ref(props.developer);
 const agentCredentials = ref({ email: props.email });
 
 const rules = {
@@ -126,6 +132,7 @@ const editAgent = async () => {
       id: props.id,
       name: agentName.value,
       availability: agentAvailability.value,
+      developer: isDeveloper.value,
     };
 
     if (selectedRole.value.name.startsWith('custom_')) {
@@ -202,6 +209,18 @@ const resetPassword = async () => {
             {{ $t('AGENT_MGMT.EDIT.FORM.AGENT_AVAILABILITY.ERROR') }}
           </span>
         </label>
+      </div>
+
+      <div class="w-full mb-4">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-medium text-n-slate-12">
+            {{ $t('AGENT_MGMT.EDIT.FORM.DEVELOPER.LABEL') }}
+          </span>
+          <ToggleSwitch v-model="isDeveloper" />
+        </div>
+        <p class="mt-1 mb-0 text-xs text-n-slate-11">
+          {{ $t('AGENT_MGMT.EDIT.FORM.DEVELOPER.HELP') }}
+        </p>
       </div>
 
       <div class="flex flex-row justify-start w-full gap-2 px-0 py-2">
