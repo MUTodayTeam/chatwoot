@@ -24,6 +24,7 @@ RSpec.describe AgentStatus::AutoOfflineJob do
 
   it 'sets an agent on lunch to offline too' do
     account_user.update!(agent_status: :lunch)
+    AgentStatusEvent.open.update_all(started_at: 1.hour.ago) # rubocop:disable Rails/SkipsModelValidations
     ping(10.minutes.to_i)
 
     described_class.perform_now
@@ -43,6 +44,15 @@ RSpec.describe AgentStatus::AutoOfflineJob do
     described_class.perform_now
 
     expect(account_user.reload).to be_agent_status_ready
+  end
+
+  it 'leaves an agent whose status just began alone, however stale the last ping' do
+    account_user.update!(agent_status: :busy)
+    ping(1.hour.to_i)
+
+    described_class.perform_now
+
+    expect(account_user.reload).to be_agent_status_busy
   end
 
   it 'leaves an agent who turned auto offline off alone' do
