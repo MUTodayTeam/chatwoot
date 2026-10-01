@@ -7,7 +7,9 @@ import parseISO from 'date-fns/parseISO';
 
 import {
   DAY_LABEL_FORMAT,
+  COMPACT_DAY_LABELS_FROM,
   EMPTY_CELL,
+  dayHeaderLabel,
   intensityClassFor,
   isWeekend,
 } from '../../helpers/matrixCellHelper';
@@ -31,6 +33,10 @@ const { t } = useI18n();
 
 const parsedDays = computed(() =>
   props.days.map(day => ({ key: day, date: parseISO(day) }))
+);
+const dayDates = computed(() => parsedDays.value.map(day => day.date));
+const compactDays = computed(
+  () => dayDates.value.length >= COMPACT_DAY_LABELS_FROM
 );
 const maxValue = computed(() => Math.max(0, ...props.matrix.flat()));
 const daysShort = computed(() => [
@@ -68,35 +74,43 @@ const getCellTitle = (agent, day, value) =>
     role="region"
     :aria-label="t('OVERVIEW_REPORTS.AGENT_DAILY.ARIA_LABEL')"
   >
+    <!-- Day columns share the width, so a 30-day range fits without scrolling sideways -->
     <table
-      class="min-w-max border-separate border-spacing-0 text-sm"
+      class="w-full min-w-[48rem] table-fixed border-separate border-spacing-0 text-sm"
       :aria-label="t('OVERVIEW_REPORTS.AGENT_DAILY.ARIA_LABEL')"
     >
       <thead>
         <tr>
           <th
             scope="col"
-            class="sticky start-0 top-0 z-30 min-w-48 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-11"
+            class="sticky start-0 top-0 z-30 w-44 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-11"
           >
             {{ t('OVERVIEW_REPORTS.AGENT_DAILY.AGENT') }}
           </th>
           <th
-            v-for="day in parsedDays"
+            v-for="(day, dayIndex) in parsedDays"
             :key="day.key"
             scope="col"
-            class="sticky top-0 z-20 min-w-20 border-b border-e border-n-weak px-3 py-2 text-center font-medium text-n-slate-12"
+            class="sticky top-0 z-20 border-b border-e border-n-weak px-0.5 py-2 text-center font-medium text-n-slate-12"
             :class="isWeekend(day.date) ? 'bg-n-slate-2' : 'bg-n-solid-2'"
+            :title="format(day.date, DAY_LABEL_FORMAT)"
           >
-            <span class="block text-xs text-n-slate-11">
+            <span
+              class="block text-n-slate-11"
+              :class="compactDays ? 'text-xxs' : 'text-xs'"
+            >
               {{ daysShort[getDay(day.date)] }}
             </span>
-            <span class="block tabular-nums">
-              {{ format(day.date, DAY_LABEL_FORMAT) }}
+            <span
+              class="block tabular-nums"
+              :class="{ 'text-xs': compactDays }"
+            >
+              {{ dayHeaderLabel(dayDates, dayIndex) }}
             </span>
           </th>
           <th
             scope="col"
-            class="sticky end-0 top-0 z-30 min-w-20 border-b border-s border-n-weak bg-n-solid-2 px-3 py-2 text-end font-semibold text-n-slate-12"
+            class="sticky end-0 top-0 z-30 w-16 border-b border-s border-n-weak bg-n-solid-2 px-3 py-2 text-end font-semibold text-n-slate-12"
           >
             {{ t('OVERVIEW_REPORTS.AGENT_DAILY.TOTAL') }}
           </th>
@@ -115,14 +129,15 @@ const getCellTitle = (agent, day, value) =>
           <tr v-for="(agent, agentIndex) in agents" :key="agent.id">
             <th
               scope="row"
-              class="sticky start-0 z-10 min-w-48 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-12"
+              class="sticky start-0 z-10 truncate border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-12"
+              :title="agent.name"
             >
               {{ agent.name }}
             </th>
             <td
               v-for="(day, dayIndex) in parsedDays"
               :key="day.key"
-              class="min-w-20 border-b border-e border-n-weak px-3 py-2 text-center font-medium tabular-nums"
+              class="border-b border-e border-n-weak px-1 py-2 text-center font-medium tabular-nums"
               :class="getCellClasses(agentIndex, dayIndex, day)"
               :title="getCellTitle(agent, day, getValue(agentIndex, dayIndex))"
             >
@@ -137,7 +152,7 @@ const getCellTitle = (agent, day, value) =>
               </template>
             </td>
             <td
-              class="sticky end-0 z-10 min-w-20 border-b border-s border-n-weak bg-n-solid-2 px-3 py-2 text-end font-semibold tabular-nums text-n-slate-12"
+              class="sticky end-0 z-10 border-b border-s border-n-weak bg-n-solid-2 px-3 py-2 text-end font-semibold tabular-nums text-n-slate-12"
             >
               {{ agent.total }}
             </td>

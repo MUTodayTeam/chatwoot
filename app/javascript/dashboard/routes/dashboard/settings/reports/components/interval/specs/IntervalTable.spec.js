@@ -44,6 +44,22 @@ describe('IntervalTable.vue', () => {
     ]);
   });
 
+  it('fits 30 days across the width with short day labels', () => {
+    const month = Array.from({ length: 30 }, (_, index) =>
+      bucket(`2026-09-${String(index + 1).padStart(2, '0')}`, 9, 1)
+    );
+    const wrapper = mountTable(month);
+    const headers = wrapper.findAll('thead th').slice(1);
+
+    expect(wrapper.find('table').classes()).toEqual(
+      expect.arrayContaining(['w-full', 'table-fixed'])
+    );
+    expect(headers).toHaveLength(30);
+    expect(headers[0].text()).toContain('1/9');
+    expect(headers[1].text()).toContain('2');
+    expect(headers[1].text()).not.toContain('/');
+  });
+
   it('renders the count for hours that had conversations', () => {
     const cells = cellsForHour(mountTable(), 9);
     expect(cells[1].text()).toBe('4');
