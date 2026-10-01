@@ -6,16 +6,20 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { getAgentStatusMeta } from 'dashboard/constants/agentStatus';
 
 import { DropdownContainer, DropdownBody } from 'next/dropdown-menu/base';
+import { provideDropdownTeleport } from 'next/dropdown-menu/base/provider';
 import Button from 'next/button/Button.vue';
-import SidebarProfileMenuStatus from './SidebarProfileMenuStatus.vue';
+import AgentStatusList from './AgentStatusList.vue';
 
-// "<status> · <active>/<limit> cases" (CDP spec §1). Opens the agent's own status menu.
+// "<status> · <active>/<limit> cases" (CDP spec §1). Opens the status list, one click to switch.
 // The limit is the current project's chat limit, the account default without a project.
 const props = defineProps({
   projectId: { type: Number, default: null },
 });
 
 const REFRESH_INTERVAL_MS = 60 * 1000;
+
+// Float the list on the page, so a short window scrolls it instead of cutting it off
+provideDropdownTeleport();
 
 const { t } = useI18n();
 const store = useStore();
@@ -64,8 +68,8 @@ const pillText = computed(() =>
         </span>
       </Button>
     </template>
-    <DropdownBody class="z-50 mt-1 w-72 ltr:left-0 rtl:right-0">
-      <SidebarProfileMenuStatus />
+    <DropdownBody class="w-64">
+      <AgentStatusList />
     </DropdownBody>
   </DropdownContainer>
 </template>
