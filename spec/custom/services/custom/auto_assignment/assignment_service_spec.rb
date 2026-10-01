@@ -61,6 +61,26 @@ RSpec.describe Custom::AutoAssignment::AssignmentService do
     end
   end
 
+  context 'with a balanced policy and a capacity policy', if: ChatwootApp.enterprise? do
+    before do
+      account.enable_features('advanced_assignment')
+      account.save!
+      inbox.assignment_policy.update!(assignment_order: :balanced)
+      capacity_policy = create(:agent_capacity_policy, account: account)
+      create(:inbox_capacity_limit, agent_capacity_policy: capacity_policy, inbox: inbox, conversation_limit: 50)
+      [team_agent, outsider].each { |user| account.account_users.find_by(user: user).update!(agent_capacity_policy: capacity_policy) }
+      account.account_users.find_by(user: outsider).update!(developer: true)
+    end
+
+    it 'leaves the conversation unassigned when only the developer is online' do
+      expect(assign_with_online(outsider)).to be_nil
+    end
+
+    it 'assigns another online agent instead' do
+      expect(assign_with_online(outsider, team_agent)).to eq(team_agent)
+    end
+  end
+
   context 'when the project has teams' do
     before { project.teams << team }
 
