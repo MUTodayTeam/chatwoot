@@ -10,6 +10,10 @@ import {
   formatAgentLoad,
   isAgentAtLimit,
 } from 'dashboard/helper/agentAssignment';
+import {
+  getAgentStatusMeta,
+  liveAgentStatus,
+} from 'dashboard/constants/agentStatus';
 
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
@@ -179,11 +183,7 @@ const assignTo = async agent => {
               </span>
             </span>
             <span class="text-label-small text-n-slate-11 flex-shrink-0">
-              {{
-                t(
-                  `CONVERSATION.ASSIGN_DIALOG.PRESENCE.${agent.availability_status.toUpperCase()}`
-                )
-              }}
+              {{ t(getAgentStatusMeta(liveAgentStatus(agent)).labelKey) }}
             </span>
             <Spinner v-if="assigningTo === agent.id" class="size-4" />
             <span

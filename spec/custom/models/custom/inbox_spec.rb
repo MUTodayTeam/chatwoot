@@ -94,4 +94,24 @@ RSpec.describe Custom::Inbox do
 
     expect(inbox.entitled_assignable_agents).to contain_exactly(team_agent, other_agent, team_admin, other_admin)
   end
+
+  context 'when agents are connected with different statuses' do
+    before do
+      [team_agent, other_agent].each { |user| OnlineStatusTracker.update_presence(account.id, 'User', user.id) }
+    end
+
+    it 'offers only the ready agent for automatic assignment' do
+      account.account_users.find_by(user: other_agent).update!(agent_status: :lunch)
+
+      expect(inbox.available_agents.map(&:user_id)).to contain_exactly(team_agent.id)
+    end
+
+    it 'offers an agent again once they are ready' do
+      account_user = account.account_users.find_by(user: other_agent)
+      account_user.update!(agent_status: :lunch)
+      account_user.update!(agent_status: :ready)
+
+      expect(inbox.available_agents.map(&:user_id)).to contain_exactly(team_agent.id, other_agent.id)
+    end
+  end
 end

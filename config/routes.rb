@@ -345,6 +345,7 @@ Rails.application.routes.draw do
             end
           end
           resource :notification_settings, only: [:show, :update]
+          resource :agent_status, only: [:show, :update], controller: 'agent_status'
 
           resources :teams do
             resources :team_members, only: [:index, :create] do

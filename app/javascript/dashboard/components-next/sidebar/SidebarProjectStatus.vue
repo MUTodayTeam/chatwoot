@@ -8,6 +8,7 @@ import {
   getProjectUnreadCount,
   resolveCurrentProject,
 } from 'dashboard/helper/sidebarProjectStatus';
+import SidebarAgentStatusPill from './SidebarAgentStatusPill.vue';
 
 // The app header's current project and Agents online (CDP spec §1). Chatwoot has no
 // app header, so they sit at the top of the sidebar, under search.
@@ -90,5 +91,6 @@ const projectCount = computed(() => {
         {{ onlineAgentCount }}
       </span>
     </span>
+    <SidebarAgentStatusPill :project-id="project?.id ?? null" />
   </div>
 </template>

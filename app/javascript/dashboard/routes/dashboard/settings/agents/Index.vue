@@ -34,6 +34,10 @@ import {
   formatAgentLoad,
   isAgentAtLimit,
 } from 'dashboard/helper/agentAssignment';
+import {
+  getAgentStatusMeta,
+  liveAgentStatus,
+} from 'dashboard/constants/agentStatus';
 
 const ROLES = ['administrator', 'agent'];
 
@@ -361,11 +365,7 @@ const confirmDeletion = () => {
                     class="rounded-full size-2 flex-shrink-0"
                     :class="PRESENCE_DOT_CLASSES[presenceOf(agent)]"
                   />
-                  {{
-                    $t(
-                      `AGENT_MGMT.LIST.PRESENCE_STATUS.${presenceOf(agent).toUpperCase()}`
-                    )
-                  }}
+                  {{ $t(getAgentStatusMeta(liveAgentStatus(agent)).labelKey) }}
                 </span>
               </BaseTableCell>
               <BaseTableCell>

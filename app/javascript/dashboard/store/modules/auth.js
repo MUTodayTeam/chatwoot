@@ -4,6 +4,7 @@ import authAPI from '../../api/auth';
 import { setUser, clearCookiesOnLogout } from '../utils/api';
 import SessionStorage from 'shared/helpers/sessionStorage';
 import { SESSION_STORAGE_KEYS } from 'dashboard/constants/sessionStorage';
+import { AVAILABILITY_BY_STATUS } from 'dashboard/constants/agentStatus';
 
 const initialState = {
   currentUser: {
@@ -256,6 +257,24 @@ export const mutations = {
     const accounts = _state.currentUser.accounts.map(account => {
       if (account.id === _state.currentUser.account_id) {
         return { ...account, availability, availability_status: availability };
+      }
+      return account;
+    });
+    _state.currentUser = {
+      ..._state.currentUser,
+      accounts,
+    };
+  },
+  [types.SET_CURRENT_USER_AGENT_STATUS](_state, agentStatus) {
+    const availability = AVAILABILITY_BY_STATUS[agentStatus];
+    const accounts = _state.currentUser.accounts.map(account => {
+      if (account.id === _state.currentUser.account_id) {
+        return {
+          ...account,
+          agent_status: agentStatus,
+          availability,
+          availability_status: availability,
+        };
       }
       return account;
     });

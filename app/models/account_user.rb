@@ -4,6 +4,7 @@
 #
 #  id                       :bigint           not null, primary key
 #  active_at                :datetime
+#  agent_status             :integer          default("ready"), not null
 #  auto_offline             :boolean          default(TRUE), not null
 #  availability             :integer          default("online"), not null
 #  role                     :integer          default("agent")

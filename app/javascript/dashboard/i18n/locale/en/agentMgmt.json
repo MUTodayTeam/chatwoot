@@ -23,11 +23,6 @@
       "PRESENCE": "Presence",
       "CHAT_LIMIT": "Chat limit",
       "CHAT_LIMIT_TOOLTIP": "Open, pending and snoozed chats assigned / chat limit",
-      "PRESENCE_STATUS": {
-        "ONLINE": "Online",
-        "BUSY": "Busy",
-        "OFFLINE": "Offline"
-      },
       "STATUS": "Status",
       "ACTIONS": "Actions",
       "VERIFIED": "Verified",

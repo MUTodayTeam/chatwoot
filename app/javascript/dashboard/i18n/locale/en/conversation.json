@@ -467,12 +467,7 @@
       "NO_RESULTS": "No agent matches your search",
       "FETCH_ERROR": "Couldn't load the agents, please try again",
       "LOAD_TOOLTIP": "Open, pending and snoozed chats in this project / chat limit",
-      "CANCEL": "Cancel",
-      "PRESENCE": {
-        "ONLINE": "Online",
-        "BUSY": "Busy",
-        "OFFLINE": "Offline"
-      }
+      "CANCEL": "Cancel"
     },
     "TRANSFER": {
       "BUTTON": "Transfer",
