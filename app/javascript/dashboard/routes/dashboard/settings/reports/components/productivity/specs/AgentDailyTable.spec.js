@@ -33,6 +33,26 @@ describe('AgentDailyTable.vue', () => {
     );
   });
 
+  it('fits 30 days across the width with short day labels', () => {
+    const month = Array.from(
+      { length: 30 },
+      (_, index) => `2026-09-${String(index + 1).padStart(2, '0')}`
+    );
+    const wrapper = mountTable({
+      days: month,
+      matrix: agents.map(() => month.map(() => 0)),
+    });
+    const dayHeaders = wrapper.findAll('thead th').slice(1, -1);
+
+    expect(wrapper.find('table').classes()).toEqual(
+      expect.arrayContaining(['w-full', 'table-fixed'])
+    );
+    expect(dayHeaders).toHaveLength(30);
+    expect(dayHeaders[0].text()).toContain('1/9');
+    expect(dayHeaders[29].text()).toContain('30');
+    expect(dayHeaders[29].text()).not.toContain('/');
+  });
+
   it('renders a dot for zero cells', () => {
     const cells = mountTable().findAll('tbody tr')[0].findAll('td');
 

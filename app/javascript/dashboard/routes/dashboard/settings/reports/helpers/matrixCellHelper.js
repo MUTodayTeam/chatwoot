@@ -1,4 +1,6 @@
+import format from 'date-fns/format';
 import getDay from 'date-fns/getDay';
+import isSameMonth from 'date-fns/isSameMonth';
 
 // Steps 3-8 are the only blue tokens that stay a background in both themes,
 // so the count keeps AA contrast against text-n-slate-12 in light and dark mode.
@@ -13,6 +15,20 @@ export const CELL_INTENSITY_CLASSES = [
 
 export const DAY_LABEL_FORMAT = 'dd/MM';
 export const EMPTY_CELL = '·';
+
+// From two weeks on, day columns share the width, too narrow for dd/MM: they show the day
+// alone, with the month on the first column and wherever a new month starts.
+export const COMPACT_DAY_LABELS_FROM = 14;
+
+export const dayHeaderLabel = (dates, index) => {
+  const date = dates[index];
+  if (dates.length < COMPACT_DAY_LABELS_FROM) {
+    return format(date, DAY_LABEL_FORMAT);
+  }
+
+  const startsMonth = index === 0 || !isSameMonth(date, dates[index - 1]);
+  return format(date, startsMonth ? 'd/M' : 'd');
+};
 
 export const intensityClassFor = (value, maxValue) => {
   if (!value) {

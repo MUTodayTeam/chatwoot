@@ -403,6 +403,7 @@ onMounted(() => {
               :height="DAILY_CHART_HEIGHT"
               stacked
               show-values
+              timeseries
             />
             <span v-else class="text-body-main text-n-slate-10">
               {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.DAILY_CHANNELS.NO_DATA') }}
@@ -469,34 +470,37 @@ onMounted(() => {
             <h6 class="mb-0 text-heading-3 text-n-slate-12">
               {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.AGENT_LOAD.HEADER') }}
             </h6>
-            <div
-              v-for="agent in agentLoad"
-              :key="agent.id"
-              class="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3 py-1.5 border-b border-n-weak"
-            >
-              <span class="truncate text-body-main text-n-slate-12">
-                {{ agent.name }}
-              </span>
-              <div class="h-2.5 rounded-sm bg-n-slate-3">
-                <div
-                  class="h-full rounded-sm"
-                  :class="agent.barClass"
-                  :style="{ width: `${agent.percent}%` }"
-                />
+            <!-- As tall as the chart beside it; a longer team scrolls inside -->
+            <div v-if="agentLoad.length" class="overflow-y-auto max-h-72 pe-2">
+              <div
+                v-for="agent in agentLoad"
+                :key="agent.id"
+                class="grid grid-cols-[minmax(0,1fr)_minmax(3rem,6rem)_auto] items-center gap-3 py-2 border-b border-n-weak last:border-b-0"
+              >
+                <span
+                  v-tooltip.top="agent.name"
+                  class="truncate text-body-main text-n-slate-12"
+                >
+                  {{ agent.name }}
+                </span>
+                <div class="h-2.5 rounded-sm bg-n-slate-3">
+                  <div
+                    class="h-full rounded-sm"
+                    :class="agent.barClass"
+                    :style="{ width: `${agent.percent}%` }"
+                  />
+                </div>
+                <span class="text-label text-n-slate-12 tabular-nums">
+                  {{
+                    t('OVERVIEW_REPORTS.CDP_DASHBOARD.AGENT_LOAD.COUNT', {
+                      count: agent.assignedCount,
+                      limit: agent.limit,
+                    })
+                  }}
+                </span>
               </div>
-              <span class="text-label text-n-slate-12 tabular-nums">
-                {{
-                  t('OVERVIEW_REPORTS.CDP_DASHBOARD.AGENT_LOAD.COUNT', {
-                    count: agent.assignedCount,
-                    limit: agent.limit,
-                  })
-                }}
-              </span>
             </div>
-            <span
-              v-if="!agentLoad.length"
-              class="text-body-main text-n-slate-10"
-            >
+            <span v-else class="text-body-main text-n-slate-10">
               {{ t('OVERVIEW_REPORTS.CDP_DASHBOARD.AGENT_LOAD.NO_AGENTS') }}
             </span>
           </div>

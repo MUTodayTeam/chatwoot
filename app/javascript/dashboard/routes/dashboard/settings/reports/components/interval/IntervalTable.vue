@@ -7,7 +7,9 @@ import getDay from 'date-fns/getDay';
 import { buildIntervalMatrix } from '../../helpers/intervalHelper';
 import {
   DAY_LABEL_FORMAT,
+  COMPACT_DAY_LABELS_FROM,
   EMPTY_CELL,
+  dayHeaderLabel,
   intensityClassFor,
   isWeekend,
 } from '../../helpers/matrixCellHelper';
@@ -27,6 +29,10 @@ const HOURS = Array.from(
 const { t } = useI18n();
 
 const matrix = computed(() => buildIntervalMatrix(props.intervalData));
+const dayDates = computed(() => matrix.value.days.map(day => day.date));
+const compactDays = computed(
+  () => dayDates.value.length >= COMPACT_DAY_LABELS_FROM
+);
 const daysShort = computed(() => [
   t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.DAYS_SHORT.SUNDAY'),
   t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.DAYS_SHORT.MONDAY'),
@@ -74,30 +80,38 @@ const getCellTitle = (hour, day) => {
   <div
     class="w-full max-w-full overflow-x-auto rounded-lg border border-n-weak"
   >
+    <!-- Day columns share the width, so a 30-day range fits without scrolling sideways -->
     <table
-      class="min-w-max border-separate border-spacing-0 text-sm"
+      class="w-full min-w-[40rem] table-fixed border-separate border-spacing-0 text-sm"
       :aria-label="t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.ARIA_LABEL')"
     >
       <thead>
         <tr>
           <th
             scope="col"
-            class="sticky start-0 z-20 min-w-20 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-11"
+            class="sticky start-0 z-20 w-20 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start font-medium text-n-slate-11"
           >
             {{ t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.HOUR') }}
           </th>
           <th
-            v-for="day in matrix.days"
+            v-for="(day, dayIndex) in matrix.days"
             :key="day.key"
             scope="col"
-            class="min-w-20 border-b border-e border-n-weak px-3 py-2 text-center font-medium text-n-slate-12"
+            class="border-b border-e border-n-weak px-0.5 py-2 text-center font-medium text-n-slate-12"
             :class="isWeekend(day.date) ? 'bg-n-slate-2' : 'bg-n-solid-2'"
+            :title="format(day.date, DAY_LABEL_FORMAT)"
           >
-            <span class="block text-xs text-n-slate-11">
+            <span
+              class="block text-n-slate-11"
+              :class="compactDays ? 'text-xxs' : 'text-xs'"
+            >
               {{ daysShort[getDay(day.date)] }}
             </span>
-            <span class="block tabular-nums">
-              {{ format(day.date, DAY_LABEL_FORMAT) }}
+            <span
+              class="block tabular-nums"
+              :class="{ 'text-xs': compactDays }"
+            >
+              {{ dayHeaderLabel(dayDates, dayIndex) }}
             </span>
           </th>
         </tr>
@@ -106,14 +120,14 @@ const getCellTitle = (hour, day) => {
         <tr v-for="(hourLabel, hour) in HOURS" :key="hourLabel">
           <th
             scope="row"
-            class="sticky start-0 z-10 min-w-20 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start text-xs font-medium tabular-nums text-n-slate-11"
+            class="sticky start-0 z-10 border-b border-e border-n-weak bg-n-solid-2 px-3 py-2 text-start text-xs font-medium tabular-nums text-n-slate-11"
           >
             {{ hourLabel }}
           </th>
           <td
             v-for="day in matrix.days"
             :key="day.key"
-            class="min-w-20 border-b border-e border-n-weak px-3 py-2 text-center font-medium tabular-nums"
+            class="border-b border-e border-n-weak px-1 py-2 text-center font-medium tabular-nums"
             :class="getCellClasses(hour, day)"
             :title="getCellTitle(hour, day)"
           >
