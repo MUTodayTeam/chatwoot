@@ -7,9 +7,10 @@ import getDay from 'date-fns/getDay';
 import { buildIntervalMatrix } from '../../helpers/intervalHelper';
 import {
   DAY_LABEL_FORMAT,
-  COMPACT_DAY_LABELS_FROM,
   EMPTY_CELL,
   dayHeaderLabel,
+  dayHeaderTextClass,
+  isCompactDayRange,
   intensityClassFor,
   isWeekend,
 } from '../../helpers/matrixCellHelper';
@@ -30,9 +31,6 @@ const { t } = useI18n();
 
 const matrix = computed(() => buildIntervalMatrix(props.intervalData));
 const dayDates = computed(() => matrix.value.days.map(day => day.date));
-const compactDays = computed(
-  () => dayDates.value.length >= COMPACT_DAY_LABELS_FROM
-);
 const daysShort = computed(() => [
   t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.DAYS_SHORT.SUNDAY'),
   t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.DAYS_SHORT.MONDAY'),
@@ -97,19 +95,19 @@ const getCellTitle = (hour, day) => {
             v-for="(day, dayIndex) in matrix.days"
             :key="day.key"
             scope="col"
-            class="border-b border-e border-n-weak px-0.5 py-2 text-center font-medium text-n-slate-12"
+            class="border-b border-e border-n-weak px-0 py-2 text-center font-medium text-n-slate-12"
             :class="isWeekend(day.date) ? 'bg-n-slate-2' : 'bg-n-solid-2'"
             :title="format(day.date, DAY_LABEL_FORMAT)"
           >
             <span
               class="block text-n-slate-11"
-              :class="compactDays ? 'text-xxs' : 'text-xs'"
+              :class="isCompactDayRange(dayDates) ? 'text-xxs' : 'text-xs'"
             >
               {{ daysShort[getDay(day.date)] }}
             </span>
             <span
               class="block tabular-nums"
-              :class="{ 'text-xs': compactDays }"
+              :class="dayHeaderTextClass(dayDates, dayIndex)"
             >
               {{ dayHeaderLabel(dayDates, dayIndex) }}
             </span>
