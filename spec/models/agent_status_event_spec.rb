@@ -65,6 +65,21 @@ RSpec.describe AgentStatusEvent do
     end
   end
 
+  describe 'deletion' do
+    it 'goes with a deleted user' do
+      interval(:ready, now - 1.hour, now)
+      interval(:busy, now)
+
+      expect { user.destroy! }.to change { described_class.where(user_id: user.id).count }.from(2).to(0)
+    end
+
+    it 'goes with a deleted account' do
+      interval(:ready, now)
+
+      expect { account.destroy! }.to change { described_class.where(account_id: account.id).count }.from(1).to(0)
+    end
+  end
+
   describe '.switch!' do
     it 'does not move an interval end before its start' do
       opened = interval(:ready, now)
