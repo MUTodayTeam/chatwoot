@@ -1,6 +1,7 @@
 import {
   CELL_INTENSITY_CLASSES,
   dayHeaderLabel,
+  dayHeaderTextClass,
   intensityClassFor,
   isWeekend,
 } from './matrixCellHelper';
@@ -64,5 +65,21 @@ describe('dayHeaderLabel', () => {
     expect(labels[1]).toBe('3');
     expect(labels[28]).toBe('30');
     expect(labels[29]).toBe('1/10');
+  });
+});
+
+describe('dayHeaderTextClass', () => {
+  it('leaves a week at the table size', () => {
+    const dates = daysFrom(new Date(2026, 8, 25), 7);
+
+    expect(dayHeaderTextClass(dates, 6)).toBe('');
+  });
+
+  it('shrinks only the month markers across 30 days', () => {
+    const dates = daysFrom(new Date(2026, 8, 2), 30);
+
+    expect(dayHeaderTextClass(dates, 0)).toBe('text-xxs');
+    expect(dayHeaderTextClass(dates, 1)).toBe('text-xs');
+    expect(dayHeaderTextClass(dates, 29)).toBe('text-xxs');
   });
 });

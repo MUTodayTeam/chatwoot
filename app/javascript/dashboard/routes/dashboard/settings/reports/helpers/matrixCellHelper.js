@@ -20,14 +20,27 @@ export const EMPTY_CELL = '·';
 // alone, with the month on the first column and wherever a new month starts.
 export const COMPACT_DAY_LABELS_FROM = 14;
 
+export const isCompactDayRange = dates =>
+  dates.length >= COMPACT_DAY_LABELS_FROM;
+
+const startsMonth = (dates, index) =>
+  index === 0 || !isSameMonth(dates[index], dates[index - 1]);
+
 export const dayHeaderLabel = (dates, index) => {
-  const date = dates[index];
-  if (dates.length < COMPACT_DAY_LABELS_FROM) {
-    return format(date, DAY_LABEL_FORMAT);
+  if (!isCompactDayRange(dates)) {
+    return format(dates[index], DAY_LABEL_FORMAT);
   }
 
-  const startsMonth = index === 0 || !isSameMonth(date, dates[index - 1]);
-  return format(date, startsMonth ? 'd/M' : 'd');
+  return format(dates[index], startsMonth(dates, index) ? 'd/M' : 'd');
+};
+
+// A month marker such as 1/10 takes the smallest size, so it stays inside a narrow column.
+export const dayHeaderTextClass = (dates, index) => {
+  if (!isCompactDayRange(dates)) {
+    return '';
+  }
+
+  return startsMonth(dates, index) ? 'text-xxs' : 'text-xs';
 };
 
 export const intensityClassFor = (value, maxValue) => {

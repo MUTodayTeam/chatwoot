@@ -7,9 +7,10 @@ import parseISO from 'date-fns/parseISO';
 
 import {
   DAY_LABEL_FORMAT,
-  COMPACT_DAY_LABELS_FROM,
   EMPTY_CELL,
   dayHeaderLabel,
+  dayHeaderTextClass,
+  isCompactDayRange,
   intensityClassFor,
   isWeekend,
 } from '../../helpers/matrixCellHelper';
@@ -35,9 +36,6 @@ const parsedDays = computed(() =>
   props.days.map(day => ({ key: day, date: parseISO(day) }))
 );
 const dayDates = computed(() => parsedDays.value.map(day => day.date));
-const compactDays = computed(
-  () => dayDates.value.length >= COMPACT_DAY_LABELS_FROM
-);
 const maxValue = computed(() => Math.max(0, ...props.matrix.flat()));
 const daysShort = computed(() => [
   t('OVERVIEW_REPORTS.CONVERSATION_INTERVAL.DAYS_SHORT.SUNDAY'),
@@ -91,19 +89,19 @@ const getCellTitle = (agent, day, value) =>
             v-for="(day, dayIndex) in parsedDays"
             :key="day.key"
             scope="col"
-            class="sticky top-0 z-20 border-b border-e border-n-weak px-0.5 py-2 text-center font-medium text-n-slate-12"
+            class="sticky top-0 z-20 border-b border-e border-n-weak px-0 py-2 text-center font-medium text-n-slate-12"
             :class="isWeekend(day.date) ? 'bg-n-slate-2' : 'bg-n-solid-2'"
             :title="format(day.date, DAY_LABEL_FORMAT)"
           >
             <span
               class="block text-n-slate-11"
-              :class="compactDays ? 'text-xxs' : 'text-xs'"
+              :class="isCompactDayRange(dayDates) ? 'text-xxs' : 'text-xs'"
             >
               {{ daysShort[getDay(day.date)] }}
             </span>
             <span
               class="block tabular-nums"
-              :class="{ 'text-xs': compactDays }"
+              :class="dayHeaderTextClass(dayDates, dayIndex)"
             >
               {{ dayHeaderLabel(dayDates, dayIndex) }}
             </span>
