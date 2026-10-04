@@ -50,6 +50,16 @@ RSpec.describe 'Conversation Reopen API', type: :request do
     expect(conversation.handlers.open.pluck(:user_id)).to eq([poy.id])
   end
 
+  it 'reopens a conversation without an agent but does not give it to a developer' do
+    conversation.update!(assignee: nil)
+    account.account_users.find_by(user: poy).update!(developer: true)
+
+    post path, headers: poy.create_new_auth_token, as: :json
+
+    expect(conversation.reload).to have_attributes(status: 'open', assignee: nil)
+    expect(conversation.handlers.open).to be_empty
+  end
+
   it 'returns 422 for a conversation that is not Solved or Closed' do
     conversation.update!(status: :open)
 

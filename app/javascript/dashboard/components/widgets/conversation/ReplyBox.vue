@@ -198,7 +198,6 @@ export default {
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
       agentStatus: 'agentStatus/getAgentStatus',
-      agentStatusFetchedAt: 'agentStatus/getFetchedAt',
     }),
     readyPromptMessage() {
       const status = this.$t(getAgentStatusMeta(this.agentStatus).labelKey);
@@ -982,26 +981,24 @@ export default {
         const ok = await this.$refs.confirmDialog.showConfirmation();
         if (!ok) return;
       }
-      if (await this.switchToReadyBeforeReply()) {
-        this.confirmOnSendReply();
-      }
+      if (this.isReplyButtonDisabled) return;
+
+      // The agent may open another conversation while the status is checked or the prompt is
+      // up. The reply then stays as this conversation's draft instead of going out elsewhere.
+      const conversationId = this.currentChat.id;
+      if (!(await this.switchToReadyBeforeReply())) return;
+      if (this.currentChat.id !== conversationId) return;
+
+      this.confirmOnSendReply();
     },
     // A public reply means the agent is working: one who is not Ready is asked to switch first,
-    // and the reply goes out only once they agree and the switch goes through. While impersonating,
-    // the agent's status is not ours to change, so the reply goes out as is. A send the box would
-    // refuse anyway (empty, too long) asks nothing.
+    // and the reply goes out only once they agree and the switch goes through. The status is read
+    // fresh, since the server changes it too (auto offline, another tab, the mobile app). While
+    // impersonating, the agent's status is not ours to change, so the reply goes out as is.
     async switchToReadyBeforeReply() {
-      if (
-        this.isPrivate ||
-        this.isImpersonating ||
-        this.isReplyButtonDisabled
-      ) {
-        return true;
-      }
-      // The status pill polls it, but a collapsed sidebar has no pill
-      if (!this.agentStatusFetchedAt) {
-        await this.$store.dispatch('agentStatus/fetch');
-      }
+      if (this.isPrivate || this.isImpersonating) return true;
+
+      await this.$store.dispatch('agentStatus/fetch');
       if (this.agentStatus === 'ready') return true;
 
       const ok = await this.$refs.readyConfirmDialog.showConfirmation();
@@ -1037,18 +1034,25 @@ export default {
         useAlert(errorMessage);
       }
     },
+    // A template is a public reply too, addressed before the Ready check can pause it
     async onSendWhatsAppReply(messagePayload) {
-      this.sendMessage({
+      const payload = {
         conversationId: this.currentChat.id,
         ...messagePayload,
-      });
+      };
+      if (!(await this.switchToReadyBeforeReply())) return;
+
+      this.sendMessage(payload);
       this.hideWhatsappTemplatesModal();
     },
     async onSendContentTemplateReply(messagePayload) {
-      this.sendMessage({
+      const payload = {
         conversationId: this.currentChat.id,
         ...messagePayload,
-      });
+      };
+      if (!(await this.switchToReadyBeforeReply())) return;
+
+      this.sendMessage(payload);
       this.hideContentTemplatesModal();
     },
     setReplyMode(mode = REPLY_EDITOR_MODES.REPLY) {

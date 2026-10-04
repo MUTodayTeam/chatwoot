@@ -1,5 +1,6 @@
 # Reopen (spec 7.4, 9.1 step 3): an agent brings a Solved or Closed conversation back to Open.
-# It goes back to its previous agent, or to the agent reopening it when it had none. The
+# It goes back to its previous agent, or to the agent reopening it when it had none and they may
+# take it (Conversations::ClaimService: not a developer, entitled to the inbox). The
 # handler listener opens that agent's new turn and the case listener counts the reopen, both
 # from the status change, as for a customer writing back.
 class Conversations::ReopenService
@@ -11,7 +12,7 @@ class Conversations::ReopenService
         raise CustomExceptions::ConversationActionRefused.new(reason: :reopen_not_finished)
       end
 
-      conversation.assignee ||= user
+      conversation.assignee ||= user if Conversations::ClaimService.new(conversation: conversation, user: user).claimable?
       conversation.update!(status: :open)
     end
   end
