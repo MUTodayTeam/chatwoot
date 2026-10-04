@@ -547,6 +547,18 @@ describe('ReplyBox', () => {
       expect(send).not.toHaveBeenCalled();
     });
 
+    it('does not send when the agent switched to a private note meanwhile', async () => {
+      const { wrapper, send } = await mountAs();
+      wrapper.vm.$refs.readyConfirmDialog.showConfirmation = vi.fn(async () => {
+        wrapper.vm.setReplyMode(REPLY_EDITOR_MODES.NOTE);
+        return true;
+      });
+
+      await wrapper.vm.onSendReply();
+
+      expect(send).not.toHaveBeenCalled();
+    });
+
     it('asks before a template reply too', async () => {
       const { wrapper, store, showConfirmation } = await mountAs({
         inbox: { channel_type: 'Channel::Whatsapp' },

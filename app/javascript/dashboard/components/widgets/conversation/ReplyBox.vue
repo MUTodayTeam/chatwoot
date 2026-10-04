@@ -983,11 +983,18 @@ export default {
       }
       if (this.isReplyButtonDisabled) return;
 
-      // The agent may open another conversation while the status is checked or the prompt is
-      // up. The reply then stays as this conversation's draft instead of going out elsewhere.
-      const conversationId = this.currentChat.id;
+      // The agent may open another conversation, or switch to a private note, while the status is
+      // checked or the prompt is up. The reply then stays as a draft instead of going out as
+      // something else.
+      const { id: conversationId } = this.currentChat;
+      const { replyType } = this;
       if (!(await this.switchToReadyBeforeReply())) return;
-      if (this.currentChat.id !== conversationId) return;
+      if (
+        this.currentChat.id !== conversationId ||
+        this.replyType !== replyType
+      ) {
+        return;
+      }
 
       this.confirmOnSendReply();
     },
