@@ -1,5 +1,6 @@
-# Auto-assignment v2 picks from the inbox's online members (OSS and enterprise both pass
-# them through filter_agents_by_team), so the project's entitled teams, the chat limit and developers narrow them here.
+# Auto-assignment v2 picks from the inbox's online members (OSS and enterprise both pass them through
+# filter_agents_by_team), so the project's entitled teams, the chat limit, developers and the Ready
+# cool-down narrow them here.
 module Custom::AutoAssignment::AssignmentService
   private
 
@@ -10,6 +11,7 @@ module Custom::AutoAssignment::AssignmentService
     entitled_user_ids = inbox.project&.entitled_user_ids
     team_agents = team_agents.where(user_id: entitled_user_ids) if entitled_user_ids
     team_agents = team_agents.where.not(user_id: inbox.account.developer_user_ids)
+    team_agents = team_agents.where.not(user_id: AgentStatusEvent.ready_cooling_down_user_ids(inbox.account_id))
 
     team_agents.where.not(user_id: inbox.user_ids_at_chat_limit(team_agents.pluck(:user_id)))
   end

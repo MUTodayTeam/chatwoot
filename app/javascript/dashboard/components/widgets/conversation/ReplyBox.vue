@@ -55,7 +55,9 @@ import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
 import { useMacroExecution } from 'dashboard/composables/useMacroExecution';
 import ConversationResolveAttributesModal from 'dashboard/components-next/ConversationWorkflow/ConversationResolveAttributesModal.vue';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
+import { useImpersonation } from 'dashboard/composables/useImpersonation';
 import { isFileTypeAllowedForChannel } from 'shared/helpers/FileHelper';
+import { getAgentStatusMeta } from 'dashboard/constants/agentStatus';
 
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -101,6 +103,7 @@ export default {
     const copilot = useCopilotReply();
     const macroExecution = useMacroExecution();
     const shortcutKey = useKbd(['$mod', '+', 'enter']);
+    const { isImpersonating } = useImpersonation();
 
     // Options API state and methods live on the instance proxy
     const { proxy } = getCurrentInstance();
@@ -148,6 +151,7 @@ export default {
       copilot,
       shortcutKey,
       macroExecution,
+      isImpersonating,
     };
   },
   data() {
@@ -193,7 +197,12 @@ export default {
       isMetaMessageSendingDisabled: 'globalConfig/isMetaMessageSendingDisabled',
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
+      agentStatus: 'agentStatus/getAgentStatus',
     }),
+    readyPromptMessage() {
+      const status = this.$t(getAgentStatusMeta(this.agentStatus).labelKey);
+      return this.$t('CONVERSATION.REPLYBOX.READY_PROMPT.MESSAGE', { status });
+    },
     isMacrosEnabled() {
       return this.isFeatureEnabledonAccount(
         this.accountId,
@@ -970,11 +979,43 @@ export default {
         );
 
         const ok = await this.$refs.confirmDialog.showConfirmation();
-        if (ok) {
-          this.confirmOnSendReply();
-        }
-      } else {
-        this.confirmOnSendReply();
+        if (!ok) return;
+      }
+      if (this.isReplyButtonDisabled) return;
+
+      // The agent may open another conversation, or switch to a private note, while the status is
+      // checked or the prompt is up. The reply then stays as a draft instead of going out as
+      // something else.
+      const { id: conversationId } = this.currentChat;
+      const { replyType } = this;
+      if (!(await this.switchToReadyBeforeReply())) return;
+      if (
+        this.currentChat.id !== conversationId ||
+        this.replyType !== replyType
+      ) {
+        return;
+      }
+
+      this.confirmOnSendReply();
+    },
+    // A public reply means the agent is working: one who is not Ready is asked to switch first,
+    // and the reply goes out only once they agree and the switch goes through. The status is read
+    // fresh, since the server changes it too (auto offline, another tab, the mobile app). While
+    // impersonating, the agent's status is not ours to change, so the reply goes out as is.
+    async switchToReadyBeforeReply() {
+      if (this.isPrivate || this.isImpersonating) return true;
+
+      await this.$store.dispatch('agentStatus/fetch');
+      if (this.agentStatus === 'ready') return true;
+
+      const ok = await this.$refs.readyConfirmDialog.showConfirmation();
+      if (!ok) return false;
+      try {
+        await this.$store.dispatch('agentStatus/set', { status: 'ready' });
+        return true;
+      } catch (error) {
+        useAlert(this.$t('CONVERSATION.REPLYBOX.READY_PROMPT.ERROR'));
+        return false;
       }
     },
     async sendMessage(
@@ -1000,18 +1041,25 @@ export default {
         useAlert(errorMessage);
       }
     },
+    // A template is a public reply too, addressed before the Ready check can pause it
     async onSendWhatsAppReply(messagePayload) {
-      this.sendMessage({
+      const payload = {
         conversationId: this.currentChat.id,
         ...messagePayload,
-      });
+      };
+      if (!(await this.switchToReadyBeforeReply())) return;
+
+      this.sendMessage(payload);
       this.hideWhatsappTemplatesModal();
     },
     async onSendContentTemplateReply(messagePayload) {
-      this.sendMessage({
+      const payload = {
         conversationId: this.currentChat.id,
         ...messagePayload,
-      });
+      };
+      if (!(await this.switchToReadyBeforeReply())) return;
+
+      this.sendMessage(payload);
       this.hideContentTemplatesModal();
     },
     setReplyMode(mode = REPLY_EDITOR_MODES.REPLY) {
@@ -1560,6 +1608,13 @@ export default {
       ref="confirmDialog"
       :title="$t('CONVERSATION.REPLYBOX.UNDEFINED_VARIABLES.TITLE')"
       :description="undefinedVariableMessage"
+    />
+    <woot-confirm-modal
+      ref="readyConfirmDialog"
+      :title="$t('CONVERSATION.REPLYBOX.READY_PROMPT.TITLE')"
+      :description="readyPromptMessage"
+      :confirm-label="$t('CONVERSATION.REPLYBOX.READY_PROMPT.CONFIRM')"
+      :cancel-label="$t('CONVERSATION.REPLYBOX.READY_PROMPT.CANCEL')"
     />
   </div>
 </template>

@@ -615,7 +615,8 @@ RSpec.describe 'Conversations API', type: :request do
         expect(conversation.reload.assignee_id).to eq(agent.id)
       end
 
-      it 'does not self assign and clears the agent bot owner if admin changes the conversation status to open' do
+      # MUToday: whoever changes the status of a conversation nobody holds takes it, admins included
+      it 'self assigns and clears the agent bot owner if admin changes the conversation status to open' do
         conversation.update!(status: 'pending', assignee: nil, ai_assignee: agent_bot)
 
         post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/toggle_status",
@@ -624,7 +625,7 @@ RSpec.describe 'Conversations API', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(conversation.reload.status).to eq('open')
-        expect(conversation.reload.assignee_id).not_to eq(administrator.id)
+        expect(conversation.reload.assignee_id).to eq(administrator.id)
         expect(conversation.reload.ai_assignee).to be_nil
       end
 

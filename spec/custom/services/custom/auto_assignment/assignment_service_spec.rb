@@ -93,6 +93,26 @@ RSpec.describe Custom::AutoAssignment::AssignmentService do
     end
   end
 
+  context 'when an agent has just switched to Ready' do
+    before do
+      account_user = account.account_users.find_by(user: outsider)
+      account_user.update!(agent_status: :busy)
+      account_user.update!(agent_status: :ready)
+    end
+
+    it 'assigns another online agent during the cool-down' do
+      expect(assign_with_online(outsider, team_agent)).to eq(team_agent)
+    end
+
+    it 'leaves the conversation unassigned while only that agent is online, until the cool-down ends' do
+      expect(assign_with_online(outsider)).to be_nil
+
+      travel AgentStatusEvent::READY_COOLDOWN + 1.second
+
+      expect(assign_with_online(outsider)).to eq(outsider)
+    end
+  end
+
   context 'when agents are connected with different statuses' do
     before do
       [team_agent, outsider].each { |user| OnlineStatusTracker.update_presence(account.id, 'User', user.id) }

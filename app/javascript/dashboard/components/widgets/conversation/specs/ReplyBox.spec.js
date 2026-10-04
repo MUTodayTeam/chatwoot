@@ -1,9 +1,15 @@
 import { shallowMount } from '@vue/test-utils';
+import { useAlert } from 'dashboard/composables';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import { nextTick } from 'vue';
 import { createStore } from 'vuex';
 import ReplyBox from '../ReplyBox.vue';
 import WhatsappTemplates from '../WhatsappTemplates/Modal.vue';
+
+vi.mock('dashboard/composables', async importOriginal => ({
+  ...(await importOriginal()),
+  useAlert: vi.fn(),
+}));
 
 const CHANNELS = [
   { name: 'WhatsApp Cloud', inbox: { channel_type: 'Channel::Whatsapp' } },
@@ -40,12 +46,15 @@ const buildStore = ({
   drafts = {},
   inboxes,
   isMetaMessageSendingDisabled = false,
+  agentStatus = { status: 'ready', fetchedAt: 1 },
+  agentStatusActions = {},
 }) =>
   createStore({
     state: {
       chat: { ...REPLIABLE, ...chat },
       replyEditorMode: REPLY_EDITOR_MODES.REPLY,
       drafts: { ...drafts },
+      agentStatus: { ...agentStatus },
     },
     mutations: {
       selectChat: (s, c) => {
@@ -62,8 +71,12 @@ const buildStore = ({
       'draftMessages/setReplyEditorMode': ({ commit }, { mode }) =>
         commit('setReplyEditorMode', mode),
       'draftMessages/set': ({ commit }, payload) => commit('setDraft', payload),
+      'agentStatus/fetch': agentStatusActions.fetch || (() => {}),
+      'agentStatus/set': agentStatusActions.set || (() => {}),
     },
     getters: {
+      'agentStatus/getAgentStatus': s => s.agentStatus.status,
+      'agentStatus/getFetchedAt': s => s.agentStatus.fetchedAt,
       getSelectedChat: s => s.chat,
       getCurrentUser: () => ({ id: 7, name: 'Agent', accounts: [] }),
       getCurrentAccountId: () => 1,
@@ -95,6 +108,8 @@ const mountWith = ({
   drafts,
   inboxes,
   isMetaMessageSendingDisabled,
+  agentStatus,
+  agentStatusActions,
 }) => {
   const store = buildStore({
     inbox,
@@ -103,6 +118,8 @@ const mountWith = ({
     drafts,
     inboxes,
     isMetaMessageSendingDisabled,
+    agentStatus,
+    agentStatusActions,
   });
   const wrapper = shallowMount(ReplyBox, {
     global: {
@@ -428,6 +445,133 @@ describe('ReplyBox', () => {
 
       expect(store.getters['draftMessages/getReplyEditorMode']).toBe(
         REPLY_EDITOR_MODES.NOTE
+      );
+    });
+  });
+
+  describe('sending while not Ready', () => {
+    const mountAs = async ({
+      status = 'busy',
+      set = vi.fn(),
+      fetch = vi.fn(),
+      inbox = { channel_type: 'Channel::WebWidget' },
+      confirmed = true,
+    } = {}) => {
+      const { wrapper, store } = mountWith({
+        inbox,
+        agentStatus: { status, fetchedAt: 1 },
+        agentStatusActions: { set, fetch },
+      });
+      await nextTick();
+      wrapper.vm.message = 'Hello there';
+      const showConfirmation = vi.fn().mockResolvedValue(confirmed);
+      wrapper.vm.$refs.readyConfirmDialog.showConfirmation = showConfirmation;
+      const send = vi.fn();
+      wrapper.vm.confirmOnSendReply = send;
+      return { wrapper, store, showConfirmation, send, set, fetch };
+    };
+
+    const sendWith = async ({ private: isNote = false, ...options } = {}) => {
+      const mounted = await mountAs(options);
+      if (isNote) mounted.wrapper.vm.setReplyMode(REPLY_EDITOR_MODES.NOTE);
+      await mounted.wrapper.vm.onSendReply();
+      return mounted;
+    };
+
+    beforeEach(() => useAlert.mockClear());
+
+    it('asks first, then switches to Ready and sends once the agent agrees', async () => {
+      const set = vi.fn();
+      const { showConfirmation, send } = await sendWith({ set });
+
+      expect(showConfirmation).toHaveBeenCalledTimes(1);
+      expect(set).toHaveBeenCalledWith(expect.anything(), { status: 'ready' });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(set.mock.invocationCallOrder[0]).toBeLessThan(
+        send.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('keeps the status and sends nothing when the agent cancels', async () => {
+      const { send, set } = await sendWith({ confirmed: false });
+
+      expect(set).not.toHaveBeenCalled();
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing when the switch to Ready fails', async () => {
+      const set = vi.fn().mockRejectedValue(new Error('refused'));
+      const { send } = await sendWith({ set });
+
+      expect(send).not.toHaveBeenCalled();
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.REPLYBOX.READY_PROMPT.ERROR'
+      );
+    });
+
+    it('sends straight away when the agent is already Ready', async () => {
+      const { showConfirmation, send } = await sendWith({ status: 'ready' });
+
+      expect(showConfirmation).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads the status from the server before asking', async () => {
+      // The store still says Ready, but the server has since set the agent Offline
+      const fetch = vi.fn(({ state }) => {
+        state.agentStatus.status = 'offline';
+      });
+      const { showConfirmation } = await sendWith({ status: 'ready', fetch });
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(showConfirmation).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not ask before a private note', async () => {
+      const { showConfirmation, send, set } = await sendWith({ private: true });
+
+      expect(showConfirmation).not.toHaveBeenCalled();
+      expect(set).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not send when the agent opened another conversation meanwhile', async () => {
+      const { wrapper, store, send } = await mountAs();
+      wrapper.vm.$refs.readyConfirmDialog.showConfirmation = vi.fn(async () => {
+        store.commit('selectChat', { ...REPLIABLE, id: 2 });
+        return true;
+      });
+
+      await wrapper.vm.onSendReply();
+
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('does not send when the agent switched to a private note meanwhile', async () => {
+      const { wrapper, send } = await mountAs();
+      wrapper.vm.$refs.readyConfirmDialog.showConfirmation = vi.fn(async () => {
+        wrapper.vm.setReplyMode(REPLY_EDITOR_MODES.NOTE);
+        return true;
+      });
+
+      await wrapper.vm.onSendReply();
+
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('asks before a template reply too', async () => {
+      const { wrapper, store, showConfirmation } = await mountAs({
+        inbox: { channel_type: 'Channel::Whatsapp' },
+        confirmed: false,
+      });
+      const dispatch = vi.spyOn(store, 'dispatch');
+
+      await wrapper.vm.onSendWhatsAppReply({ message: 'template body' });
+
+      expect(showConfirmation).toHaveBeenCalledTimes(1);
+      expect(dispatch).not.toHaveBeenCalledWith(
+        'createPendingMessageAndSend',
+        expect.anything()
       );
     });
   });

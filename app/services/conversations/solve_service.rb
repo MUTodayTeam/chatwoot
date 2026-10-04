@@ -29,6 +29,9 @@ class Conversations::SolveService
 
   # nil when the conversation was already resolved by the time the lock was taken
   def perform
+    # One nobody holds goes to whoever solves it, committed before the lock below so the handler
+    # listener opens their turn for this solve to close as Solved
+    Conversations::ClaimService.new(conversation: conversation, user: user).perform unless conversation.resolved?
     conversation.with_lock do
       next if conversation.resolved?
 

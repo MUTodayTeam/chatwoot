@@ -20,6 +20,9 @@
 class AgentStatusEvent < ApplicationRecord
   # Offline is not counted as online time
   ONLINE_STATUSES = %w[ready busy mini_break lunch briefing rest_room].freeze
+  # An agent who has just switched to Ready gets no chats from auto-assignment for this long. What
+  # they reply to or change the status of is still theirs at once (Conversations::ClaimService).
+  READY_COOLDOWN = 5.minutes
 
   belongs_to :account
   belongs_to :user
@@ -41,6 +44,18 @@ class AgentStatusEvent < ApplicationRecord
     end
   rescue ActiveRecord::RecordNotUnique
     nil
+  end
+
+  # Agents who switched to Ready from another status within the cool-down. A new agent starts Ready
+  # with no earlier interval, so joining the account is not a switch.
+  def self.ready_cooling_down_user_ids(account_id, now: Time.current)
+    open.agent_status_ready.where(account_id: account_id).where('started_at > ?', now - READY_COOLDOWN)
+        .where(<<~SQL.squish).pluck(:user_id)
+          EXISTS (SELECT 1 FROM agent_status_events previous
+                  WHERE previous.account_id = agent_status_events.account_id
+                    AND previous.user_id = agent_status_events.user_id
+                    AND previous.ended_at = agent_status_events.started_at)
+        SQL
   end
 
   scope :overlapping, lambda { |account_user, from, to|

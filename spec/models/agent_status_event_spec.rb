@@ -97,4 +97,33 @@ RSpec.describe AgentStatusEvent do
       expect(described_class.switch!(account_user, :lunch)).to be_nil
     end
   end
+
+  describe '.ready_cooling_down_user_ids' do
+    it 'lists an agent who switched to Ready within the cool-down' do
+      interval(:busy, now - 1.hour, now - 4.minutes)
+      interval(:ready, now - 4.minutes)
+
+      expect(described_class.ready_cooling_down_user_ids(account.id, now: now)).to eq([user.id])
+    end
+
+    it 'leaves out an agent whose switch to Ready is older than the cool-down' do
+      interval(:busy, now - 1.hour, now - 6.minutes)
+      interval(:ready, now - 6.minutes)
+
+      expect(described_class.ready_cooling_down_user_ids(account.id, now: now)).to be_empty
+    end
+
+    it 'leaves out a new agent, who starts Ready without switching' do
+      interval(:ready, now - 1.minute)
+
+      expect(described_class.ready_cooling_down_user_ids(account.id, now: now)).to be_empty
+    end
+
+    it 'leaves out an agent who switched to another status' do
+      interval(:ready, now - 1.hour, now - 1.minute)
+      interval(:lunch, now - 1.minute)
+
+      expect(described_class.ready_cooling_down_user_ids(account.id, now: now)).to be_empty
+    end
+  end
 end

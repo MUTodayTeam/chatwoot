@@ -135,12 +135,15 @@ RSpec.describe V2::Reports::AgentProductivityBuilder do
     expect(agents).to contain_exactly(include(id: poy.id, resolved: 1, assisted: 0), include(id: toon.id, resolved: 0, assisted: 1))
   end
 
-  it 'credits the turns of a conversation solved after it was left unassigned, with no resolver' do
+  # Solving a conversation nobody holds takes it first (Conversations::ClaimService), so the
+  # administrator who solves it is its resolver
+  it 'credits whoever solves a conversation left unassigned, and the earlier turns as assisted' do
     conversation = start_chat
+    administrator = create(:user, account: account, role: :administrator)
     travel_to(started_at + 10.minutes) { Conversation.find(conversation.id).update!(assignee: nil) }
-    solve(conversation, by: create(:user, account: account, role: :administrator), after: 20.minutes)
+    solve(conversation, by: administrator, after: 20.minutes)
 
-    expect(agents).to contain_exactly(include(id: toon.id, resolved: 0, assisted: 1))
+    expect(agents).to contain_exactly(include(id: toon.id, resolved: 0, assisted: 1), include(id: administrator.id, resolved: 1, assisted: 0))
   end
 
   it 'counts a plain reassignment as transfer out and in, but not a reopen turn of the same agent' do
