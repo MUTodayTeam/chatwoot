@@ -1,14 +1,9 @@
 class AutoAssignOnReplyListener < BaseListener
   def message_created(event)
     message = event.data[:message]
-    conversation = message.conversation
-
     return unless agent_reply?(message)
-    return if conversation.assignee_id.present?
-    return if conversation.account.developer_user_ids.include?(message.sender.id)
-    return unless conversation.inbox.entitled_assignable_agents.include?(message.sender)
 
-    assign(conversation, message.sender)
+    assign(message.conversation, message.sender)
   end
 
   private
@@ -20,8 +15,11 @@ class AutoAssignOnReplyListener < BaseListener
   end
 
   # Runs in a background job, so Current is blank here. The assignment activity message
-  # names Current.user as the actor and is skipped without one.
+  # names Current.user as the actor and is skipped without one. Unlike a status change, a
+  # reply also opens a pending conversation it takes from a bot, which AssignmentService does.
   def assign(conversation, agent)
+    return unless Conversations::ClaimService.new(conversation: conversation, user: agent).claimable?
+
     Current.user = agent
     Conversations::AssignmentService.new(conversation: conversation, assignee_id: agent.id).perform
   ensure

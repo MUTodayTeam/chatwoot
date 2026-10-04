@@ -364,6 +364,13 @@
           "CANCEL": "Cancel"
         }
       },
+      "READY_PROMPT": {
+        "TITLE": "Switch to Ready?",
+        "MESSAGE": "Your status is {status}. Sending this reply switches you to Ready.",
+        "CONFIRM": "Switch and send",
+        "CANCEL": "Cancel",
+        "ERROR": "Could not switch you to Ready, so the reply was not sent"
+      },
       "QUOTED_REPLY": {
         "ENABLE_TOOLTIP": "Include quoted email thread",
         "DISABLE_TOOLTIP": "Don't include quoted email thread",

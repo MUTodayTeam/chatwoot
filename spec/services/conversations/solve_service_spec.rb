@@ -41,6 +41,16 @@ RSpec.describe Conversations::SolveService do
     expect(conversation.handlers.pluck(:user_id, :end_reason, :ended_by_id)).to eq([[agent.id, 'solved', admin.id]])
   end
 
+  it 'gives a conversation nobody holds to whoever solves it, and ends their turn as Solved' do
+    unassigned = create(:conversation, account: account, assignee: nil)
+    create(:inbox_member, inbox: unassigned.inbox, user: agent)
+
+    described_class.new(conversation: Conversation.find(unassigned.id), user: agent, send_survey: true).perform
+
+    expect(unassigned.reload).to have_attributes(status: 'resolved', assignee: agent)
+    expect(unassigned.handlers.pluck(:user_id, :end_reason)).to eq([[agent.id, 'solved']])
+  end
+
   describe '.survey_skipped!' do
     before do
       travel_to(Time.zone.parse('2026-09-29 10:00:00'))

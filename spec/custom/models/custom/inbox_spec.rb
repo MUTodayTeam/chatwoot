@@ -47,6 +47,22 @@ RSpec.describe Custom::Inbox do
     end
   end
 
+  context 'when an agent has just switched to Ready' do
+    before do
+      account_user = account.account_users.find_by(user: other_agent)
+      account_user.update!(agent_status: :busy)
+      account_user.update!(agent_status: :ready)
+    end
+
+    it 'drops that agent from the auto-assignment candidates until the cool-down ends' do
+      expect(inbox.member_ids_with_assignment_capacity).to contain_exactly(team_agent.id, team_admin.id)
+
+      travel AgentStatusEvent::READY_COOLDOWN + 1.second
+
+      expect(inbox.member_ids_with_assignment_capacity).to contain_exactly(team_agent.id, other_agent.id, team_admin.id)
+    end
+  end
+
   context 'when an inbox member is a developer' do
     before { account.account_users.find_by(user: other_agent).update!(developer: true) }
 

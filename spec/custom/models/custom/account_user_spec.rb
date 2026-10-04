@@ -92,4 +92,26 @@ RSpec.describe Custom::AccountUser do
       expect(events.open).to be_empty
     end
   end
+
+  describe 'switching to Ready' do
+    let(:inbox) { create(:inbox, account: account, enable_auto_assignment: true) }
+
+    before do
+      account.enable_features('assignment_v2')
+      account.save!
+      create(:inbox_member, inbox: inbox, user: user)
+      account_user.update!(agent_status: :busy)
+    end
+
+    it "hands out the inbox's waiting chats when the cool-down ends" do
+      freeze_time do
+        expect { account_user.update!(agent_status: :ready) }
+          .to have_enqueued_job(AutoAssignment::AssignmentJob).with(inbox_id: inbox.id).at(AgentStatusEvent::READY_COOLDOWN.from_now)
+      end
+    end
+
+    it 'queues nothing for another status' do
+      expect { account_user.update!(agent_status: :lunch) }.not_to have_enqueued_job(AutoAssignment::AssignmentJob)
+    end
+  end
 end

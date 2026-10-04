@@ -1,7 +1,8 @@
 # When the inbox's project has entitled teams, only their members can take its chats:
 # admins lose the stock bypass unless they are in one of those teams. Stock
 # assignable_agents stays as is, because it also decides who can be a participant.
-# Agents who already hold the project's chat limit (live chat rule), and developers, are not offered new chats either.
+# Agents who already hold the project's chat limit (live chat rule), developers, and agents still in their
+# Ready cool-down are not offered new chats either.
 module Custom::Inbox
   def entitled_assignable_agents
     entitled_user_ids = project&.entitled_user_ids
@@ -15,6 +16,7 @@ module Custom::Inbox
     entitled_user_ids = project&.entitled_user_ids
     user_ids &= entitled_user_ids if entitled_user_ids
     user_ids -= account.developer_user_ids
+    user_ids -= AgentStatusEvent.ready_cooling_down_user_ids(account_id)
 
     user_ids - user_ids_at_chat_limit(user_ids)
   end

@@ -21,6 +21,7 @@ module Custom::AccountUser
       before_save :sync_status_and_availability
       after_create :open_agent_status_event
       after_update :switch_agent_status_event, if: :saved_change_to_agent_status?
+      after_update_commit :assign_waiting_chats_after_ready_cooldown, if: -> { saved_change_to_agent_status? && agent_status_ready? }
       after_destroy :close_agent_status_event
     end
   end
@@ -41,6 +42,16 @@ module Custom::AccountUser
 
   def switch_agent_status_event
     AgentStatusEvent.switch!(self, agent_status, at: agent_status_changed_at || Time.current)
+  end
+
+  # Chats that waited through the agent's Ready cool-down are handed out when it ends. Auto-assignment
+  # v2 otherwise only runs on a conversation event or its 30-minute sweep.
+  def assign_waiting_chats_after_ready_cooldown
+    user.inboxes.where(account_id: account_id).find_each do |inbox|
+      next unless inbox.enable_auto_assignment? && inbox.auto_assignment_v2_enabled?
+
+      AutoAssignment::AssignmentJob.set(wait: AgentStatusEvent::READY_COOLDOWN).perform_later(inbox_id: inbox.id)
+    end
   end
 
   # Removing the agent ends the open interval, so adding them back can open a new one
