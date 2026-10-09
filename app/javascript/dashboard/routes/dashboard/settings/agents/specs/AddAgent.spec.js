@@ -14,7 +14,8 @@ const INBOXES = [
   { id: 2, name: 'Facebook - MUToday' },
   { id: 3, name: 'Website' },
 ];
-const PROJECTS = [{ id: 7, name: 'MUToday', inbox_ids: [1, 2] }];
+// The projects store camelizes the API payload, so inbox_ids arrives as inboxIds
+const PROJECTS = [{ id: 7, name: 'MUToday', inboxIds: [1, 2] }];
 
 const mountAddAgent = createAgent => {
   const store = createStore({

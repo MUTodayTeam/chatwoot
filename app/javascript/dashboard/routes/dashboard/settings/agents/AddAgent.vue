@@ -45,7 +45,7 @@ const inboxGroups = computed(() => {
       key: `project-${project.id}`,
       label: project.name,
       inboxes: inboxes.value.filter(inbox =>
-        (project.inbox_ids || []).includes(inbox.id)
+        (project.inboxIds || []).includes(inbox.id)
       ),
     }))
     .filter(group => group.inboxes.length);
