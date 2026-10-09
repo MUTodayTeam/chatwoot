@@ -6,6 +6,8 @@ import { useAlert } from 'dashboard/composables';
 import { useVuelidate } from '@vuelidate/core';
 import { required, email } from '@vuelidate/validators';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
+import InboxMembersAPI from 'dashboard/api/inboxMembers';
 
 const emit = defineEmits(['close']);
 
@@ -30,6 +32,57 @@ const v$ = useVuelidate(rules, {
 
 const uiFlags = useMapGetter('agents/getUIFlags');
 const getCustomRoles = useMapGetter('customRole/getCustomRoles');
+const inboxes = useMapGetter('inboxes/getInboxes');
+const projects = useMapGetter('projects/getProjects');
+
+// A new agent only gets conversations from the inboxes they are a member of, so they are picked
+// here, grouped by project. All are ticked to start with, so nobody is left without chats.
+const selectedInboxIds = ref(inboxes.value.map(inbox => inbox.id));
+
+const inboxGroups = computed(() => {
+  const grouped = projects.value
+    .map(project => ({
+      key: `project-${project.id}`,
+      label: project.name,
+      inboxes: inboxes.value.filter(inbox =>
+        (project.inbox_ids || []).includes(inbox.id)
+      ),
+    }))
+    .filter(group => group.inboxes.length);
+  const groupedIds = grouped.flatMap(group => group.inboxes.map(i => i.id));
+  const rest = inboxes.value.filter(inbox => !groupedIds.includes(inbox.id));
+  if (rest.length) {
+    grouped.push({
+      key: 'no-project',
+      label: t('AGENT_MGMT.ADD.FORM.INBOXES.NO_PROJECT'),
+      inboxes: rest,
+    });
+  }
+  return grouped;
+});
+
+const isSelected = inboxId => selectedInboxIds.value.includes(inboxId);
+const toggleInbox = (inboxId, checked) => {
+  selectedInboxIds.value = checked
+    ? [...new Set([...selectedInboxIds.value, inboxId])]
+    : selectedInboxIds.value.filter(id => id !== inboxId);
+};
+const selectedInGroup = group =>
+  group.inboxes.filter(inbox => isSelected(inbox.id)).length;
+const toggleGroup = (group, checked) => {
+  group.inboxes.forEach(inbox => toggleInbox(inbox.id, checked));
+};
+
+const addToInboxes = async agentId => {
+  const results = await Promise.allSettled(
+    selectedInboxIds.value.map(inboxId =>
+      InboxMembersAPI.create({ inbox_id: inboxId, user_ids: [agentId] })
+    )
+  );
+  return selectedInboxIds.value.filter(
+    (_, index) => results[index].status === 'rejected'
+  );
+};
 
 const roles = computed(() => {
   const defaultRoles = [
@@ -77,8 +130,17 @@ const addAgent = async () => {
       payload.role = selectedRole.value.name;
     }
 
-    await store.dispatch('agents/create', payload);
-    useAlert(t('AGENT_MGMT.ADD.API.SUCCESS_MESSAGE'));
+    const agent = await store.dispatch('agents/create', payload);
+    const failedInboxIds = await addToInboxes(agent.id);
+    if (failedInboxIds.length) {
+      const names = inboxes.value
+        .filter(inbox => failedInboxIds.includes(inbox.id))
+        .map(inbox => inbox.name)
+        .join(', ');
+      useAlert(t('AGENT_MGMT.ADD.API.INBOX_ERROR', { inboxes: names }));
+    } else {
+      useAlert(t('AGENT_MGMT.ADD.API.SUCCESS_MESSAGE'));
+    }
     emit('close');
   } catch (error) {
     const {
@@ -145,6 +207,47 @@ const addAgent = async () => {
             @input="v$.agentEmail.$touch"
           />
         </label>
+      </div>
+
+      <div class="w-full mb-4">
+        <span class="block mb-1 text-sm font-medium text-n-slate-12">
+          {{ $t('AGENT_MGMT.ADD.FORM.INBOXES.LABEL') }}
+        </span>
+        <p class="mb-2 text-xs text-n-slate-11">
+          {{ $t('AGENT_MGMT.ADD.FORM.INBOXES.HELP') }}
+        </p>
+        <p v-if="!inboxGroups.length" class="text-sm text-n-slate-11">
+          {{ $t('AGENT_MGMT.ADD.FORM.INBOXES.EMPTY') }}
+        </p>
+        <div
+          v-else
+          class="flex flex-col gap-3 p-3 overflow-y-auto border rounded-lg max-h-60 border-n-weak"
+        >
+          <div v-for="group in inboxGroups" :key="group.key">
+            <label class="flex items-center gap-2 mb-1 text-sm font-medium">
+              <Checkbox
+                :model-value="selectedInGroup(group) === group.inboxes.length"
+                :indeterminate="
+                  selectedInGroup(group) > 0 &&
+                  selectedInGroup(group) < group.inboxes.length
+                "
+                @update:model-value="checked => toggleGroup(group, checked)"
+              />
+              {{ group.label }}
+            </label>
+            <label
+              v-for="inbox in group.inboxes"
+              :key="inbox.id"
+              class="flex items-center gap-2 py-0.5 ps-6 text-sm text-n-slate-12"
+            >
+              <Checkbox
+                :model-value="isSelected(inbox.id)"
+                @update:model-value="checked => toggleInbox(inbox.id, checked)"
+              />
+              {{ inbox.name }}
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">

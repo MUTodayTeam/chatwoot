@@ -47,10 +47,18 @@
           "LABEL": "Email Address",
           "PLACEHOLDER": "Please enter an email address of the agent"
         },
+        "INBOXES": {
+          "LABEL": "Inboxes",
+          "HELP": "The agent receives and can be assigned conversations only from the inboxes ticked here.",
+          "NO_PROJECT": "No project",
+          "SELECT_ALL": "Select all",
+          "EMPTY": "There are no inboxes yet"
+        },
         "SUBMIT": "Add Agent"
       },
       "API": {
         "SUCCESS_MESSAGE": "Agent added successfully",
+        "INBOX_ERROR": "Agent added, but could not be added to: {inboxes}. Add them from the inbox's Collaborators settings.",
         "EXIST_MESSAGE": "Agent email already in use, Please try another email address",
         "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
       }
