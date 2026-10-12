@@ -48,7 +48,8 @@ class SearchService
   # Custom::SearchService adds the contact's hotel
   def conversation_search_condition
     'cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email ILIKE :search ' \
-      'OR contacts.phone_number ILIKE :search OR contacts.identifier ILIKE :search'
+      'OR contacts.phone_number ILIKE :search OR contacts.identifier ILIKE :search ' \
+      "OR conversations.additional_attributes->>'mail_subject' ILIKE :search"
   end
 
   def filter_messages

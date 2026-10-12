@@ -3,14 +3,19 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { withFullI18n } from '../../../../../../../vitest.i18n';
 import ReplyBoxBanner from '../ReplyBoxBanner.vue';
 import BotModeBanner from 'dashboard/components-next/Conversation/BotModeBanner.vue';
+import ConversationApi from 'dashboard/api/inbox/conversation';
 
 withFullI18n();
 
 const dispatch = vi.fn();
+const commit = vi.fn();
 const currentChat = ref({});
 const currentUser = ref({ id: 7, name: 'Jason', avatar_url: '' });
 
-vi.mock('vuex', () => ({ useStore: () => ({ dispatch }) }));
+vi.mock('vuex', () => ({ useStore: () => ({ dispatch, commit }) }));
+vi.mock('dashboard/api/inbox/conversation', () => ({
+  default: { assignAgent: vi.fn() },
+}));
 vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
 vi.mock('dashboard/composables/store', () => ({
   useMapGetter: key => (key === 'getCurrentUser' ? currentUser : currentChat),
@@ -21,9 +26,16 @@ const mountBanner = chat => {
   return mount(ReplyBoxBanner, { global: { stubs: { Banner: true } } });
 };
 
+const clickTakeOver = async wrapper => {
+  await wrapper.findComponent(BotModeBanner).find('button').trigger('click');
+  await flushPromises();
+};
+
 describe('ReplyBoxBanner', () => {
   beforeEach(() => {
     dispatch.mockReset();
+    commit.mockReset();
+    ConversationApi.assignAgent.mockReset();
   });
 
   it.each([
@@ -57,9 +69,11 @@ describe('ReplyBoxBanner', () => {
     ['a Captain assistant', 3, 'Captain::Assistant'],
     ['a Captain assistant whose id matches the agent', 7, 'Captain::Assistant'],
   ])(
-    'takes the chat over from %s by opening it and assigning it to the agent',
+    'takes the chat over from %s by assigning it to the agent and opening it',
     async (_, assigneeId, type) => {
-      dispatch.mockResolvedValue();
+      ConversationApi.assignAgent.mockResolvedValue({
+        data: currentUser.value,
+      });
       const wrapper = mountBanner({
         status: 'pending',
         meta: {
@@ -68,20 +82,41 @@ describe('ReplyBoxBanner', () => {
         },
       });
 
-      await wrapper
-        .findComponent(BotModeBanner)
-        .find('button')
-        .trigger('click');
-      await flushPromises();
+      await clickTakeOver(wrapper);
 
-      expect(dispatch).toHaveBeenCalledWith('toggleStatus', {
-        conversationId: 12,
-        status: 'open',
-      });
-      expect(dispatch).toHaveBeenCalledWith('assignAgent', {
+      expect(ConversationApi.assignAgent).toHaveBeenCalledWith({
         conversationId: 12,
         agentId: 7,
+        assigneeType: 'User',
+      });
+      expect(dispatch).toHaveBeenCalledWith('setCurrentChatAssignee', {
+        conversationId: 12,
+        assignee: currentUser.value,
+        assigneeType: 'User',
+      });
+      expect(commit).toHaveBeenCalledWith('CHANGE_CONVERSATION_STATUS', {
+        conversationId: 12,
+        status: 'open',
+        snoozedUntil: null,
       });
     }
   );
+
+  it('leaves the chat as it was when the takeover assignment fails', async () => {
+    ConversationApi.assignAgent.mockRejectedValue(new Error('Failed'));
+    const wrapper = mountBanner({
+      status: 'pending',
+      meta: {
+        assignee: { id: 3, name: 'Captain' },
+        assignee_type: 'Captain::Assistant',
+      },
+    });
+
+    await clickTakeOver(wrapper);
+
+    expect(ConversationApi.assignAgent).toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+    expect(wrapper.findComponent(BotModeBanner).exists()).toBe(true);
+  });
 });

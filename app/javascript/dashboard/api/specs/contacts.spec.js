@@ -40,7 +40,7 @@ describe('#ContactsAPI', () => {
     });
 
     it('#get with a project', () => {
-      contactAPI.get(1, 'name', '', 4);
+      contactAPI.get(1, 'name', '', { projectId: 4 });
       expect(axiosMock.get).toHaveBeenCalledWith('/api/v1/contacts', {
         params: {
           include_contact_inboxes: false,
