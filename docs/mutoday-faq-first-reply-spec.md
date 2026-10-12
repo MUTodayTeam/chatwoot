@@ -1,6 +1,7 @@
 # SPEC — MUToday FAQ First-Reply (LINE OA)
 
 **Status:** Draft reviewed — 22 blockers found and resolved in the plan. **Read [mutoday-faq-first-reply-plan.md](mutoday-faq-first-reply-plan.md) §1 first**: it supersedes this document wherever the two disagree.
+**LLM client:** written against ruby_llm 1.15.0. It was revised for **ruby_llm 2.0.0** on 2026-10-12, after the upstream sync (plan C10, §6.1, §6.4, §6.6, Appendix B).
 **Owner decisions flagged inline as `⚠ OWNER`**
 **Repo:** `MUTodayTeam/chatwoot` (fork of `chatwoot/chatwoot`) · **Target branch:** `develop`
 **App id:** `mutoday_faq_reply`
@@ -41,7 +42,7 @@ Today the customer waits from "message sent" until "an agent opens the app". Tha
 
 ### Out of scope — explicitly
 
-- Anything under `enterprise/`, Captain, `captain_*` feature flags, `RubyLLM::Schema` subclasses.
+- Anything under `enterprise/`, Captain, `captain_*` feature flags, `Schematist::Schema` subclasses (ruby_llm 2.0's replacement for `RubyLLM::Schema`).
 - `AgentBot`, `AgentBotInbox`, `ai_assignee`, `app_id: 'dialogflow'`.
 - Multi-turn conversation. The AI speaks exactly once per conversation and never reads its own output.
 - Deflection, resolution, assignment, labelling, snoozing, or any other mutation of the conversation row.
@@ -103,9 +104,9 @@ It is still delivered to LINE: `Base::SendOnChannelService#outgoing_message?` is
 - The `integrations` feature flag is `enabled: true` with no `premium: true` in `config/features.yml:78-81`.
 - `enterprise/config/premium_features.yml` lists only `disable_branding, audit_logs, sla, custom_roles, captain_integration, captain_integration_v2, captain_document_auto_sync, csat_review_notes, conversation_required_attributes`. Neither `integrations` nor anything we touch is on it, so `Internal::ReconcilePlanConfigService#reconcile_premium_features` cannot disable us.
 - **The apps.yml entry declares no `feature_flag:` key.** `Integrations::Hook#feature_allowed?` returns `true` when no flag is declared (`hook.rb:83-90`), and `Integrations::App#active?` falls through to `true` for any unlisted app id (`app/models/integrations/app.rb:67-69`).
-- The LLM client is OSS: `ruby_llm (1.15.0)` is a top-level Gemfile dep, and `lib/llm/config.rb` is under `lib/` (eager-loaded at `config/application.rb:42`), with no feature flag and no Captain dependency.
+- The LLM client is OSS: `ruby_llm (2.0.0)` is a top-level Gemfile dep (`gem 'ruby_llm', '~> 2.0.0'` since the upstream sync of f5bbc04844), and `lib/llm/config.rb` is under `lib/` (eager-loaded at `config/application.rb:42`), with no feature flag and no Captain dependency.
 - We do **not** subclass `Captain::BaseTaskService` (`lib/captain/base_task_service.rb:43` hard-returns 403 unless `account.feature_enabled?('captain_tasks')`).
-- We do **not** use `RubyLLM::Schema` subclasses — every one in this repo is under `enterprise/`. `RubyLLM::Chat#with_schema` accepts a plain Ruby `Hash` (`ruby_llm-1.15.0/lib/ruby_llm/chat.rb:106`).
+- We do **not** use `Schematist::Schema` subclasses. Every one in application code is under `enterprise/`; the only other is an anonymous class in `spec/lib/captain/base_task_service_spec.rb`. That class is what `RubyLLM::Schema` became in ruby_llm 2.0: the `ruby_llm-schema` gem is gone, and `schematist` now arrives as a ruby_llm dependency. `RubyLLM::Chat#with_schema` accepts a plain Ruby `Hash` (`ruby_llm-2.0.0/lib/ruby_llm/chat.rb:648`).
 
 ### D6 — The conversation must NEVER become `pending`
 
@@ -223,9 +224,9 @@ They are §4, they are eight ordered guards with individually stated failure mod
                     ├─ body selection ──┬─ DenyList.match(text)  …/deny_list.rb  ← NEW   (no model)
                     │                   ├─ corpus empty / non-text              (no model)
                     │                   └─ Classifier#classify  …/classifier.rb ← NEW
-                    │                          RubyLLM via Llm::Config.with_api_key
+                    │                          RubyLLM 2.0 via Llm::Config.with_api_key → POST <endpoint>/v1/chat/completions
                     │                          lib/llm/config.rb:22-30 · gpt-4.1-mini · 8s · 0 retries
-                    │                          strict JSON schema (plain Hash) → {faq_id, confidence, reason_code}
+                    │                          strict JSON schema (plain Hash) → response.parsed → {faq_id, confidence, reason_code}
                     │
                     ├─ Copy.build(...)               …/copy.rb                 ← NEW   ← D1 ENFORCED HERE
                     │
@@ -244,7 +245,7 @@ They are §4, they are eight ordered guards with individually stated failure mod
               Customer's LINE app
 ```
 
-**Latency budget.** LINE webhook → `default` queue (strict-priority, below `high` and `medium` — `config/sidekiq.yml`) → `medium` (HookJob) → `high` (our job) → `high` (SendReplyJob). The model call is the only variable component at ≤ 8 s. Target end-to-end median ≤ 5 s, p95 ≤ 12 s.
+**Latency budget.** LINE webhook → `default` queue (strict-priority, below `high` and `medium` — `config/sidekiq.yml`) → `medium` (HookJob) → `high` (our job) → `high` (SendReplyJob). The model call is the only variable component. It is normally well under 8 s, but the 8 s timeout applies to each phase separately (connect, write, each read), so it is not a hard cap (§6.6). Target end-to-end median ≤ 5 s, p95 ≤ 12 s.
 
 ---
 
@@ -445,11 +446,16 @@ MAX_INPUT_CHARS = 1_000
 
 def classify(text, faq_entries)
   Llm::Config.with_api_key(hook.settings['api_token'], api_base: api_base) do |context|
-    # ruby_llm defaults to request_timeout 300 and 3 retries on POST with exponential
-    # backoff (ruby_llm-1.15.0/lib/ruby_llm/configuration.rb:46-50) — worst case ~20 min
-    # of a Sidekiq worker on a speed-to-first-response feature. RubyLLM.context yields a
-    # dup of the global config with plain attr_accessors, so this is per call and touches
-    # no upstream file.
+    # ruby_llm 2.0 defaults to request_timeout 300 and 3 retries, and it retries chat POSTs
+    # on timeout, connection failure, 429 and 5xx with exponential backoff
+    # (ruby_llm-2.0.0/lib/ruby_llm/configuration.rb:173,179; transport/connection.rb:124-137,
+    # 162-174) — worst case ~20 min of a Sidekiq worker on a speed-to-first-response
+    # feature. A booted Chatwoot runs at 120 s,
+    # because config/initializers/ai_agents.rb lets ai-agents set the global timeout, and
+    # that is still ~8 min. RubyLLM.context yields a dup of the global config
+    # (ruby_llm.rb:187-191), so this is per call and touches no upstream file. Set both
+    # BEFORE context.chat: the chat builds its Faraday connection when it is created
+    # (chat.rb:115-116, 421-424).
     context.config.request_timeout = REQUEST_TIMEOUT
     context.config.max_retries = MAX_RETRIES
 
@@ -457,18 +463,53 @@ def classify(text, faq_entries)
                       .with_instructions(SYSTEM_PROMPT)
                       .with_schema(CLASSIFY_SCHEMA)
                       .ask(user_payload(text, faq_entries))
-    JSON.parse(response.content)
+    # ruby_llm 2.0: content is a String or nil, never a Hash (message.rb:305-312). See plan C10.
+    # Blank first: parsed returns nil for nil/"" content, and raises on a filter's partial fragment.
+    return failed('model_empty') if response.content.blank? || response.content_filtered?
+    raw = response.parsed                           # String-keyed Hash; JSON::ParserError is rescued below
+    raw.is_a?(Hash) ? raw : failed('model_garbage') # a top-level array or scalar also parses
+  end
+rescue StandardError => e
+  failed(failure_route(e), e) # never raise into the job (plan C10)
+end
+
+# classify returns nil on every failure. ReplyService reads the §6.6 route from here (and the
+# error, for the §11.3 alert) instead of recording the nil as model_no_match.
+attr_reader :failed_route, :failed_error
+
+def failed(route, error = nil)
+  @failed_route = route
+  @failed_error = error
+  nil
+end
+
+# §6.6 as code. Order matters: ruby_llm 2.0's error classes are siblings under unrelated roots,
+# so the specific classes come first, then the RubyLLM::Error base, then everything else.
+def failure_route(error)
+  case error
+  when Faraday::TimeoutError then 'model_timeout'
+  when Faraday::ConnectionFailed, Faraday::SSLError then 'model_unreachable'
+  when RubyLLM::UnauthorizedError, RubyLLM::ForbiddenError then 'model_auth'
+  when RubyLLM::RateLimitError, RubyLLM::PaymentRequiredError then 'model_quota'
+  when RubyLLM::ModelNotFoundError, RubyLLM::ConfigurationError then 'model_config'
+  when RubyLLM::Error then 'model_server' # incl. BadRequestError, ContextLengthExceededError
+  else 'model_garbage' # Faraday::ParsingError, JSON::ParserError, NoMethodError on a non-JSON 200
   end
 end
 
 # Mirrors lib/integrations/llm_base_service.rb:86-90. Llm::Config.with_api_key assigns
 # openai_api_base with NO presence guard (lib/llm/config.rb:26), unlike configure_ruby_llm
-# at :37 — so it MUST be passed explicitly or it nils out the configured endpoint.
+# at :37 — so it MUST be passed explicitly. A nil base does not raise: ruby_llm falls back
+# to https://api.openai.com/v1 (ruby_llm-2.0.0/lib/ruby_llm/providers/openai.rb:16-18) and
+# silently ignores CAPTAIN_OPEN_AI_ENDPOINT. The provider never appends /v1 itself. Since
+# f5bbc04844 the global base at :37 appends it too, so the two now agree.
 def api_base
   endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value.presence || 'https://api.openai.com/'
   "#{endpoint.chomp('/')}/v1"
 end
 ```
+
+**The request goes to `<endpoint>/v1/chat/completions` only because of an inherited setting.** `with_api_key` first calls `initialize!` (`lib/llm/config.rb:23`). That runs `configure_ruby_llm`, which sets `openai_protocol = :chat_completions` globally (`:39`; `config/initializers/ai_agents.rb:17` sets it again at boot), and the per-call context is a dup of that global config. ruby_llm 2.0's own default for OpenAI is the Responses API: `POST <base>/responses`, with the schema under `text.format` instead of `response_format` (`ruby_llm-2.0.0/lib/ruby_llm/providers/openai.rb:7-8`, `provider.rb:622-629`). So the classifier builds its chat only through `Llm::Config.with_api_key`, never from a bare `RubyLLM.chat` or `RubyLLM.context`. Plan T1(a) asserts the rendered `response_format` to prove it.
 
 ⚠ **OWNER:** the OpenAI-compatible endpoint is read from the existing `CAPTAIN_OPEN_AI_ENDPOINT` installation config, shared with anything else on the box. If this feature must point somewhere else, it needs its own key in `hook.settings` and a schema line. Recommendation: don't, until it's needed.
 
@@ -527,7 +568,9 @@ Only `id`, `q` and `aliases` are sent. **The approved answer text `a` is never s
 
 ### 6.4 The strict-JSON schema
 
-A plain Ruby `Hash`, no `RubyLLM::Schema` subclass (all of those are under `enterprise/`). `RubyLLM::Chat#with_schema` accepts a Hash (`chat.rb:106`), the OpenAI provider renders it to `response_format: {type:'json_schema', json_schema:{name:, schema:, strict:}}` (`providers/openai/chat.rb:36-42`), and `strict` defaults to `true`.
+A plain Ruby `Hash`, no `Schematist::Schema` subclass (every one in application code is under `enterprise/`). `RubyLLM::Chat#with_schema` accepts a Hash (`ruby_llm-2.0.0/lib/ruby_llm/chat.rb:648`) and wraps it as `{name: 'response', schema: <the Hash>}` (`chat.rb:927-961`). Under the inherited `:chat_completions` protocol (§6.1), it goes on the wire as `response_format: {type:'json_schema', json_schema:{name:, schema:, strict:}}` (`protocols/chat_completions/chat.rb:75-84`).
+
+**`strict` is derived, not defaulted.** ruby_llm 2.0 sends `strict: true` only when every object in the schema lists all of its properties in `required` (`protocols/chat_completions/chat.rb:31-54`). `CLASSIFY_SCHEMA` does, so it goes out strict. A property added later without also being added to `required` silently turns strict mode off for the whole schema. A field that may be absent stays required and is typed `[..., 'null']`, as `faq_id` is. Never put a top-level `strict:` key in the Hash itself: 2.0 copies it into the schema body as well. If strict ever has to be explicit, pass `{name: 'faq_classification', schema: CLASSIFY_SCHEMA, strict: true}`.
 
 ```ruby
 CLASSIFY_SCHEMA = {
@@ -563,19 +606,30 @@ end
 
 | Failure | Detection | Result | Alert |
 | --- | --- | --- | --- |
-| Timeout (8 s) | `Faraday::TimeoutError` / `RubyLLM::Error` | unmatched body, `route=model_timeout` | Sentry, deduped 15 min |
-| Connection refused / DNS / API down | `Faraday::ConnectionFailed` | unmatched body, `route=model_unreachable` | Sentry, deduped |
-| HTTP 401/403 (bad or revoked token) | `RubyLLM::UnauthorizedError` | unmatched body, `route=model_auth` | **Sentry, every occurrence, no dedup.** One shared token: an auth failure is ours to fix, never the customer's. |
-| HTTP 429 (quota) | `RubyLLM::RateLimitError` | unmatched body, `route=model_quota` | Sentry, deduped |
-| HTTP 5xx | `RubyLLM::ServerError` | unmatched body, `route=model_server` | Sentry, deduped |
-| Garbage / non-JSON body | `JSON::ParserError` | unmatched body, `route=model_garbage` | Sentry, deduped |
-| Empty `response.content` (content-policy block returns 200 with no text) | `response.content.blank?` | unmatched body, `route=model_empty` | Sentry, deduped |
+| Read/write timeout (8 s per phase, not a wall-clock total) | `Faraday::TimeoutError`, raised raw: ruby_llm never wraps it | unmatched body, `route=model_timeout` | Sentry, deduped 15 min |
+| Connection refused / DNS / connect timeout / TLS failure / API down | `Faraday::ConnectionFailed`, or `Faraday::SSLError` for TLS. A connect timeout arrives as `ConnectionFailed`. | unmatched body, `route=model_unreachable` | Sentry, deduped |
+| HTTP 401/403 (bad or revoked token) | `RubyLLM::UnauthorizedError` (401) / `RubyLLM::ForbiddenError` (403). These are siblings: neither class catches the other. | unmatched body, `route=model_auth` | **Sentry, every occurrence, no dedup.** One shared token: an auth failure is ours to fix, never the customer's. |
+| HTTP 429 (quota), or 402 from a non-OpenAI gateway | `RubyLLM::RateLimitError` (OpenAI reports `insufficient_quota` as a 429 too), `RubyLLM::PaymentRequiredError` (402) | unmatched body, `route=model_quota` | Sentry, deduped |
+| HTTP 5xx | `RubyLLM::ServerError` (500) / `RubyLLM::ServiceUnavailableError` (502–504) / `RubyLLM::OverloadedError` (529). These are siblings, not subclasses of `ServerError`. | unmatched body, `route=model_server` | Sentry, deduped |
+| Any other provider error: a 400, such as a `response_format` the endpoint rejects; a 400, or a 429 that is not a rate limit, whose message reads as a context or token limit; a status with no class of its own (404, which is usually a wrong `api_base` path, 501, 520–524); an `error` object inside a 200 body; an empty body; or no `choices[0].message` | `RubyLLM::BadRequestError`, `RubyLLM::ContextLengthExceededError`, or the `RubyLLM::Error` base class. Test the base class only after every subclass above. | unmatched body, `route=model_server` | Sentry, deduped |
+| Garbage HTTP body: invalid JSON under a JSON content type, or an HTML page from a proxy | `Faraday::ParsingError`, or a `NoMethodError` inside ruby_llm's parser. The second one only the `StandardError` rescue catches. | unmatched body, `route=model_garbage` | Sentry, deduped |
+| Model text is not a JSON object: prose, or cut off at `finish_reason: length` | `JSON::ParserError` from `response.parsed`, or `parsed` returns a non-Hash | unmatched body, `route=model_garbage` | Sentry, deduped |
+| Empty or filtered `response.content`: a structured-output refusal (`content: null`; ruby_llm 2.0 drops the `refusal` text, which survives only in `response.raw.body`), or `finish_reason: content_filter`, which can also leave a partial fragment | `response.content.blank? \|\| response.content_filtered?` (`ruby_llm-2.0.0/lib/ruby_llm/message.rb:184-186`), checked **before** `response.parsed`. `parsed` returns `nil` for `nil` or `""` content rather than raising (`message.rb:121-125`), and it would raise on a filtered fragment, which would mislabel it `model_garbage`. | unmatched body, `route=model_empty` | Sentry, deduped |
 | Valid JSON, `faq_id` not in the corpus | §6.5 | unmatched body, `route=model_invalid_id` | Sentry, deduped — the model invented an id |
 | Valid JSON, `confidence < 0.75` | §6.5 | unmatched body, `route=model_low_confidence` | **No alert.** Normal operation. |
 | Valid JSON, `faq_id: null`, `reason_code: no_match` | §6.5 | unmatched body, `route=model_no_match` | **No alert.** Correct behaviour. |
-| Model registry rejects the model id | `RubyLLM::ModelNotFoundError` at `Llm::Config.initialize!` | unmatched body, `route=model_config` | Sentry, every occurrence — a deploy bug |
+| Model registry rejects the model id | `RubyLLM::ModelNotFoundError`, a `StandardError` and not a `RubyLLM::Error`. It is raised by `context.chat(model: MODEL)` on every call, before any request, and not at `Llm::Config.initialize!`, which loads nothing (`ruby_llm-2.0.0/lib/ruby_llm/models.rb:814-827`). | unmatched body, `route=model_config` | Sentry, every occurrence — a deploy bug |
+| Hook `api_token` blank or missing | `RubyLLM::ConfigurationError`, a `StandardError` raised by `context.chat` before any request. ruby_llm 2.0 stores a blank key as `nil`. | unmatched body, `route=model_config` | Sentry, every occurrence — a setup bug |
 
-All of the above are caught inside `Classifier#classify`, which returns `nil` on any failure. `ReplyService` treats `nil` exactly as `no_match`. The classifier **never raises into the job**, because a raise would trip the job's retry and produce a second reply attempt on a conversation whose marker is already claimed.
+All of the above are caught inside `Classifier#classify` by a single `rescue StandardError`, and `classify` returns `nil` on any failure, after recording the row's route in `failed_route` (§6.1). `ReplyService` gives a `nil` result the unmatched body, exactly as for `no_match`, but stamps `failed_route` as the route and alerts per the Alert column. The classifier **never raises into the job**, because a raise would trip the job's retry and produce a second reply attempt on a conversation whose marker is already claimed.
+
+The Detection column labels the route; it is not a rescue list. In ruby_llm 2.0 these failures come from four unrelated roots:
+- `RubyLLM::Error` subclasses
+- raw `Faraday::Error`
+- plain `StandardError`: `ModelNotFoundError` and `ConfigurationError` (`ruby_llm-2.0.0/lib/ruby_llm/error.rb:22-24`), plus Ruby's own `JSON::ParserError` from `Message#parsed` (`message.rb:124`)
+- `Message` state that raises nothing
+
+So `rescue RubyLLM::Error` alone would miss most rows. `failure_route` (§6.1) tests the specific classes first, then `RubyLLM::Error`, then everything else. The status-to-class mapping is `ruby_llm-2.0.0/lib/ruby_llm/transport/error_middleware.rb:76-106`. Do not confuse `Faraday::ServerError`, the parent of `Faraday::TimeoutError`, with `RubyLLM::ServerError`.
 
 ---
 
@@ -1123,8 +1177,8 @@ Distinguishing `skipped` (nothing needed doing) from `failed` (we could not do i
 | Condition | Dedup | Why it pages |
 | --- | --- | --- |
 | Circuit breaker tripped (§9.3) | 15 min per scope | A bug is loose |
-| Model auth failure (401/403) | **none** | One shared token — always ours to fix |
-| Model config failure (unknown model id) | none | A deploy bug |
+| Model auth failure (401 `UnauthorizedError` / 403 `ForbiddenError`) | **none** | One shared token — always ours to fix |
+| Model config failure, `route=model_config` (unknown model id → `ModelNotFoundError`; blank hook `api_token` → `ConfigurationError`) | none | A deploy or setup bug |
 | `messages.create!` raised | 15 min | The customer got nothing |
 | Hook bound to a non-LINE inbox (G5) | 15 min | A deploy/config bug |
 | Any other model failure (timeout, 5xx, garbage, empty, invalid id) | 15 min per kind | Degraded, not broken |
@@ -1191,7 +1245,7 @@ GROUP BY 1 ORDER BY 2 DESC;
 11. Never send the FAQ answer text (`a`) to the model.
 12. Never use an `faq_id` the model returned that is not in the corpus we sent.
 13. Never call the model when the deny-list fires, when the corpus is empty, when the message is non-text, or when any guard failed.
-14. Never leave `request_timeout` at the ruby_llm default of 300 s, and never enable POST retries.
+14. Never leave `request_timeout` at the inherited global, which is ruby_llm's default of 300 s, or 120 s once `config/initializers/ai_agents.rb` has run. Always set `max_retries = 0`: ruby_llm 2.0 retries chat POSTs on timeout, connection failure, 429 and 5xx by default.
 
 **Reply discipline**
 15. Never send more than one AI message per conversation.
@@ -1209,7 +1263,7 @@ GROUP BY 1 ORDER BY 2 DESC;
 **Licensing and upstream (D5, D7)**
 24. Never reference anything under `enterprise/`.
 25. Never depend on a premium feature flag; never add a `feature_flag:` key to the apps.yml entry.
-26. Never subclass `Captain::BaseTaskService` or `RubyLLM::Schema`.
+26. Never subclass `Captain::BaseTaskService` or `Schematist::Schema` (formerly `RubyLLM::Schema`).
 27. Never edit `config/locales/th.yml` or any non-English locale.
 28. Never edit `app/models/message.rb`, `app/models/conversation.rb`, `app/services/base/send_on_channel_service.rb`, `app/services/line/*`, `app/presenters/message_content_presenter.rb`, `lib/redis/redis_keys.rb`, `spec/jobs/hook_job_spec.rb`, or `spec/listeners/hook_listener_spec.rb`.
 
@@ -1460,10 +1514,17 @@ Every one was read from the working tree, not recalled.
 | Every LINE reply is a metered `push_message`; no reply token exists | `send_on_line_service.rb:9`; `replyToken` appears only in spec fixtures |
 | `Redis::Alfred.set(key, v, nx:, ex:)` is a single atomic `SET NX EX` | `lib/redis/alfred.rb:10-12` |
 | `AccountEmailRateLimitable` is inert self-hosted | `account_email_rate_limitable.rb:20, 34` |
-| `Llm::Config.with_api_key` nils `openai_api_base` when not passed | `lib/llm/config.rb:22-30` vs. the guarded `:37` |
-| `RubyLLM::Chat#with_schema` accepts a plain Hash | `ruby_llm-1.15.0/lib/ruby_llm/chat.rb:106` |
-| ruby_llm defaults to 300 s and 3 POST retries | `ruby_llm-1.15.0/lib/ruby_llm/configuration.rb:46-50` |
-| `gpt-4.1-mini` resolves in the pinned registry | `config/llm_models.json`; `lib/llm/config.rb:38` |
+| The fork runs ruby_llm 2.0.0; `ruby_llm-schema` is gone | `Gemfile:204` (`~> 2.0.0`); `Gemfile.lock` `ruby_llm (2.0.0)`; upstream f5bbc04844 |
+| `Llm::Config.with_api_key` nils `openai_api_base` when not passed, and a nil base silently becomes `https://api.openai.com/v1` | `lib/llm/config.rb:22-30` vs. the guarded `:37` (which appends `/v1` since f5bbc04844); `ruby_llm-2.0.0/lib/ruby_llm/providers/openai.rb:16-18` |
+| The per-call context inherits `openai_protocol = :chat_completions`, so the request is `POST <base>/chat/completions`. The 2.0 default for OpenAI would be the Responses API. | `lib/llm/config.rb:23, 39`; `ruby_llm-2.0.0/lib/ruby_llm.rb:187-191`; `providers/openai.rb:7-8`; `provider.rb:622-629`; `protocols/chat_completions/chat.rb:17-19` |
+| `RubyLLM::Chat#with_schema` accepts a plain Hash | `ruby_llm-2.0.0/lib/ruby_llm/chat.rb:648`, normalised at `:927-961` |
+| The schema renders as `response_format` `json_schema`, with `strict: true` only when every property is in `required` | `ruby_llm-2.0.0/lib/ruby_llm/protocols/chat_completions/chat.rb:31-54, 75-84` |
+| `response.content` is a String or nil, never a Hash. `response.parsed` does the JSON parse: `nil` for `nil` or `""` content, `JSON::ParserError` for whitespace-only or non-JSON content. | `ruby_llm-2.0.0/lib/ruby_llm/message.rb:29, 121-125, 305-312`; upstream idiom `lib/captain/base_task_service.rb:109` |
+| ruby_llm defaults to 300 s and 3 retries, and retries chat POSTs | `ruby_llm-2.0.0/lib/ruby_llm/configuration.rb:173, 179`; `transport/connection.rb:124-137, 162-174` |
+| A booted Chatwoot's global `request_timeout` is 120 s | `config/initializers/ai_agents.rb:10-20` → `ai-agents-0.13.0/lib/agents.rb:78, 100` |
+| HTTP status → error class. 400 BadRequest, or ContextLengthExceeded when the message reads as a context limit. 401 Unauthorized. 402 PaymentRequired. 403 Forbidden. 429 RateLimit, or ContextLengthExceeded when the message reads as a token limit and not as a rate limit. 500 Server. 502–504 ServiceUnavailable. 529 Overloaded. Any other error status: the base `Error`. Faraday timeouts and connection failures are not wrapped, and `ModelNotFoundError` / `ConfigurationError` are not `RubyLLM::Error`. | `ruby_llm-2.0.0/lib/ruby_llm/transport/error_middleware.rb:76-106`; `error.rb:7-11, 22-24` |
+| An unknown model id raises at `context.chat(model:)`, not at boot | `ruby_llm-2.0.0/lib/ruby_llm/chat.rb:115-116, 421-424`; `models.rb:814-827` |
+| `gpt-4.1-mini` resolves in the pinned registry | `config/llm_models.json` (the `openai` entry at `:25086`); `lib/llm/config.rb:38` |
 | `api_key` is **not** filtered from Rails logs; anything containing `token` is | `config/initializers/filter_parameter_logging.rb:4-13` |
 | `hook.settings` is echoed only for keys in `visible_properties`, admins only | `_hook.json.jbuilder:8-14` |
 | The dashboard has no hook-settings edit path | `app/javascript/dashboard/api/integrations.js:28-34` — `createHook`, `deleteHook`, no `updateHook` |
