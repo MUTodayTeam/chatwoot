@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
+import ConversationApi from 'dashboard/api/inbox/conversation';
 import {
   LIFECYCLE_STATUS,
   getLifecycleStatus,
@@ -29,36 +30,14 @@ const { t } = useI18n();
 const currentChat = useMapGetter('getSelectedChat');
 const currentUser = useMapGetter('getCurrentUser');
 
-const assignedAgent = computed({
-  get() {
-    return currentChat.value?.meta?.assignee;
-  },
-  set(agent) {
-    const agentId = agent ? agent.id : null;
-    store.dispatch('setCurrentChatAssignee', {
-      conversationId: currentChat.value?.id,
-      assignee: agent,
-      assigneeType: agent ? 'User' : null,
-    });
-    store.dispatch('assignAgent', {
-      conversationId: currentChat.value?.id,
-      agentId,
-    });
-  },
-});
+const assignedAgent = computed(() => currentChat.value?.meta?.assignee);
 
-const hasMessage = computed(() => props.message !== '');
-const isUserTyping = computed(() => hasMessage.value && !props.isOnPrivateNote);
-const isUnassigned = computed(() => !assignedAgent.value);
-const isAssignedToOtherAgent = computed(
-  () => assignedAgent.value?.id !== currentUser.value?.id
+const showSelfAssignBanner = computed(
+  () =>
+    props.message !== '' &&
+    !props.isOnPrivateNote &&
+    (!assignedAgent.value || assignedAgent.value.id !== currentUser.value?.id)
 );
-
-const showSelfAssignBanner = computed(() => {
-  return (
-    isUserTyping.value && (isUnassigned.value || isAssignedToOtherAgent.value)
-  );
-});
 
 // Pending with an agent bot or a Captain assistant as the assignee (spec §5 Bot banner)
 const showBotHandoffBanner = computed(
@@ -69,36 +48,42 @@ const showBotHandoffBanner = computed(
 
 const isTakingOver = ref(false);
 
-const selfAssignConversation = async () => {
-  const { avatar_url, ...rest } = currentUser.value || {};
-  assignedAgent.value = { ...rest, thumbnail: avatar_url };
+const selfAssignConversation = async conversationId => {
+  const { data } = await ConversationApi.assignAgent({
+    conversationId,
+    agentId: currentUser.value.id,
+    assigneeType: 'User',
+  });
+  await store.dispatch('setCurrentChatAssignee', {
+    conversationId,
+    assignee: data,
+    assigneeType: 'User',
+  });
 };
 
 const onClickSelfAssign = async () => {
   try {
-    await selfAssignConversation();
+    await selfAssignConversation(currentChat.value.id);
     useAlert(t('CONVERSATION.CHANGE_AGENT'));
   } catch (error) {
     useAlert(t('CONVERSATION.CHANGE_AGENT_FAILED'));
   }
 };
 
-const reopenConversation = async () => {
-  await store.dispatch('toggleStatus', {
-    conversationId: currentChat.value?.id,
-    status: 'open',
-  });
-};
-
 // The bar only shows while an agent bot or a Captain assistant holds the chat, so taking
 // it over always assigns it to the agent. Comparing ids would not do: the assistant's id
-// comes from another table and can equal the agent's.
+// comes from another table and can equal the agent's. The assignment opens the pending
+// conversation on the server, so the status is only mirrored here.
 const onClickBotHandoff = async () => {
+  const conversationId = currentChat.value.id;
   isTakingOver.value = true;
   try {
-    await reopenConversation();
-    await selfAssignConversation();
-
+    await selfAssignConversation(conversationId);
+    store.commit('CHANGE_CONVERSATION_STATUS', {
+      conversationId,
+      status: 'open',
+      snoozedUntil: null,
+    });
     useAlert(t('CONVERSATION.BOT_HANDOFF_SUCCESS'));
   } catch (error) {
     useAlert(t('CONVERSATION.BOT_HANDOFF_ERROR'));

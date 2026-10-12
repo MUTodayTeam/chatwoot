@@ -13,7 +13,7 @@ export const buildContactParams = (
   page,
   sort: sortAttr,
   ...(search ? { q: search } : {}),
-  ...(label ? { labels: [label] } : {}),
+  ...(label ? { labels: [label].flat() } : {}),
   ...(projectId ? { project_id: projectId } : {}),
 });
 
@@ -22,9 +22,10 @@ class ContactAPI extends ApiClient {
     super('contacts', { accountScoped: true });
   }
 
-  get(page, sortAttr = 'name', label = '', projectId = null) {
+  get(page, sortAttr = 'name', label = '', options = {}) {
     return axios.get(this.url, {
-      params: buildContactParams(page, sortAttr, label, '', projectId),
+      params: buildContactParams(page, sortAttr, label, '', options.projectId),
+      signal: options.signal,
     });
   }
 
@@ -93,9 +94,10 @@ class ContactAPI extends ApiClient {
   }
 
   // eslint-disable-next-line default-param-last
-  filter(page = 1, sortAttr = 'name', queryPayload) {
+  filter(page = 1, sortAttr = 'name', queryPayload, options = {}) {
     return axios.post(`${this.url}/filter`, queryPayload, {
       params: buildContactParams(page, sortAttr),
+      signal: options.signal,
     });
   }
 

@@ -50,7 +50,7 @@ RSpec.describe DeviseOverrides::SessionsController, type: :controller do
     it 'leaves the status alone on an impersonation sign-in' do
       request.env['HTTP_USER_AGENT'] = browser_ua
 
-      post :create, params: { email: user.email, sso_auth_token: user.generate_sso_auth_token(impersonation: true) }
+      post :create, params: { email: user.email, sso_auth_token: user.generate_sso_auth_token(impersonated_by: create(:super_admin)) }
 
       expect(response).to have_http_status(:success)
       expect(statuses).to all(eq('ready'))
@@ -91,7 +91,7 @@ RSpec.describe DeviseOverrides::SessionsController, type: :controller do
   describe 'DELETE #destroy of an impersonation session' do
     it 'leaves the status alone' do
       request.env['HTTP_USER_AGENT'] = browser_ua
-      post :create, params: { email: user.email, sso_auth_token: user.generate_sso_auth_token(impersonation: true) }
+      post :create, params: { email: user.email, sso_auth_token: user.generate_sso_auth_token(impersonated_by: create(:super_admin)) }
       request.headers.merge!(response.headers.slice('access-token', 'client', 'uid', 'expiry', 'token-type'))
 
       delete :destroy

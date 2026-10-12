@@ -78,7 +78,7 @@ export const actions = {
     try {
       const {
         data: { payload, meta },
-      } = await ContactAPI.get(page, sortAttr, label, projectId);
+      } = await ContactAPI.get(page, sortAttr, label, { projectId });
       commit(types.CLEAR_CONTACTS);
       commit(types.SET_CONTACTS, payload);
       commit(types.SET_CONTACT_META, meta);

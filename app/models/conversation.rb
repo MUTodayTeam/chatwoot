@@ -148,6 +148,7 @@ class Conversation < ApplicationRecord
   before_create :ensure_waiting_since
   # Runs after ensure_waiting_since so the deadline is derived from the value it sets.
   before_create :sync_reply_due_at
+  after_create :mark_contact_as_lead
   before_update :sync_reply_due_at, if: -> { will_save_change_to_waiting_since? || (will_save_change_to_status? && open?) }
 
   after_update_commit :execute_after_update_commit_callbacks
@@ -242,6 +243,10 @@ class Conversation < ApplicationRecord
   end
 
   def bot_handoff!(dispatch_event: true)
+    # Best-effort eligibility check, not a lock against concurrent takeovers.
+    # The dashboard checks assignment/status again before playing the alert.
+    return false unless pending?
+
     update(waiting_since: Time.current) if waiting_since.blank?
     self.ai_assignee = nil
     open!
@@ -368,6 +373,10 @@ class Conversation < ApplicationRecord
   def reply_deadline_from_latest_message
     latest = messages.incoming.maximum(:created_at) unless new_record?
     (latest || waiting_since) + live_chat_rule.reply_timeout_minutes.minutes
+  end
+
+  def mark_contact_as_lead
+    contact.update(contact_type: :lead) if contact.visitor?
   end
 
   def validate_additional_attributes

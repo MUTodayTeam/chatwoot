@@ -67,6 +67,7 @@ class V2::Reports::AgentProductivityBuilder
         SELECT MIN(messages.created_at) AS replied_at FROM messages
         WHERE messages.conversation_id = solved.conversation_id AND messages.account_id = :account_id
           AND messages.message_type = :outgoing AND messages.sender_type = 'User' AND messages.private = FALSE
+          AND (messages.content_attributes #>> '{}')::jsonb -> 'forwarded_message_id' IS NULL
           AND messages.created_at >= started.started_at
       ) first_reply
     )

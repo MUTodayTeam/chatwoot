@@ -9,7 +9,7 @@ class AutoAssignOnReplyListener < BaseListener
   private
 
   def agent_reply?(message)
-    message.outgoing? && !message.private? && message.sender.is_a?(User) &&
+    message.outgoing? && !message.private? && !message.forwarded? && message.sender.is_a?(User) &&
       message.content_attributes['automation_rule_id'].blank? &&
       message.additional_attributes['campaign_id'].blank?
   end

@@ -3,6 +3,7 @@
 module Custom::DeviseOverrides::SessionsController
   include Custom::DeviseOverrides::BusyOnLogin
 
+  # Stock writes this flag into an impersonation token when it creates it
   IMPERSONATION_TOKEN_KEY = 'impersonation'.freeze
 
   # The single exit of every web sign-in: password, SSO token (Google and SAML land here too)
@@ -18,16 +19,5 @@ module Custom::DeviseOverrides::SessionsController
     super do |user|
       user.account_users.find_each { |account_user| account_user.update!(agent_status: :offline) } if browser_request? && !impersonating
     end
-  end
-
-  private
-
-  # Marks the impersonation token so its sign-out can be told apart from the agent's own
-  def authenticate_resource_with_sso_token
-    super
-    return unless @impersonation
-
-    @resource.tokens[@token.client][IMPERSONATION_TOKEN_KEY] = true
-    @resource.save!
   end
 end

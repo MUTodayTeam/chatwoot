@@ -43,6 +43,8 @@
 
 ## General Guidelines
 
+- **Database foreign keys**: Prefer Rails associations and callbacks over database foreign-key constraints. Add a database foreign key only when there is a clear need and after checking deletion behavior and production migration/locking risks. Existing foreign keys alone are not a reason to add new ones.
+- **Migrations**: Create migrations with `bundle exec rails g migration <Name>` so the version is a real timestamp. Never hand-write or round the version (e.g. `20260925000000`); rounded versions collide across branches and break `db:migrate`.
 - Prefer the smallest production-ready change that solves the current problem.
 - Build for the expected production path first. Do not add speculative guards, fallbacks, retries, or edge-case handling unless the caller can actually hit that case or production has proven it necessary.
 - Enforce eligibility and exclusivity rules at the earliest shared entry point. Do not repeat backup guards across downstream jobs, callbacks, services, or writes unless a proven independent path bypasses that point.
@@ -137,7 +139,7 @@ This repo is a fork of `chatwoot/chatwoot`; the `upstream` remote points at it.
 
 - **Merging here does not deploy anything.** Production (`support.mutoday.com`, Hetzner, Docker Compose) is driven by the separate `mu-support` folder, which is rsynced to `/opt/mu-support` on the server. Code only reaches the server once the image is rebuilt there.
 - The production image is `chatwoot/chatwoot:<version>-mutoday`, built on the server by `mu-support/build.sh` from this repo's own `docker/Dockerfile`. It is a **full source build**, not a layer on the published image, because the fork changes frontend code — the unread tab badge, the attachment preview and `public/sw.js` — so the asset bundle has to be compiled. Budget tens of minutes and about 4 GB of RAM for it.
-- **Syncing from upstream is not a fast-forward.** The fork carries its own commits, so use a real `git merge upstream/develop`, then rebuild the image.
+- **Syncing from upstream is not a fast-forward.** The fork carries its own commits, so use a real `git merge upstream/develop`, then ship it with `upgrade.sh`. Upstream `develop` adds migrations without bumping the Chatwoot version, so a sync usually brings migrations even when `VERSION_CW` has not moved. If a migration version in `db/migrate` collides with one of the fork's, renumber the upstream file, never the fork's: production has already recorded the fork's version.
 - `Notification::NOTIFICATION_TYPES` carries a MUToday entry, `all_conversations_new_message: 9`. The value doubles as a FlagShihTzu bit on `notification_settings`, so if an upstream release ever adds its own type 9, renumber the MUToday one and migrate both the existing `notifications` rows and the flag bits. Upstream still stops at 8 as of 4.17.0.
 - Upgrading production is `./upgrade.sh <version>-mutoday` in `mu-support`: it backs up, bumps `CHATWOOT_VERSION` in `.env`, rebuilds the image, migrates and restarts. It runs the migration with `POSTGRES_STATEMENT_TIMEOUT=0` on purpose — Chatwoot defaults to 14s, which kills `CREATE INDEX CONCURRENTLY` on large tables, and the migrations pass `if_not_exists`, so a retry skips the invalid index and reports success.
 
@@ -151,7 +153,7 @@ This repo is a fork of `chatwoot/chatwoot`; the `upstream` remote points at it.
 3. `cd /opt/mu-support && nohup ./upgrade.sh <chatwoot-version>-mutoday > upgrade.log 2>&1 &` then `tail -f upgrade.log`. Detach it: the build runs for tens of minutes and losing the SSH session partway through the migration is the worst case. The quiet stretch is `assets:precompile`, which needs about 4 GB of RAM and prints nothing.
 4. Verify: `curl -s https://support.mutoday.com/api` reports the new version with `queue_services` and `data_services` both `ok`, and `SELECT count(*) FROM pg_index WHERE NOT indisvalid` returns 0. A killed `CREATE INDEX CONCURRENTLY` leaves an invalid index that the migrations' `if_not_exists` then skips on retry while reporting success, so that query is the only signal.
 
-When the Chatwoot version has not moved and only this repo's code changed, skip `upgrade.sh` — `./build.sh <version>-mutoday && docker compose up -d` is enough, with no migration and no backup step.
+When the Chatwoot version has not moved and the change adds no files under `db/migrate` (check `git diff --name-only <deployed sha>..develop -- db/migrate`), skip `upgrade.sh` — `./build.sh <version>-mutoday && docker compose up -d` is enough, with no migration and no backup step. If there is any new migration, use `upgrade.sh`: new code against an unmigrated schema fails on every message write once a callback touches a missing table.
 
 Two things that are easy to get wrong:
 

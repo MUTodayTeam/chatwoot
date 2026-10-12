@@ -36,6 +36,7 @@ class V2::Reports::CdpDashboardBuilder
         AND replies.message_type = :outgoing
         AND replies.sender_type = 'User'
         AND replies.private = FALSE
+        AND (replies.content_attributes #>> '{}')::jsonb -> 'forwarded_message_id' IS NULL
         AND replies.created_at >= started.started_at
     ) first_reply ON TRUE
   SQL
