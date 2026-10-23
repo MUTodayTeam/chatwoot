@@ -145,10 +145,10 @@ only the role-holder's got through:
 
 | Bangkok time | sender | app role | reached Chatwoot |
 |---|---|---|---|
-| 19:17 | Mutoday MarComm | Admin | yes (msg 411) |
-| 19:19 | Priyawit Petarewut | none | no — no webhook at all |
-| 19:21 | Sutham Sonnaya | none | no — no webhook at all |
-| 19:24 | Page → Mutoday MarComm | (counterpart is Admin) | yes (msg 413, echo) |
+| 19:17 | the Page admin account | Admin | yes (msg 411) |
+| 19:19 | tester A | none | no — no webhook at all |
+| 19:21 | tester B | none | no — no webhook at all |
+| 19:24 | Page → the admin account | (counterpart is Admin) | yes (msg 413, echo) |
 
 The Page inbox also holds other threads from today that Chatwoot cannot see for the same reason,
 so App Review is not cosmetic — real conversations are being missed while the app stays in
@@ -195,9 +195,8 @@ Independent of all of this, the ผู้ทดสอบ workaround works today 
 
 ### 2026-09-23 — Instagram: fork supports it, but it needs its own Meta app
 
-**Traffic being missed.** The Page's Business Suite Instagram tab is busy — ☆ ipyal, Picha
-Kulvaraekdumrong, KNJNPON S., Panupan Jantanawong, iPAN CHANNEL, พี่หมอไอซ์ - icediry,
-COOLKIDS FORTUNE and more, all recent. None of it reaches Chatwoot; there is no Instagram inbox.
+**Traffic being missed.** The Page's Business Suite Instagram tab is busy — several recent customer
+threads (names omitted here). None of it reaches Chatwoot; there is no Instagram inbox.
 
 **Fork side is ready.** `Channel::Instagram` exists, `channel_instagram` is enabled by default in
 `config/features.yml`, and the routes are in place: `webhooks/instagram` (verify + events) and
@@ -463,7 +462,7 @@ Checked live with the owner's authenticated Business Suite session:
   confirming exactly those fields, so the empty record is the most likely reason the wizard fails.
   Fix: owner fills รายละเอียดธุรกิจ (แก้ไข) with the legal details from the หนังสือรับรอง, then retries.
 
-- **Confirmed fix (2026-09-25):** after the owner's team (Thirada Burapachayanon) filled รายละเอียดธุรกิจ
+- **Confirmed fix (2026-09-25):** after the owner's team filled รายละเอียดธุรกิจ
   — legal name บริษัท มูทูเดย์ จำกัด, address 150 ซอยสุขุมวิท 55 (ทองหล่อ) คลองตันเหนือ วัฒนา กรุงเทพฯ 10110,
   phone, website https://mutoday.com/ and tax ID all filled — "เริ่มการตรวจสอบยืนยัน" no
   longer errors: it opens the **passkey re-auth dialog** ("การตรวจสอบยืนยันความถูกต้อง … ใช้พาสคีย์"),
@@ -480,8 +479,7 @@ Checked live with the owner's authenticated Business Suite session:
   Cause: Meta demands the Mutoday MarComm **passkey re-auth** before granting full control (the same
   dialog now also gates the People page). This one passkey pass is unavoidable to bootstrap the dev
   account; afterwards dev's own login + 2FA (TOTP or passkey stored in 1Password) covers everything.
-  Current People list: Napatsorn Sarikawanich (partial), Thirada Burapachayanon (full, shown as "คุณ"),
-  Sarun Maneepongsawat (partial), Siro Sirorat (full), pipatpong laowiriyajaroenchai (full).
+  Current People list: 5 people (3 full control, 2 partial); names are kept in the private ops record.
 
 - Next: re-check Security Center / the wizard after eligibility propagates (the app link is new), and
   in parallel use the Meta Verified Business Premium support channel (its "ติดต่อฝ่ายสนับสนุน" link) to
@@ -832,8 +830,8 @@ instead: `until ! pgrep -f "docker build -f src/docker"; do sleep 30; done`.
    LINE has no fetch API. Robust fix if it persists: Cloudflare in front, or a Hetzner ticket.
 2. **Almost nobody can receive a push.** All 14 users have `push_all_conversations_new_message` on (set
    2026-09-21 13:57 UTC for 13 of them — which is why message #376, earlier that day, only notified
-   Chon). But only 2 users have any `NotificationSubscription`: Chon (`browser_push`, test push
-   `SENT OK`) and Menn (`fcm` — undeliverable, `FCM_SERVER_KEY`/`FCM_PROJECT_ID` unset). VAPID keys are
+   one user). But only 2 users have any `NotificationSubscription`: one `browser_push` (test push
+   `SENT OK`) and one `fcm` (undeliverable, `FCM_SERVER_KEY`/`FCM_PROJECT_ID` unset). VAPID keys are
    set. `push_assigned_conversation_new_message` is off for 13 of 14. Each agent has to grant browser
    notification permission themselves; nothing server-side can do it for them.
 
