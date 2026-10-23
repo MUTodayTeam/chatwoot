@@ -161,6 +161,7 @@
   },
   "pnpm": {
     "overrides": {
+      "prosemirror-model": "^1.25.12",
       "prosemirror-view": "^1.42.3",
       "vite": "6.4.2",
       "vitest": "3.0.5",
