@@ -74,3 +74,14 @@ Rails.application.config.to_prepare do
 
   ActiveStorage::Streaming.prepend(ActiveStorageProxyRangeLimit) unless ActiveStorage::Streaming < ActiveStorageProxyRangeLimit
 end
+
+# Only generate variants for the image formats that actually arrive here. The
+# remaining defaults (TIFF, BMP, ICO, PSD, AVIF, HEIC/HEIF) go through loaders
+# that libvips marks untrusted; attachments of those types are still stored and
+# downloadable, they are just never transformed.
+Rails.application.config.active_storage.variable_content_types = %w[
+  image/png
+  image/jpeg
+  image/gif
+  image/webp
+]
